@@ -2,13 +2,19 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
 export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
 
 const TABLES = ['products', 'tracked_links', 'price_history', 'categories'] as const;
 
 // Reports row visibility per key so an empty home page can be told apart from a
 // query error or an RLS policy gap. Counts and messages only, never a key value.
 async function countsFor(url: string, key: string) {
-  const supabase = createClient(url, key, { auth: { persistSession: false } });
+  const supabase = createClient(url, key, {
+    auth: { persistSession: false },
+    // Counts read through the Data Cache would report a stale snapshot, which
+    // is the exact failure this route exists to diagnose.
+    global: { fetch: (input, init) => fetch(input, { ...init, cache: 'no-store' }) }
+  });
   const result: Record<string, unknown> = {};
 
   for (const table of TABLES) {

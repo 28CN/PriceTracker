@@ -4,8 +4,11 @@ import ProductList from '@/components/ProductList';
 import { fetchProducts } from '@/lib/queries';
 import type { ProductView } from '@/lib/types';
 
-// Prices change behind the scenes, so never serve a cached snapshot.
+// Prices change behind the scenes, so never serve a cached snapshot. Marking the
+// route dynamic is not enough on its own: Vercel's Data Cache would still answer
+// the Supabase queries from an old snapshot, and it outlives redeploys.
 export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
 
 export default async function HomePage() {
   let products: ProductView[] = [];

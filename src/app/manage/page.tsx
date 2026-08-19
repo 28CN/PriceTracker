@@ -4,6 +4,7 @@ import { fetchCategories, fetchProducts } from '@/lib/queries';
 import type { CategoryView, ProductView } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
 
 export default async function ManagePage() {
   let categories: CategoryView[] = [];
