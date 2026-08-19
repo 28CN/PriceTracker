@@ -1,0 +1,15 @@
+node_modules
+.next
+out
+dist
+
+.env.local
+.env
+.env.*
+
+__pycache__
+*.pyc
+
+*.log
+
+node_modules
