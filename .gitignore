@@ -3,13 +3,12 @@ node_modules
 out
 dist
 
-.env.local
 .env
 .env.*
+!.env.local.example
 
 __pycache__
 *.pyc
 
 *.log
-
-node_modules
+.vercel

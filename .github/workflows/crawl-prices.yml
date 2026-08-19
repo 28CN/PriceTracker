@@ -30,8 +30,6 @@ jobs:
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       CRAWL_PRODUCT_ID: ${{ github.event.inputs.product_id }}
       CRAWL_LINK_ID: ${{ github.event.inputs.link_id }}
-      # WxPusher is intentionally disabled for now.
-      ENABLE_WXPUSHER: "false"
       PYTHONUNBUFFERED: "1"
     steps:
       - name: Checkout

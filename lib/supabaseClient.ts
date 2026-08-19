@@ -1,13 +1,23 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+let cached: SupabaseClient | null = null;
 
-if (!url || !anonKey) {
-  throw new Error(
-    'Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY in environment variables.'
-  );
+// Browser-safe client built from the publishable key. Created lazily so a
+// missing variable surfaces where it is used instead of crashing the build.
+export function getSupabaseBrowserClient(): SupabaseClient {
+  if (cached) {
+    return cached;
+  }
+
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!url || !anonKey) {
+    throw new Error(
+      'Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY in environment variables.'
+    );
+  }
+
+  cached = createClient(url, anonKey);
+  return cached;
 }
-
-export const supabase = createClient(url, anonKey);
-
