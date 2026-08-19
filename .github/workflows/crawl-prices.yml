@@ -45,12 +45,23 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r crawler/requirements.txt
 
+      - name: Cache Playwright browsers
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('crawler/requirements.txt') }}
+
       - name: Install Playwright browsers
-        # Chrome is the preferred channel because bot walls fingerprint the
-        # bundled Chromium build; chromium stays as the fallback.
         run: |
-          python -m playwright install --with-deps chromium
+          if [ "${{ steps.pw-cache.outputs.cache-hit }}" = "true" ]; then
+            # Cache hit — only install OS deps, skip browser download
+            python -m playwright install-deps chromium
+          else
+            python -m playwright install --with-deps chromium
+          fi
           python -m playwright install chrome || echo "Chrome channel unavailable, using chromium"
+        timeout-minutes: 10
 
       - name: Run crawler
         run: python crawler/main.py
