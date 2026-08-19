@@ -332,6 +332,44 @@ def launch_browser(playwright):
 BLOCKED_STATUSES = {403, 429, 503}
 
 
+def _human_like_warmup(page, origin: str) -> None:
+    """Visit the origin and behave like a real visitor for a few seconds."""
+    try:
+        page.goto(origin, wait_until="domcontentloaded", timeout=45000)
+    except Exception:
+        return
+
+    page.wait_for_timeout(random.randint(1500, 2500))
+
+    # Simulate light scrolling and mouse movement
+    try:
+        page.mouse.move(random.randint(200, 800), random.randint(200, 500))
+        page.evaluate("window.scrollBy(0, %d)" % random.randint(100, 400))
+        page.wait_for_timeout(random.randint(800, 1500))
+        page.evaluate("window.scrollBy(0, %d)" % random.randint(-50, 200))
+    except Exception:
+        pass
+
+    # Accept cookie banners that many AU retailers show
+    for selector in (
+        'button:has-text("Accept")',
+        'button:has-text("Got it")',
+        'button:has-text("OK")',
+        '[id*="cookie" i] button',
+        '[class*="cookie" i] button',
+    ):
+        try:
+            btn = page.locator(selector).first
+            if btn.is_visible(timeout=500):
+                btn.click()
+                page.wait_for_timeout(random.randint(500, 1000))
+                break
+        except Exception:
+            continue
+
+    page.wait_for_timeout(random.randint(1000, 2000))
+
+
 def goto_with_retry(page, url: str, *, attempts: int = 3):
     """Navigate to url, working around bot walls.
 
@@ -345,13 +383,13 @@ def goto_with_retry(page, url: str, *, attempts: int = 3):
     status: Optional[int] = None
     error: Optional[Exception] = None
 
+    hostname = (parsed.hostname or "").lower()
+    needs_warmup = any(k in hostname for k in ("bigw", "coles", "woolworths"))
+
     for attempt in range(attempts):
-        if attempt:
-            try:
-                page.goto(origin, wait_until="domcontentloaded", timeout=45000)
-                page.wait_for_timeout(random.uniform(1500, 3000))
-            except Exception:
-                pass
+        if attempt or needs_warmup:
+            _human_like_warmup(page, origin)
+            needs_warmup = False  # only once
 
         try:
             response = page.goto(url, wait_until="domcontentloaded", timeout=60000)
@@ -364,9 +402,10 @@ def goto_with_retry(page, url: str, *, attempts: int = 3):
         status = getattr(response, "status", None)
 
         if status is None or status < 400:
+            # Give JS-heavy pages a moment to render price elements
+            page.wait_for_timeout(random.randint(2000, 4000))
             return status, None
 
-        # A 404 is a real dead link; retrying only wastes the run.
         if status not in BLOCKED_STATUSES:
             return status, None
 
@@ -388,7 +427,7 @@ def run_with_page(handler) -> None:
             user_agent=(
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                 "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/126.0.0.0 Safari/537.36"
+                "Chrome/136.0.0.0 Safari/537.36"
             ),
             # Chrome sets Sec-Fetch-* per request, so overriding them here would
             # send "navigate" on XHRs and give the automation away.
