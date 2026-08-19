@@ -81,9 +81,17 @@ jobs:
                   b.close()
           PY
 
+      - name: Install xvfb
+        run: sudo apt-get update && sudo apt-get install -y xvfb
+
+      # A browser Playwright starts is refused by several shops even headful, so
+      # the crawler starts one itself and drives it over the debugging port. That
+      # needs a display, hence xvfb. If it cannot get one it falls back on its own.
       - name: Run crawler
-        run: python crawler/main.py
+        run: xvfb-run -a python crawler/main.py
         env:
+          CRAWL_BROWSER_MODE: cdp
+          CRAWL_SKIP_RETAILERS: ${{ vars.CRAWL_SKIP_RETAILERS }}
           CRAWL_PROXY: ${{ secrets.CRAWL_PROXY }}
           CRAWL_PROXY_USERNAME: ${{ secrets.CRAWL_PROXY_USERNAME }}
           CRAWL_PROXY_PASSWORD: ${{ secrets.CRAWL_PROXY_PASSWORD }}

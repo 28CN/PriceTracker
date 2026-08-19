@@ -44,22 +44,29 @@ export async function GET() {
     report.fatal = error instanceof Error ? error.message : 'Unknown error.';
   }
 
+  // Every product, not a sample: the point of this route is to answer "why is
+  // the home page missing a product", which a truncated list cannot do.
   try {
-    const { fetchProducts } = await import('@/lib/queries');
-    const products = await fetchProducts();
+    const { fetchProducts, fetchCategories } = await import('@/lib/queries');
+    const [products, categories] = await Promise.all([fetchProducts(), fetchCategories()]);
+
+    report.categories = categories.map((category) => category.name);
     report.fetchProducts = {
       productCount: products.length,
-      sample: products.slice(0, 3).map((product) => ({
+      products: products.map((product) => ({
         name: product.name,
         category: product.categoryName,
+        categoryId: product.categoryId,
         links: product.links.length,
         lowestPrice: product.lowestPrice,
-        latestAt: product.links.map((link) => link.latestAt)
+        lowestRetailer: product.lowestRetailer
       }))
     };
   } catch (error) {
     report.fetchProducts = { error: error instanceof Error ? error.message : 'Unknown error.' };
   }
+
+  report.generatedAt = new Date().toISOString();
 
   return NextResponse.json(report);
 }

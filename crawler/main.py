@@ -12,7 +12,12 @@ import json
 import os
 import random
 import re
+import shutil
+import socket
+import subprocess
 import time
+import urllib.error
+import urllib.request
 from decimal import Decimal, ROUND_HALF_UP
 from decimal import InvalidOperation as DecimalInvalidOperation
 from pathlib import Path
@@ -296,6 +301,35 @@ def get_active_tracked_links(
     return response_data(query.execute())
 
 
+def _retailer_needles(variable: str) -> set:
+    raw = os.getenv(variable, "")
+    return {part.strip().lower() for part in raw.split(",") if part.strip()}
+
+
+def _link_matches(row: dict, needles: set) -> bool:
+    hostname = urlparse(str(row.get("url") or "")).hostname or ""
+    haystack = f"{row.get('retailer') or ''} {hostname}".lower()
+    return any(needle in haystack for needle in needles)
+
+
+def filter_links_by_retailer(links: list) -> list:
+    """Split the work between machines.
+
+    Kmart and Target only answer a browser driven from a desktop session, so the
+    scheduled cloud run skips them and a local run picks them up.
+    """
+
+    only = _retailer_needles("CRAWL_RETAILERS")
+    skip = _retailer_needles("CRAWL_SKIP_RETAILERS")
+
+    if only:
+        links = [row for row in links if _link_matches(row, only)]
+    if skip:
+        links = [row for row in links if not _link_matches(row, skip)]
+
+    return links
+
+
 def insert_price_history(supabase, *, link_id: str, price: Decimal) -> None:
     supabase.table("price_history").insert(
         {"link_id": link_id, "price": str(price)}
@@ -314,12 +348,61 @@ def log_event(supabase, *, level: str, message: str, link_id: Optional[str] = No
         print(f"[WARN] Could not record notification: {error}")
 
 
+def want_stealth() -> bool:
+    """Stealth patches cut both ways: some walls fingerprint the patches."""
+
+    return os.getenv("CRAWL_STEALTH", "1").strip().lower() not in {"0", "false", "no"}
+
+
 def open_browser_page(playwright_factory):
     """Return (context_manager, needs_manual_stealth) for the installed version."""
 
+    if not want_stealth():
+        return playwright_factory, False
     if Stealth is not None:
         return Stealth().use_sync(playwright_factory), False
     return playwright_factory, True
+
+
+# Where a normal Chrome or Edge install lives, best first. Driving one of these
+# ourselves is the only configuration that gets past Kmart and Target.
+BROWSER_EXECUTABLES = (
+    r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+    r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+    str(Path.home() / r"AppData\Local\Google\Chrome\Application\chrome.exe"),
+    r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
+    r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+    "/usr/bin/google-chrome",
+    "/usr/bin/google-chrome-stable",
+    "/usr/bin/microsoft-edge",
+    "/usr/bin/chromium",
+    "/usr/bin/chromium-browser",
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
+)
+
+
+def find_browser_executable() -> Optional[str]:
+    override = os.getenv("CRAWL_BROWSER_PATH", "").strip()
+    if override:
+        return override if Path(override).exists() else None
+
+    for candidate in BROWSER_EXECUTABLES:
+        if Path(candidate).exists():
+            return candidate
+    return None
+
+
+def browser_mode() -> str:
+    """`cdp` drives a hand-started browser, `launch` lets Playwright start one.
+
+    cdp is the default because it is the only one Kmart and Target answer, and
+    it clears Big W more reliably too. It needs a real Chrome or Edge and a
+    display; without either, the caller falls back to launch.
+    """
+
+    mode = os.getenv("CRAWL_BROWSER_MODE", "cdp").strip().lower()
+    return mode if mode in {"cdp", "launch"} else "cdp"
 
 
 LAUNCH_ARGS = [
@@ -328,6 +411,16 @@ LAUNCH_ARGS = [
     "--disable-blink-features=AutomationControlled",
     "--no-sandbox",
     "--disable-dev-shm-usage",
+]
+
+# Deliberately minimal. The whole point of this mode is to look like a browser a
+# person opened, so anything that smells of automation stays out.
+CDP_ARGS = [
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-session-crashed-bubble",
+    "--lang=en-AU",
+    "--window-size=1366,900",
 ]
 
 # Ordered best to worst. The last entry is the trap: with no channel Playwright
@@ -352,6 +445,15 @@ def browser_proxy() -> Optional[dict]:
     return proxy
 
 
+def want_headless() -> bool:
+    """Headful is worth the trouble: some walls reject headless outright.
+
+    Under CI wrap the run in xvfb-run so this still has a display to draw on.
+    """
+
+    return os.getenv("CRAWL_HEADLESS", "1").strip().lower() not in {"0", "false", "no"}
+
+
 def launch_browser(playwright) -> Tuple[Any, str]:
     """Launch the most credible Chromium build available, loudly."""
 
@@ -359,9 +461,10 @@ def launch_browser(playwright) -> Tuple[Any, str]:
     if proxy:
         print(f"[BROWSER] routing through proxy {proxy['server']}")
 
+    headless = want_headless()
     failures = []
     for channel in BROWSER_CHANNELS:
-        kwargs: dict = {"headless": True, "args": LAUNCH_ARGS}
+        kwargs: dict = {"headless": headless, "args": LAUNCH_ARGS}
         if channel:
             kwargs["channel"] = channel
         if proxy:
@@ -375,7 +478,8 @@ def launch_browser(playwright) -> Tuple[Any, str]:
             continue
 
         label = channel or "headless-shell"
-        print(f"[BROWSER] channel={label} version={browser.version}")
+        mode = "headless" if headless else "headful"
+        print(f"[BROWSER] channel={label} mode={mode} version={browser.version}")
         if channel is None:
             print(
                 "[WARN] Only chrome-headless-shell was available. Bot walls block it; "
@@ -568,7 +672,117 @@ def goto_with_retry(page, url: str, *, attempts: int = 3):
     return status, error, block
 
 
-def run_with_page(handler) -> None:
+def _free_port() -> int:
+    with socket.socket() as probe:
+        probe.bind(("127.0.0.1", 0))
+        return int(probe.getsockname()[1])
+
+
+def _wait_for_cdp(port: int, *, timeout: float = 30.0) -> bool:
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            with urllib.request.urlopen(
+                f"http://127.0.0.1:{port}/json/version", timeout=2
+            ):
+                return True
+        except (urllib.error.URLError, OSError):
+            time.sleep(0.5)
+    return False
+
+
+def start_browser_process(port: int) -> Optional[subprocess.Popen]:
+    """Start an ordinary browser window with a debugging port open.
+
+    Measured against Kmart and Target: a browser Playwright launches is refused
+    even headful and even with stealth off, while the same build started this
+    way is served normally. Headless loses it again, so this mode needs a
+    display; under CI that means xvfb-run.
+    """
+
+    executable = find_browser_executable()
+    if not executable:
+        print("[BROWSER] cdp mode: no Chrome or Edge install found")
+        return None
+
+    profile = os.getenv("CRAWL_BROWSER_PROFILE", "").strip() or str(
+        Path.home() / ".pricetracker-browser"
+    )
+
+    command = [
+        executable,
+        f"--remote-debugging-port={port}",
+        f"--user-data-dir={profile}",
+        *CDP_ARGS,
+    ]
+
+    # CI images run the browser without a usable sandbox; desktops do not need
+    # this and are better off keeping it on.
+    if os.name != "nt" and os.getenv("CI"):
+        command += ["--no-sandbox", "--disable-dev-shm-usage"]
+
+    command.append("about:blank")
+
+    try:
+        process = subprocess.Popen(
+            command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+        )
+    except Exception as error:
+        print(f"[BROWSER] cdp mode: could not start {executable}: {error}")
+        return None
+
+    if not _wait_for_cdp(port):
+        print(f"[BROWSER] cdp mode: {executable} never opened port {port}")
+        process.terminate()
+        return None
+
+    print(f"[BROWSER] cdp mode: driving {Path(executable).name} (profile {profile})")
+    return process
+
+
+def _prepare_page(page) -> None:
+    page.set_default_timeout(60000)
+    page.set_default_navigation_timeout(60000)
+
+
+def run_with_cdp_page(handler) -> bool:
+    """Drive a hand-started browser. Returns False if it could not be set up."""
+
+    port = _free_port()
+    process = start_browser_process(port)
+    if process is None:
+        return False
+
+    try:
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.connect_over_cdp(f"http://127.0.0.1:{port}")
+            # Reuse the window's own context. A fresh one would drop the profile's
+            # cookies, which is half of why this mode gets through.
+            context = browser.contexts[0] if browser.contexts else browser.new_context()
+            page = context.pages[0] if context.pages else context.new_page()
+            _prepare_page(page)
+
+            try:
+                handler(page)
+            finally:
+                try:
+                    browser.close()
+                except Exception:
+                    pass
+    finally:
+        try:
+            process.terminate()
+            process.wait(timeout=10)
+        except Exception:
+            try:
+                process.kill()
+            except Exception:
+                pass
+
+    return True
+
+
+def run_with_launched_page(handler) -> None:
     factory, manual_stealth = open_browser_page(sync_playwright())
 
     with factory as playwright:
@@ -592,8 +806,7 @@ def run_with_page(handler) -> None:
             except Exception:
                 pass
 
-        page.set_default_timeout(60000)
-        page.set_default_navigation_timeout(60000)
+        _prepare_page(page)
 
         try:
             handler(page)
@@ -602,6 +815,16 @@ def run_with_page(handler) -> None:
                 browser.close()
             except Exception:
                 pass
+
+
+def run_with_page(handler) -> None:
+    if browser_mode() == "cdp" and run_with_cdp_page(handler):
+        return
+
+    if browser_mode() == "cdp":
+        print("[BROWSER] falling back to a Playwright-launched browser")
+
+    run_with_launched_page(handler)
 
 
 def run_test_mode(test_url: str) -> None:
@@ -654,6 +877,8 @@ def run() -> None:
     except Exception as error:
         print(f"[ERROR] Could not read tracked_links: {error}")
         return
+
+    links = filter_links_by_retailer(links)
 
     if not links:
         print("[INFO] No active tracked links matched the current filter.")

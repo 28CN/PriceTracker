@@ -74,6 +74,11 @@ Useful environment variables:
 | `TEST_URL` | parse one page and print the price, without touching the database |
 | `CRAWL_PRODUCT_ID` | only crawl the links belonging to one product |
 | `CRAWL_LINK_ID` | only crawl a single link |
+| `CRAWL_RETAILERS` | only crawl matching shops, e.g. `kmart,target,bigw` |
+| `CRAWL_SKIP_RETAILERS` | crawl everything except these shops |
+| `CRAWL_BROWSER_MODE` | `cdp` (default) or `launch`, see below |
+| `CRAWL_BROWSER_PATH` | use a specific Chrome or Edge binary |
+| `CRAWL_BROWSER_PROFILE` | where the browser profile lives, so cookies persist |
 | `CRAWL_PROXY` | send browser traffic through a proxy, e.g. `http://host:8080` |
 | `CRAWL_PROXY_USERNAME` / `CRAWL_PROXY_PASSWORD` | credentials for that proxy |
 | `CRAWL_SAVE_SNAPSHOTS` | set to `0` to stop writing `crawler-diagnostics/` |
@@ -82,23 +87,49 @@ When a page yields no price the crawler saves the HTML and a screenshot under
 `crawler-diagnostics/`, and the workflow uploads that folder as an artifact. It is
 the quickest way to tell a bot wall apart from a redesigned page.
 
-## Which shops can be crawled
+## How the browser is driven
 
-Coles, Woolworths, The Reject Shop and Big W return prices from a GitHub Actions
-runner. Kmart and Target sit behind the same Wesfarmers bot wall, which judges the
-IP address before it looks at the browser: the product page and the home page both
-return `Access Denied` even to an ordinary desktop browser once an address has been
-flagged, and the datacentre ranges GitHub Actions runs on start out flagged.
+The crawler does not let Playwright start the browser. It starts an ordinary
+Chrome or Edge itself, with a debugging port open, and drives it over CDP.
 
-No amount of browser tuning gets past that. The options are:
+That distinction decides whether Kmart and Target answer at all. Measured against
+both, on one machine, within a few minutes of each other:
 
-- Leave those two links paused and rely on the other shops.
-- Set the `CRAWL_PROXY` secret to a residential AU proxy.
-- Run the workflow on a [self-hosted runner](https://docs.github.com/actions/hosting-your-own-runners)
-  on a home connection, which is free and uses a residential address.
+| How the browser was started | Kmart / Target |
+| --- | --- |
+| Playwright, headless | `Access Denied` |
+| Playwright, headful | `Access Denied` |
+| Playwright, headful, stealth off | `Access Denied` |
+| Started normally, driven over CDP, headless | `Access Denied` |
+| Started normally, driven over CDP, headful | price returned |
 
-Hit rates also drop when the same address requests many pages in a row. Big W will
-serve a price, then refuse for several minutes after repeated crawls, so keep the
+So it needs both a real browser started the ordinary way *and* a display. There is
+nothing to solve or wait out: the same page in the same browser build differs only
+by how the process was started.
+
+`CRAWL_BROWSER_MODE=cdp` is the default. If no Chrome or Edge is installed, or
+there is no display, the crawler says so and falls back to letting Playwright
+launch one, which still works for Coles, Woolworths, The Reject Shop and Big W.
+
+## Splitting the work between machines
+
+GitHub Actions has no display of its own, so the workflow runs the crawler under
+`xvfb-run`. Whether the shops answer a datacentre address is a separate question
+from the browser, and Kmart and Target may still refuse from there.
+
+If they do, crawl them from your own PC instead:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\crawl-local.ps1
+```
+
+It opens a browser window, collects the shops listed in `CRAWL_RETAILERS`, and
+closes it again. Leave the window alone while it runs. Schedule it with Task
+Scheduler if you want it unattended, and set the `CRAWL_SKIP_RETAILERS` repository
+variable to the same list so the cloud run stops retrying them.
+
+Hit rates drop when one address requests many pages in a row. Big W will serve a
+price and then refuse for several minutes after repeated crawls, so keep the
 schedule infrequent rather than retrying hard.
 
 ## Notes
