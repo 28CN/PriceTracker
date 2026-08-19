@@ -242,6 +242,23 @@ def extract_price_from_dom(page, url: str, retailer: str) -> Optional[Decimal]:
     return None
 
 
+def infer_retailer_from_hostname(hostname: str) -> str:
+    h = (hostname or "").lower()
+    if "kmart" in h:
+        return "Kmart"
+    if "target" in h:
+        return "Target"
+    if "bigw" in h:
+        return "Big W"
+    if "coles" in h:
+        return "Coles"
+    if "woolworths" in h:
+        return "Woolworths"
+    if "therejectshop" in h or "rejectshop" in h or "reject-shop" in h:
+        return "The Reject Shop"
+    return hostname or "Unknown"
+
+
 def get_active_tracked_links(
     supabase,
     *,
@@ -329,6 +346,88 @@ def run() -> None:
     project_root = Path(__file__).resolve().parent.parent
     load_dotenv(project_root / ".env.local")
     load_dotenv(project_root / ".env")
+
+    test_url = os.getenv("TEST_URL", "").strip()
+    if test_url:
+        parsed = urlparse(test_url)
+        retailer_guess = infer_retailer_from_hostname(parsed.hostname or "")
+
+        def _print_result(*, page, browser) -> None:
+            try:
+                resp = page.goto(test_url, wait_until="domcontentloaded", timeout=60000)
+                status_code = getattr(resp, "status", None)
+            except Exception as e:
+                print(f"[TEST_NAV_FAIL] url={test_url} err={e}")
+                return
+
+            if status_code == 404:
+                print(f"[TEST_404] url={test_url}")
+                return
+
+            current_price = None
+            source = "NONE"
+            try:
+                current_price = extract_price_from_json_ld(page)
+                if current_price is not None:
+                    source = "JSON_LD"
+            except Exception:
+                current_price = None
+
+            if current_price is None:
+                try:
+                    current_price = extract_price_from_dom(
+                        page, url=test_url, retailer=retailer_guess
+                    )
+                    if current_price is not None:
+                        source = "DOM/FALLBACK"
+                except Exception:
+                    current_price = None
+
+            print(
+                f"[TEST_RESULT] url={test_url} retailer={retailer_guess} price={current_price} source={source}"
+            )
+
+        if stealth_sync:
+            with sync_playwright() as pw:
+                browser = pw.chromium.launch(headless=True)
+                page = browser.new_page()
+                try:
+                    stealth_sync(page)
+                except Exception:
+                    pass
+                try:
+                    _print_result(page=page, browser=browser)
+                finally:
+                    try:
+                        browser.close()
+                    except Exception:
+                        pass
+            return
+
+        if Stealth:
+            with Stealth().use_sync(sync_playwright()) as pw:
+                browser = pw.chromium.launch(headless=True)
+                page = browser.new_page()
+                try:
+                    _print_result(page=page, browser=browser)
+                finally:
+                    try:
+                        browser.close()
+                    except Exception:
+                        pass
+            return
+
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(headless=True)
+            page = browser.new_page()
+            try:
+                _print_result(page=page, browser=browser)
+            finally:
+                try:
+                    browser.close()
+                except Exception:
+                    pass
+        return
 
     supabase_url = get_env("SUPABASE_URL")
     service_role_key = get_env("SUPABASE_SERVICE_ROLE_KEY")
