@@ -57,7 +57,13 @@ export async function GET() {
         name: product.name,
         category: product.categoryName,
         categoryId: product.categoryId,
-        links: product.links.length,
+        links: product.links.map((l) => ({
+          id: l.id,
+          retailer: l.retailer,
+          latestPrice: l.latestPrice,
+          latestAt: l.latestAt,
+          isActive: l.isActive
+        })),
         lowestPrice: product.lowestPrice,
         lowestRetailer: product.lowestRetailer
       }))
