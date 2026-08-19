@@ -945,10 +945,20 @@ def run() -> None:
 
             if price is None:
                 stats["failed"] += 1
+                ci_hint = (
+                    " (GitHub Actions IPs are blocked by Akamai at the network level —"
+                    " set CRAWL_SKIP_RETAILERS=kmart,target,bigw and run those from a"
+                    " local machine or configure CRAWL_PROXY)"
+                    if (blocked and os.getenv("CI") and any(
+                        k in (urlparse(url).hostname or "").lower()
+                        for k in ("bigw", "kmart", "target")
+                    ))
+                    else ""
+                )
                 message = (
                     f"{product_name} at {retailer}: the shop blocked our price check "
                     f"({block or f'HTTP {status}'}). The link is probably fine; "
-                    "we will try again next run."
+                    f"we will try again next run.{ci_hint}"
                     if blocked
                     else (
                         f"{product_name} at {retailer}: could not find a price on the page. "
