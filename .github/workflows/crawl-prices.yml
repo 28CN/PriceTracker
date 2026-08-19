@@ -1,0 +1,55 @@
+name: Crawl product prices
+
+on:
+  schedule:
+    # Two runs per week (UTC). Adjust as you like.
+    - cron: "0 3 * * 1"
+    - cron: "0 3 * * 4"
+  workflow_dispatch:
+    inputs:
+      product_id:
+        description: "Optional product UUID to refresh"
+        required: false
+        type: string
+      link_id:
+        description: "Optional tracked_links UUID to refresh"
+        required: false
+        type: string
+      force_refresh:
+        description: "Optional flag for manual refresh intent"
+        required: false
+        default: "true"
+        type: string
+
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      CRAWL_PRODUCT_ID: ${{ github.event.inputs.product_id }}
+      CRAWL_LINK_ID: ${{ github.event.inputs.link_id }}
+      # WxPusher is intentionally disabled for now.
+      ENABLE_WXPUSHER: "false"
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install crawler dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r crawler/requirements.txt
+
+      - name: Install Playwright browsers
+        run: python -m playwright install --with-deps chromium
+
+      - name: Run crawler
+        run: python crawler/main.py
+

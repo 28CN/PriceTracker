@@ -1,0 +1,6 @@
+supabase
+playwright
+playwright-stealth
+requests
+python-dotenv
+
