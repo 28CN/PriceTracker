@@ -1,0 +1,66 @@
+==============================
+PriceTracker 本地定时任务说明
+==============================
+
+任务名称：PriceTracker - Weekly
+执行时间：每周一、每周三 早上 06:00
+作用：自动爬取 Big W、Kmart、Target 的价格（这三家 GitHub CI 爬不到）
+日志位置：d:\Programming\Practice for job\PriceTracker\logs\crawl-YYYYMMDD.log
+
+注意：如果当时电脑没开机，下次开机后会自动补跑一次。
+
+
+==============================
+如何查看任务是否在运行
+==============================
+
+方法一：打开"任务计划程序"
+  1. 按 Win+S，搜索"任务计划程序"，打开
+  2. 左侧点"任务计划程序库"
+  3. 找到"PriceTracker - Weekly"，查看状态和上次运行时间
+
+方法二：PowerShell 命令
+  Get-ScheduledTask -TaskName "PriceTracker - Weekly"
+  (Get-ScheduledTaskInfo "PriceTracker - Weekly").NextRunTime
+
+
+==============================
+如何手动立刻跑一次
+==============================
+
+双击或在 PowerShell 里运行：
+  powershell -ExecutionPolicy Bypass -File scripts\crawl-local.ps1
+
+
+==============================
+如何暂停定时任务（暂时停用）
+==============================
+
+方法一：任务计划程序里右键 → 禁用
+方法二：PowerShell 命令
+  Disable-ScheduledTask -TaskName "PriceTracker - Weekly"
+
+恢复：
+  Enable-ScheduledTask -TaskName "PriceTracker - Weekly"
+
+
+==============================
+如何永久删除定时任务
+==============================
+
+方法一：任务计划程序里右键 → 删除
+方法二：PowerShell 命令（复制粘贴到 PowerShell 回车即可）
+  Unregister-ScheduledTask -TaskName "PriceTracker - Weekly" -Confirm:$false
+
+删除后如果想重新注册，运行：
+  powershell -ExecutionPolicy Bypass -File scripts\register-tasks.ps1
+
+
+==============================
+如何修改执行时间
+==============================
+
+1. 打开任务计划程序
+2. 找到"PriceTracker - Weekly"，双击
+3. 切换到"触发器"标签，双击要修改的触发器
+4. 修改时间后点确定保存
