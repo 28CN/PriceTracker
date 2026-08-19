@@ -54,15 +54,46 @@ jobs:
 
       - name: Install Playwright browsers
         run: |
-          if [ "${{ steps.pw-cache.outputs.cache-hit }}" = "true" ]; then
-            # Cache hit — only install OS deps, skip browser download
-            python -m playwright install-deps chromium
-          else
-            python -m playwright install --with-deps chromium
-          fi
-          python -m playwright install chrome || echo "Chrome channel unavailable, using chromium"
+          set -e
+          # `install` is a no-op when the cache already holds the right build, so
+          # run it either way. Skipping it on a cache hit used to leave the
+          # runner with no browser whenever the cached build was stale.
+          python -m playwright install --with-deps chromium
+          # The bundled chromium alone is not enough: with no channel Playwright
+          # starts chrome-headless-shell, which Akamai refuses outright.
+          python -m playwright install chrome || echo "::warning::Google Chrome unavailable; falling back to chromium"
         timeout-minutes: 10
+
+      - name: Verify a branded browser is available
+        run: |
+          python - <<'PY'
+          from playwright.sync_api import sync_playwright
+
+          with sync_playwright() as p:
+              for channel in ("chrome", "msedge", "chromium"):
+                  try:
+                      b = p.chromium.launch(headless=True, channel=channel,
+                                            args=["--no-sandbox"])
+                  except Exception as error:
+                      print(f"{channel}: unavailable ({str(error).splitlines()[0]})")
+                      continue
+                  print(f"{channel}: OK {b.version}")
+                  b.close()
+          PY
 
       - name: Run crawler
         run: python crawler/main.py
+        env:
+          CRAWL_PROXY: ${{ secrets.CRAWL_PROXY }}
+          CRAWL_PROXY_USERNAME: ${{ secrets.CRAWL_PROXY_USERNAME }}
+          CRAWL_PROXY_PASSWORD: ${{ secrets.CRAWL_PROXY_PASSWORD }}
+
+      - name: Upload crawl diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: crawl-diagnostics
+          path: crawler-diagnostics/
+          if-no-files-found: ignore
+          retention-days: 7
 

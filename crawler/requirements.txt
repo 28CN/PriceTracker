@@ -1,6 +1,9 @@
-supabase
-playwright
-playwright-stealth
-requests
-python-dotenv
-
+# Pinned on purpose. Playwright's bundled browser build is tied to the library
+# version, and the CI cache is keyed off this file; floating versions let pip
+# pull a release whose browser is missing from the cache, at which point the
+# crawler silently falls back to a build every bot wall rejects.
+supabase==2.31.0
+playwright==1.62.0
+playwright-stealth==2.0.3
+requests==2.34.2
+python-dotenv==1.2.3

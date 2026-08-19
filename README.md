@@ -57,8 +57,15 @@ Redeploy after adding them so the new values are picked up.
 ```bash
 pip install -r crawler/requirements.txt
 python -m playwright install chromium
+python -m playwright install chrome   # important, see below
 python crawler/main.py
 ```
+
+Install `chrome` as well as `chromium`. Given no channel, Playwright 1.49 and newer
+start `chrome-headless-shell`, an old headless build that Akamai rejects on sight;
+Big W answers 403 to it and 200 to every branded build. The crawler tries
+`chrome`, `msedge`, `chromium` and only then the bare shell, and prints the channel
+it settled on as `[BROWSER] channel=...` on the first line of every run.
 
 Useful environment variables:
 
@@ -67,6 +74,32 @@ Useful environment variables:
 | `TEST_URL` | parse one page and print the price, without touching the database |
 | `CRAWL_PRODUCT_ID` | only crawl the links belonging to one product |
 | `CRAWL_LINK_ID` | only crawl a single link |
+| `CRAWL_PROXY` | send browser traffic through a proxy, e.g. `http://host:8080` |
+| `CRAWL_PROXY_USERNAME` / `CRAWL_PROXY_PASSWORD` | credentials for that proxy |
+| `CRAWL_SAVE_SNAPSHOTS` | set to `0` to stop writing `crawler-diagnostics/` |
+
+When a page yields no price the crawler saves the HTML and a screenshot under
+`crawler-diagnostics/`, and the workflow uploads that folder as an artifact. It is
+the quickest way to tell a bot wall apart from a redesigned page.
+
+## Which shops can be crawled
+
+Coles, Woolworths, The Reject Shop and Big W return prices from a GitHub Actions
+runner. Kmart and Target sit behind the same Wesfarmers bot wall, which judges the
+IP address before it looks at the browser: the product page and the home page both
+return `Access Denied` even to an ordinary desktop browser once an address has been
+flagged, and the datacentre ranges GitHub Actions runs on start out flagged.
+
+No amount of browser tuning gets past that. The options are:
+
+- Leave those two links paused and rely on the other shops.
+- Set the `CRAWL_PROXY` secret to a residential AU proxy.
+- Run the workflow on a [self-hosted runner](https://docs.github.com/actions/hosting-your-own-runners)
+  on a home connection, which is free and uses a residential address.
+
+Hit rates also drop when the same address requests many pages in a row. Big W will
+serve a price, then refuse for several minutes after repeated crawls, so keep the
+schedule infrequent rather than retrying hard.
 
 ## Notes
 
