@@ -38,6 +38,9 @@ create index if not exists crawl_events_unread_idx on public.crawl_events (is_re
 -- are all the browser needs.
 alter table public.categories enable row level security;
 alter table public.crawl_events enable row level security;
+alter table public.products enable row level security;
+alter table public.tracked_links enable row level security;
+alter table public.price_history enable row level security;
 
 drop policy if exists "public read categories" on public.categories;
 create policy "public read categories" on public.categories
@@ -45,4 +48,18 @@ create policy "public read categories" on public.categories
 
 drop policy if exists "public read crawl events" on public.crawl_events;
 create policy "public read crawl events" on public.crawl_events
+  for select using (true);
+
+-- Without these three the home page renders an empty list: RLS hides every row
+-- from the anon key and returns success rather than an error.
+drop policy if exists "public read products" on public.products;
+create policy "public read products" on public.products
+  for select using (true);
+
+drop policy if exists "public read tracked links" on public.tracked_links;
+create policy "public read tracked links" on public.tracked_links
+  for select using (true);
+
+drop policy if exists "public read price history" on public.price_history;
+create policy "public read price history" on public.price_history
   for select using (true);

@@ -46,7 +46,11 @@ jobs:
           pip install -r crawler/requirements.txt
 
       - name: Install Playwright browsers
-        run: python -m playwright install --with-deps chromium
+        # Chrome is the preferred channel because bot walls fingerprint the
+        # bundled Chromium build; chromium stays as the fallback.
+        run: |
+          python -m playwright install --with-deps chromium
+          python -m playwright install chrome || echo "Chrome channel unavailable, using chromium"
 
       - name: Run crawler
         run: python crawler/main.py

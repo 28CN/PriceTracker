@@ -310,15 +310,89 @@ def open_browser_page(playwright_factory):
     return playwright_factory, True
 
 
+LAUNCH_ARGS = [
+    # Without this the CDP-driven browser advertises navigator.webdriver, which
+    # is the cheapest signal bot walls look for.
+    "--disable-blink-features=AutomationControlled",
+    "--no-sandbox",
+    "--disable-dev-shm-usage",
+]
+
+
+def launch_browser(playwright):
+    """Prefer real Chrome; bot walls fingerprint bundled Chromium builds."""
+
+    try:
+        return playwright.chromium.launch(headless=True, channel="chrome", args=LAUNCH_ARGS)
+    except Exception:
+        return playwright.chromium.launch(headless=True, args=LAUNCH_ARGS)
+
+
+# Statuses a bot wall returns rather than the shop genuinely losing the page.
+BLOCKED_STATUSES = {403, 429, 503}
+
+
+def goto_with_retry(page, url: str, *, attempts: int = 3):
+    """Navigate to url, working around bot walls.
+
+    Sites behind Akamai (Big W, for one) reject a cold request but let the same
+    browser through once it holds cookies from the site's own home page, so each
+    retry warms up on the origin first.
+    """
+
+    parsed = urlparse(url)
+    origin = f"{parsed.scheme}://{parsed.hostname}"
+    status: Optional[int] = None
+    error: Optional[Exception] = None
+
+    for attempt in range(attempts):
+        if attempt:
+            try:
+                page.goto(origin, wait_until="domcontentloaded", timeout=45000)
+                page.wait_for_timeout(random.uniform(1500, 3000))
+            except Exception:
+                pass
+
+        try:
+            response = page.goto(url, wait_until="domcontentloaded", timeout=60000)
+            error = None
+        except Exception as nav_error:
+            error = nav_error
+            time.sleep(random.uniform(2, 4))
+            continue
+
+        status = getattr(response, "status", None)
+
+        if status is None or status < 400:
+            return status, None
+
+        # A 404 is a real dead link; retrying only wastes the run.
+        if status not in BLOCKED_STATUSES:
+            return status, None
+
+        print(f"[RETRY] HTTP {status} from {url} (attempt {attempt + 1}/{attempts})")
+        time.sleep(random.uniform(3, 6))
+
+    return status, error
+
+
 def run_with_page(handler) -> None:
     factory, manual_stealth = open_browser_page(sync_playwright())
 
     with factory as playwright:
-        browser = playwright.chromium.launch(headless=True)
+        browser = launch_browser(playwright)
         context = browser.new_context(
             locale="en-AU",
             timezone_id="Australia/Sydney",
             viewport={"width": 1366, "height": 900},
+            user_agent=(
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/126.0.0.0 Safari/537.36"
+            ),
+            # Chrome sets Sec-Fetch-* per request, so overriding them here would
+            # send "navigate" on XHRs and give the automation away.
+            extra_http_headers={"Accept-Language": "en-AU,en;q=0.9"},
         )
         page = context.new_page()
 
@@ -344,13 +418,12 @@ def run_test_mode(test_url: str) -> None:
     retailer = infer_retailer_from_hostname(urlparse(test_url).hostname or "")
 
     def handler(page) -> None:
-        try:
-            response = page.goto(test_url, wait_until="domcontentloaded", timeout=60000)
-        except Exception as error:
+        status, error = goto_with_retry(page, test_url)
+
+        if error is not None:
             print(f"[TEST_NAV_FAIL] url={test_url} err={error}")
             return
 
-        status = getattr(response, "status", None)
         if status and status >= 400:
             print(f"[TEST_HTTP_{status}] url={test_url}")
             return
@@ -410,21 +483,22 @@ def run() -> None:
                 )
                 continue
 
-            try:
-                response = page.goto(url, wait_until="domcontentloaded", timeout=60000)
-                status = getattr(response, "status", None)
-            except Exception as error:
+            status, nav_error = goto_with_retry(page, url)
+
+            if nav_error is not None:
                 stats["failed"] += 1
                 log_event(
                     supabase,
                     level="error",
-                    message=f"{product_name} at {retailer}: page would not load ({error}).",
+                    message=f"{product_name} at {retailer}: page would not load ({nav_error}).",
                     link_id=link_id,
                 )
                 time.sleep(random.uniform(2, 4))
                 continue
 
-            if status and status >= 400:
+            blocked = bool(status) and status in BLOCKED_STATUSES
+
+            if status and status >= 400 and not blocked:
                 stats["failed"] += 1
                 log_event(
                     supabase,
@@ -438,6 +512,8 @@ def run() -> None:
                 time.sleep(random.uniform(2, 4))
                 continue
 
+            # A blocked response still gets one parse attempt: some bot walls
+            # answer 403 while serving the real page underneath.
             try:
                 price, source = scrape_price(page, url=url, retailer=retailer)
             except Exception as error:
@@ -446,15 +522,16 @@ def run() -> None:
 
             if price is None:
                 stats["failed"] += 1
-                log_event(
-                    supabase,
-                    level="warning",
-                    message=(
+                message = (
+                    f"{product_name} at {retailer}: the shop blocked our price check "
+                    f"(HTTP {status}). The link is probably fine; we will try again next run."
+                    if blocked
+                    else (
                         f"{product_name} at {retailer}: could not find a price on the page. "
                         "The shop may have changed its layout or the item is out of stock."
-                    ),
-                    link_id=link_id,
+                    )
                 )
+                log_event(supabase, level="warning", message=message, link_id=link_id)
                 time.sleep(random.uniform(2, 4))
                 continue
 

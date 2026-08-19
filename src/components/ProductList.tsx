@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 
-import { formatMoney, formatWhen } from '@/lib/format';
+import { formatCheckedAt, formatMoney, latestTimestamp } from '@/lib/format';
 import type { ProductView } from '@/lib/types';
 
 function ProductCard({ product }: { product: ProductView }) {
@@ -11,6 +11,7 @@ function ProductCard({ product }: { product: ProductView }) {
     product.targetPrice !== null &&
     product.lowestPrice !== null &&
     product.lowestPrice <= product.targetPrice;
+  const checkedAt = latestTimestamp(product.links.map((link) => link.latestAt));
 
   return (
     <article className="card">
@@ -32,8 +33,11 @@ function ProductCard({ product }: { product: ProductView }) {
             <span className="price">{formatMoney(product.lowestPrice)}</span>
           )}
           <span className="price-note">
-            {product.lowestRetailer ? `at ${product.lowestRetailer}` : `${product.links.length} links`}
+            {product.lowestRetailer
+              ? `at ${product.lowestRetailer}`
+              : `${product.links.length} link${product.links.length === 1 ? '' : 's'}`}
           </span>
+          <span className="price-note">Checked {formatCheckedAt(checkedAt)}</span>
           <span className="price-note">{isOpen ? 'Tap to hide' : 'Tap for all shops'}</span>
         </div>
       </button>
@@ -49,7 +53,7 @@ function ProductCard({ product }: { product: ProductView }) {
               <div className="row-main">
                 <div className="row-shop">{link.retailer}</div>
                 <div className="row-meta">
-                  {link.isActive ? formatWhen(link.latestAt) : 'paused'}
+                  {link.isActive ? formatCheckedAt(link.latestAt) : 'paused'}
                 </div>
               </div>
               <div className="row-side">

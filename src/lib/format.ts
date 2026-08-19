@@ -39,3 +39,37 @@ export function formatWhen(iso: string | null | undefined): string {
 
   return new Date(then).toLocaleDateString('en-AU');
 }
+
+// Price checks are weekly, so the weekday and date matter more than "3d ago".
+export function formatCheckedAt(iso: string | null | undefined): string {
+  if (!iso) {
+    return 'not checked yet';
+  }
+
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) {
+    return 'unknown';
+  }
+
+  return date.toLocaleDateString('en-AU', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short'
+  });
+}
+
+export function latestTimestamp(values: (string | null)[]): string | null {
+  let newest: string | null = null;
+  let newestMs = -Infinity;
+
+  for (const value of values) {
+    if (!value) continue;
+    const ms = new Date(value).getTime();
+    if (!Number.isNaN(ms) && ms > newestMs) {
+      newestMs = ms;
+      newest = value;
+    }
+  }
+
+  return newest;
+}
