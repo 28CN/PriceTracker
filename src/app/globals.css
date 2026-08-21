@@ -1,7 +1,8 @@
 :root {
-  --bg: #f5f6f8;
+  --bg: #f3f5f7;
+  --bg-accent: #eef2f6;
   --card: #ffffff;
-  --border: #e3e6ea;
+  --border: #e0e5eb;
   --text: #16191d;
   --muted: #667085;
   --accent: #12603a;
@@ -11,6 +12,27 @@
   --warn: #92600a;
   --warn-soft: #fdf3e2;
   --radius: 14px;
+  --topbar-bg: rgba(243, 245, 247, 0.94);
+  --shadow-soft: 0 8px 24px rgba(15, 23, 42, 0.06);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #12151a;
+    --bg-accent: #1a1f27;
+    --card: #1c2129;
+    --border: #2c3440;
+    --text: #e8eaed;
+    --muted: #9aa3b2;
+    --accent: #6dcaa0;
+    --accent-soft: #1d3a2c;
+    --danger: #f2a49b;
+    --danger-soft: #3a1f1c;
+    --warn: #e6c07b;
+    --warn-soft: #3a3018;
+    --topbar-bg: rgba(18, 21, 26, 0.94);
+    --shadow-soft: 0 8px 24px rgba(0, 0, 0, 0.35);
+  }
 }
 
 * {
@@ -24,7 +46,9 @@ body {
 }
 
 body {
-  background: var(--bg);
+  background:
+    radial-gradient(1200px 400px at 10% -10%, var(--bg-accent), transparent 55%),
+    var(--bg);
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
     sans-serif;
@@ -35,6 +59,12 @@ body {
 
 a {
   color: #1b59d4;
+}
+
+@media (prefers-color-scheme: dark) {
+  a {
+    color: #7eb0ff;
+  }
 }
 
 button {
@@ -58,7 +88,7 @@ button {
   justify-content: space-between;
   gap: 8px;
   padding: 10px 14px;
-  background: rgba(245, 246, 248, 0.94);
+  background: var(--topbar-bg);
   backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--border);
 }
@@ -73,6 +103,11 @@ button {
   gap: 8px;
 }
 
+.brand-link {
+  text-decoration: none;
+  color: inherit;
+}
+
 .brand {
   font-size: 17px;
   font-weight: 700;
@@ -85,6 +120,11 @@ button {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.topbar-manage {
+  padding: 8px 12px;
+  font-size: 13px;
 }
 
 .icon-button {
@@ -168,7 +208,7 @@ button {
   border-radius: 10px;
   padding: 8px 10px;
   margin-bottom: 6px;
-  background: #f7f8fa;
+  background: var(--bg-accent);
   border: 1px solid var(--border);
 }
 
@@ -195,6 +235,133 @@ button {
   color: var(--muted);
 }
 
+/* Category sections ------------------------------------------------------ */
+
+.category-stack {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.category-section {
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) + 2px);
+  overflow: hidden;
+  box-shadow: var(--shadow-soft);
+}
+
+.category-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.category-toggle-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.category-chevron {
+  font-size: 14px;
+  color: var(--muted);
+  width: 1em;
+}
+
+.category-name {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.category-count {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--card) 70%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.category-toggle-hint {
+  font-size: 12px;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.category-body {
+  padding: 0 12px 12px;
+}
+
+.category-section.tone-mint {
+  background: #eaf6f0;
+}
+
+.category-section.tone-sky {
+  background: #eaf2fb;
+}
+
+.category-section.tone-peach {
+  background: #f8efe6;
+}
+
+.category-section.tone-lilac {
+  background: #f1eef8;
+}
+
+.category-section.tone-sand {
+  background: #f4f1e8;
+}
+
+.category-section.tone-rose {
+  background: #f7ecef;
+}
+
+.category-section.tone-teal {
+  background: #e7f4f4;
+}
+
+@media (prefers-color-scheme: dark) {
+  .category-section.tone-mint {
+    background: #1a2a24;
+  }
+
+  .category-section.tone-sky {
+    background: #1a2430;
+  }
+
+  .category-section.tone-peach {
+    background: #2a231c;
+  }
+
+  .category-section.tone-lilac {
+    background: #232030;
+  }
+
+  .category-section.tone-sand {
+    background: #27241c;
+  }
+
+  .category-section.tone-rose {
+    background: #2a1f24;
+  }
+
+  .category-section.tone-teal {
+    background: #1a2828;
+  }
+}
+
 /* Cards ------------------------------------------------------------------ */
 
 .stack {
@@ -213,18 +380,60 @@ button {
   padding: 12px;
 }
 
+.card-head-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
 .card-head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
   width: 100%;
+  min-width: 0;
   background: none;
   border: 0;
   padding: 0;
   text-align: left;
   cursor: pointer;
   color: inherit;
+}
+
+.card-edit-btn {
+  flex-shrink: 0;
+  margin-top: 2px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+  line-height: 1.2;
+}
+
+.card-edit-btn:hover {
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--text) 22%, var(--border));
+}
+
+.edit-panel {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.edit-link-block {
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed var(--border);
+}
+
+.card.is-editing {
+  box-shadow: var(--shadow-soft);
 }
 
 .product-name {
@@ -240,7 +449,7 @@ button {
   margin-top: 5px;
   padding: 2px 8px;
   border-radius: 999px;
-  background: #eef1f5;
+  background: var(--bg-accent);
   color: var(--muted);
   font-size: 11px;
   font-weight: 600;
@@ -272,6 +481,14 @@ button {
   font-size: 12px;
   color: var(--muted);
   margin-top: 2px;
+}
+
+.price-note-shop {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+  max-width: 180px;
 }
 
 .hit {
@@ -307,9 +524,32 @@ button {
 }
 
 .row-shop {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   font-size: 14px;
   font-weight: 600;
   overflow-wrap: anywhere;
+}
+
+.retailer-logo {
+  width: 1.15em;
+  height: 1.15em;
+  border-radius: 50%;
+  object-fit: contain;
+  flex-shrink: 0;
+  background: #fff;
+  border: 1px solid var(--border);
+}
+
+.retailer-logo.fallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted);
+  background: var(--bg-accent);
 }
 
 .row-meta {
@@ -360,6 +600,14 @@ button {
   margin: 18px 2px 8px;
 }
 
+.link-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 14px 2px 8px;
+}
+
 .field {
   display: grid;
   gap: 5px;
@@ -369,7 +617,7 @@ button {
 .field label {
   font-size: 13px;
   font-weight: 600;
-  color: #344054;
+  color: var(--muted);
 }
 
 input[type='text'],
@@ -380,7 +628,7 @@ select {
   padding: 10px 11px;
   border-radius: 10px;
   border: 1px solid var(--border);
-  background: #fff;
+  background: var(--card);
   color: var(--text);
   font-size: 16px; /* keeps iOS from zooming on focus */
 }
@@ -393,14 +641,25 @@ select:focus {
 
 .link-row {
   display: grid;
-  grid-template-columns: 1fr 118px;
+  grid-template-columns: 1fr 118px auto;
   gap: 6px;
   margin-bottom: 6px;
+  align-items: center;
+}
+
+.link-remove {
+  min-width: 38px;
+  padding: 8px 10px;
+  line-height: 1;
 }
 
 @media (max-width: 420px) {
   .link-row {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr auto;
+  }
+
+  .link-row input:first-child {
+    grid-column: 1 / -1;
   }
 }
 
@@ -426,6 +685,14 @@ select:focus {
   color: #fff;
 }
 
+@media (prefers-color-scheme: dark) {
+  .button.primary {
+    background: #e8eaed;
+    border-color: #e8eaed;
+    color: #12151a;
+  }
+}
+
 .button.subtle {
   background: transparent;
   border-style: dashed;
@@ -434,7 +701,7 @@ select:focus {
 
 .button.danger {
   background: transparent;
-  border-color: #f0c4bf;
+  border-color: color-mix(in srgb, var(--danger) 35%, var(--border));
   color: var(--danger);
   padding: 6px 10px;
   font-size: 13px;
@@ -482,4 +749,11 @@ select:focus {
   padding: 12px 14px;
   font-size: 14px;
   overflow-wrap: anywhere;
+}
+
+@media (prefers-color-scheme: dark) {
+  .alert {
+    border-color: #5a322c;
+    color: #f2a49b;
+  }
 }

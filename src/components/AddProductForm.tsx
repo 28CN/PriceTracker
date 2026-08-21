@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { detectRetailer } from '@/lib/retailer';
 import type { CategoryView } from '@/lib/types';
 
-const MAX_LINKS = 5;
+const MAX_LINKS = 20;
 
 type LinkDraft = { url: string; retailer: string };
 
@@ -41,6 +41,24 @@ export default function AddProductForm({ categories }: { categories: CategoryVie
         return next;
       })
     );
+  }
+
+  function addLinkRow() {
+    setLinks((current) => {
+      if (current.length >= MAX_LINKS) {
+        return current;
+      }
+      return [...current, { url: '', retailer: '' }];
+    });
+  }
+
+  function removeLinkRow(index: number) {
+    setLinks((current) => {
+      if (current.length <= 1) {
+        return current;
+      }
+      return current.filter((_, position) => position !== index);
+    });
   }
 
   async function handleSubmit(event: React.FormEvent) {
@@ -81,6 +99,8 @@ export default function AddProductForm({ categories }: { categories: CategoryVie
       setIsSaving(false);
     }
   }
+
+  const canAddMore = links.length < MAX_LINKS;
 
   return (
     <form className="card" onSubmit={handleSubmit}>
@@ -139,16 +159,21 @@ export default function AddProductForm({ categories }: { categories: CategoryVie
         />
       </div>
 
-      <p className="section-title" style={{ marginTop: 14 }}>
-        Shop links (up to {MAX_LINKS})
-      </p>
+      <div className="link-section-head">
+        <p className="section-title" style={{ margin: 0 }}>
+          Shop links
+        </p>
+        <span className="hint">
+          {links.length} / {MAX_LINKS} rows
+        </span>
+      </div>
 
       {links.map((link, index) => (
         <div className="link-row" key={index}>
           <input
             type="url"
             inputMode="url"
-            placeholder="https://www.coles.com.au/product/..."
+            placeholder="https://www.toymate.com.au/..."
             value={link.url}
             onChange={(event) => updateLink(index, { url: event.target.value })}
           />
@@ -158,23 +183,38 @@ export default function AddProductForm({ categories }: { categories: CategoryVie
             value={link.retailer}
             onChange={(event) => updateLink(index, { retailer: event.target.value })}
           />
+          {links.length > 1 ? (
+            <button
+              type="button"
+              className="button danger link-remove"
+              onClick={() => removeLinkRow(index)}
+              aria-label={`Remove link row ${index + 1}`}
+            >
+              ×
+            </button>
+          ) : null}
         </div>
       ))}
 
       <div className="form-actions">
-        {links.length < MAX_LINKS ? (
-          <button
-            type="button"
-            className="button subtle"
-            onClick={() => setLinks((current) => [...current, { url: '', retailer: '' }])}
-          >
-            + Another link
-          </button>
-        ) : null}
+        <button
+          type="button"
+          className="button"
+          onClick={addLinkRow}
+          disabled={!canAddMore}
+        >
+          + Add another shop link
+        </button>
         <button type="submit" className="button primary" disabled={isSaving}>
           {isSaving ? 'Saving...' : 'Save product'}
         </button>
       </div>
+
+      {!canAddMore ? (
+        <p className="hint" style={{ marginTop: 8 }}>
+          Row limit reached. Save first, then add more links from Manage.
+        </p>
+      ) : null}
 
       {feedback ? (
         <p className={`hint ${feedback.tone === 'error' ? 'error' : 'ok'}`} style={{ marginTop: 10 }}>

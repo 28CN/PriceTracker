@@ -7,11 +7,11 @@ export default function TopBar() {
   return (
     <header className="topbar">
       <div className="topbar-inner">
-        <Link href="/" style={{ textDecoration: 'none', color: 'inherit' }}>
+        <Link href="/" className="brand-link">
           <p className="brand">PriceTracker</p>
         </Link>
         <div className="topbar-actions">
-          <Link className="button" href="/manage">
+          <Link className="button topbar-manage" href="/manage">
             Manage
           </Link>
           <NotificationsBell />

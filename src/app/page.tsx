@@ -1,6 +1,6 @@
 import Link from 'next/link';
 
-import ProductList from '@/components/ProductList';
+import CategorySection from '@/components/CategorySection';
 import { fetchProducts } from '@/lib/queries';
 import type { ProductView } from '@/lib/types';
 
@@ -54,12 +54,16 @@ export default async function HomePage() {
         </div>
       ) : null}
 
-      {categories.map((category) => (
-        <section key={category}>
-          <h2 className="section-title">{category}</h2>
-          <ProductList products={grouped.get(category) || []} />
-        </section>
-      ))}
+      <div className="category-stack">
+        {categories.map((category) => (
+          <CategorySection
+            key={category}
+            category={category}
+            products={grouped.get(category) || []}
+            defaultOpen={false}
+          />
+        ))}
+      </div>
     </main>
   );
 }

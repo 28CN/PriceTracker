@@ -2,56 +2,93 @@
 
 import { useState } from 'react';
 
+import EditProductForm from '@/components/EditProductForm';
+import RetailerLogo from '@/components/RetailerLogo';
 import { formatCheckedAt, formatMoney, latestTimestamp } from '@/lib/format';
 import type { ProductView } from '@/lib/types';
 
 function ProductCard({ product }: { product: ProductView }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const hitsTarget =
     product.targetPrice !== null &&
     product.lowestPrice !== null &&
     product.lowestPrice <= product.targetPrice;
   const checkedAt = latestTimestamp(product.links.map((link) => link.latestAt));
+  const bestLink = product.links.find(
+    (link) =>
+      link.retailer === product.lowestRetailer ||
+      (link.latestPrice !== null && link.latestPrice === product.lowestPrice)
+  );
+
+  function openEditor(event: React.MouseEvent) {
+    event.stopPropagation();
+    setIsEditing(true);
+    setIsOpen(true);
+  }
 
   return (
-    <article className="card">
-      <button
-        type="button"
-        className="card-head"
-        onClick={() => setIsOpen((current) => !current)}
-        aria-expanded={isOpen}
-      >
-        <div className="row-main">
-          <h2 className="product-name">{product.name}</h2>
-          {product.categoryName ? <span className="chip">{product.categoryName}</span> : null}
-          {hitsTarget ? <span className="hit">Under target</span> : null}
-        </div>
-        <div className="price-block">
-          {product.lowestPrice === null ? (
-            <span className="price muted">No price yet</span>
-          ) : (
-            <span className="price">{formatMoney(product.lowestPrice)}</span>
-          )}
-          <span className="price-note">
-            {product.lowestRetailer
-              ? `at ${product.lowestRetailer}`
-              : `${product.links.length} link${product.links.length === 1 ? '' : 's'}`}
-          </span>
-          <span className="price-note">Checked {formatCheckedAt(checkedAt)}</span>
-          <span className="price-note">{isOpen ? 'Tap to hide' : 'Tap for all shops'}</span>
-        </div>
-      </button>
+    <article className={`card ${isEditing ? 'is-editing' : ''}`}>
+      <div className="card-head-row">
+        <button
+          type="button"
+          className="card-head"
+          onClick={() => {
+            if (isEditing) {
+              return;
+            }
+            setIsOpen((current) => !current);
+          }}
+          aria-expanded={isOpen}
+        >
+          <div className="row-main">
+            <h2 className="product-name">{product.name}</h2>
+            {hitsTarget ? <span className="hit">Under target</span> : null}
+            {product.targetPrice !== null ? (
+              <span className="price-note">Target {formatMoney(product.targetPrice)}</span>
+            ) : null}
+          </div>
+          <div className="price-block">
+            {product.lowestPrice === null ? (
+              <span className="price muted">No price yet</span>
+            ) : (
+              <span className="price">{formatMoney(product.lowestPrice)}</span>
+            )}
+            <span className="price-note price-note-shop">
+              {product.lowestRetailer ? (
+                <>
+                  <RetailerLogo retailer={product.lowestRetailer} url={bestLink?.url} />
+                  <span>at {product.lowestRetailer}</span>
+                </>
+              ) : (
+                `${product.links.length} link${product.links.length === 1 ? '' : 's'}`
+              )}
+            </span>
+            <span className="price-note">Checked {formatCheckedAt(checkedAt)}</span>
+          </div>
+        </button>
+        <button type="button" className="card-edit-btn" onClick={openEditor}>
+          Edit
+        </button>
+      </div>
 
-      {isOpen ? (
+      {isEditing ? (
+        <EditProductForm product={product} onClose={() => setIsEditing(false)} />
+      ) : null}
+
+      {!isEditing && isOpen ? (
         <div className="rows">
           {product.links.length === 0 ? (
-            <p className="hint">No links yet. Add some from the Manage page.</p>
+            <p className="hint">No links yet. Use Edit to add shop URLs.</p>
           ) : null}
 
           {product.links.map((link) => (
             <div key={link.id} className={`row ${link.isActive ? '' : 'inactive'}`}>
               <div className="row-main">
-                <div className="row-shop">{link.retailer}</div>
+                <div className="row-shop">
+                  <RetailerLogo retailer={link.retailer} url={link.url} />
+                  <span>{link.retailer}</span>
+                </div>
                 <div className="row-meta">
                   {link.isActive ? formatCheckedAt(link.latestAt) : 'paused'}
                 </div>
@@ -76,10 +113,6 @@ function ProductCard({ product }: { product: ProductView }) {
               </div>
             </div>
           ))}
-
-          {product.targetPrice !== null ? (
-            <p className="hint">Target price {formatMoney(product.targetPrice)}</p>
-          ) : null}
         </div>
       ) : null}
     </article>

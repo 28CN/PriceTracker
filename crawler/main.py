@@ -215,6 +215,21 @@ def build_dom_extractors(retailer: str, url: str) -> Tuple[Tuple[str, Optional[s
         ) + generic
     if matches("therejectshop", "reject shop"):
         return (('[class*="product-price" i]', None),) + generic
+    if matches("toymate"):
+        # BigCommerce stencil: price lives in .price--withoutTax / meta itemprop.
+        return (
+            ('.price--withoutTax', None),
+            ('[data-product-price-without-tax]', None),
+            ('.productView-price .price', None),
+        ) + generic
+    if matches("toysrus", "toys r us"):
+        # Shopify theme: sale / regular price blocks.
+        return (
+            ('.price__sale .price-item--sale', None),
+            ('.price__regular .price-item--regular', None),
+            ('[data-product-price]', None),
+            ('.product__price', None),
+        ) + generic
 
     return generic
 
@@ -265,6 +280,8 @@ def infer_retailer_from_hostname(hostname: str) -> str:
         "coles": "Coles",
         "woolworths": "Woolworths",
         "therejectshop": "The Reject Shop",
+        "toymate": "Toymate",
+        "toysrus": "Toys R Us",
     }
     for needle, label in known.items():
         if needle in h:

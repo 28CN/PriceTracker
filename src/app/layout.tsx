@@ -17,7 +17,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en-AU">
+    <html lang="en-AU" style={{ colorScheme: 'light dark' }}>
       <body>
         <TopBar />
         <div className="page">{children}</div>

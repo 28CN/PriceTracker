@@ -119,14 +119,22 @@ from the browser, and Kmart and Target may still refuse from there.
 
 If they do, crawl them from your own PC instead:
 
+- Easiest: double-click `crawl-local.bat` in the repo root (window stays open so you can read errors).
+- Or from a terminal already in the repo:
+
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\crawl-local.ps1
 ```
 
-It opens a browser window, collects the shops listed in `CRAWL_RETAILERS`, and
-closes it again. Leave the window alone while it runs. Schedule it with Task
-Scheduler if you want it unattended, and set the `CRAWL_SKIP_RETAILERS` repository
-variable to the same list so the cloud run stops retrying them.
+It opens a browser window (Chrome preferred, then Edge), collects the shops listed in
+`CRAWL_RETAILERS`, and closes it again. Leave the window alone while it runs.
+Schedule it with Task Scheduler if you want it unattended, and set the
+`CRAWL_SKIP_RETAILERS` repository variable to the same list so the cloud run stops
+retrying them.
+
+Do not use Win+R alone — that closes the window as soon as the script exits, so
+errors flash past. The `.bat` file (or an already-open PowerShell / Terminal) is
+the reliable way.
 
 Hit rates drop when one address requests many pages in a row. Big W will serve a
 price and then refuse for several minutes after repeated crawls, so keep the
