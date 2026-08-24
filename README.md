@@ -43,10 +43,15 @@ Redeploy after adding them so the new values are picked up.
 ## Using the site
 
 - **Home** lists every tracked product with its cheapest current price and the shop
-  that has it. Tap a product to see all shops.
+  that has it. Tap a product to see all shops. Pin a category to keep it at the top
+  and expanded. Products currently at or under their target price sort first.
 - **Manage** is where you create a category, add a product, and paste up to five shop
   links. The shop name is filled in from the URL. You can come back later to add more
   links, pause one, or delete it.
+- A tiny **pending support** label appears on shops the crawler does not have a
+  dedicated parser for yet. Unknown shops still go through JSON-LD, Shopify product
+  JSON, and generic price CSS. Failures are written to
+  `crawler/pending-retailers.json` so the next code update can add them.
 - The **flag button** in the top right collects crawler notices, such as a link that
   has gone dead or a page where no price could be found.
 - The **refresh button** next to it queues an immediate crawl through GitHub Actions.
@@ -109,7 +114,13 @@ by how the process was started.
 
 `CRAWL_BROWSER_MODE=cdp` is the default. If no Chrome or Edge is installed, or
 there is no display, the crawler says so and falls back to letting Playwright
-launch one, which still works for Coles, Woolworths, The Reject Shop and Big W.
+launch one, which still works for Coles, Woolworths, The Reject Shop, Toys R Us,
+Toyworld and Big W.
+
+Unknown specialty shops are crawled with a generic path (JSON-LD, Shopify
+product JSON, then CSS). If that is not enough, the host is appended to
+`crawler/pending-retailers.json` and a crawler notice is raised. Kmart and Target
+still need this PC (`crawl-local.bat`) because they refuse datacentre browsers.
 
 ## Splitting the work between machines
 

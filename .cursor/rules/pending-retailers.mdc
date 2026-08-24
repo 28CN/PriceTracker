@@ -1,0 +1,20 @@
+---
+description: Add crawler support for shops listed in crawler/pending-retailers.json
+alwaysApply: true
+---
+
+# Pending retailer crawlers
+
+On every update to this repo, read `crawler/pending-retailers.json` first.
+
+If `hosts` is not empty:
+
+1. Add each host to `KNOWN_HOST_FRAGMENTS` and `infer_retailer_from_hostname` in `crawler/main.py`.
+2. Add a matching entry in `src/lib/retailer.ts` (name + domain + logo).
+3. Add DOM selectors in `build_dom_extractors` when the shop is not Shopify/JSON-LD.
+4. If `reason` is `blocked`, treat it like Kmart: document local CDP crawl / skip-on-CI rather than pretending cloud will work.
+5. Remove the host from `crawler/pending-retailers.json` once it is supported.
+
+Unknown shops already go through JSON-LD, Shopify `/products/*.json`, and generic price CSS. Only add a specialized extractor when those are not enough.
+
+Keep comments in concise English. After finishing requested work, commit and push as the user prefers.

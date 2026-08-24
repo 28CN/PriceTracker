@@ -18,8 +18,16 @@ const RETAILERS: RetailerEntry[] = [
   { match: /(^|\.)davidjones\.com$/, name: 'David Jones', domain: 'davidjones.com' },
   { match: /(^|\.)catch\.com\.au$/, name: 'Catch', domain: 'catch.com.au' },
   { match: /(^|\.)toysrus\.com\.au$/, name: 'Toys R Us', domain: 'toysrus.com.au' },
-  { match: /(^|\.)toymate\.com\.au$/, name: 'Toymate', domain: 'toymate.com.au' }
+  { match: /(^|\.)toymate\.com\.au$/, name: 'Toymate', domain: 'toymate.com.au' },
+  { match: /(^|\.)toyworld\.com\.au$/, name: 'Toyworld', domain: 'toyworld.com.au' },
+  { match: /(^|\.)toyworld\.co\.nz$/, name: 'Toyworld', domain: 'toyworld.com.au' }
 ];
+
+/** Local files in /public/retailers, used when the live favicon is missing or tiny. */
+const LOCAL_LOGOS: Record<string, string> = {
+  'therejectshop.com.au': '/retailers/reject-shop.png',
+  'the reject shop': '/retailers/reject-shop.png'
+};
 
 function findRetailer(hostname: string): RetailerEntry | null {
   for (const entry of RETAILERS) {
@@ -48,8 +56,7 @@ export function detectRetailer(rawUrl: string): string {
   return bare ? bare.charAt(0).toUpperCase() + bare.slice(1) : '';
 }
 
-/** Favicon URL for a shop name or product URL. Falls back to a letter chip. */
-export function retailerLogoUrl(retailerOrUrl: string): string | null {
+function resolveDomain(retailerOrUrl: string): string | null {
   const raw = retailerOrUrl.trim();
   if (!raw) {
     return null;
@@ -69,16 +76,61 @@ export function retailerLogoUrl(retailerOrUrl: string): string | null {
     const byName = RETAILERS.find(
       (entry) => entry.name.toLowerCase() === raw.toLowerCase()
     );
-    domain = byName?.domain ?? null;
-  } else {
-    domain = findRetailer(domain)?.domain ?? domain;
+    return byName?.domain ?? null;
   }
 
+  return findRetailer(domain)?.domain ?? domain;
+}
+
+export function isKnownRetailer(retailerOrUrl: string): boolean {
+  const raw = retailerOrUrl.trim();
+  if (!raw) {
+    return false;
+  }
+
+  try {
+    if (/^https?:\/\//i.test(raw)) {
+      return findRetailer(new URL(raw).hostname.toLowerCase()) !== null;
+    }
+  } catch {
+    return false;
+  }
+
+  return RETAILERS.some((entry) => entry.name.toLowerCase() === raw.toLowerCase());
+}
+
+export type RetailerLogoSource = {
+  src: string;
+  local: boolean;
+};
+
+/** Local file when we have one, otherwise the shop favicon. */
+export function retailerLogoSource(retailerOrUrl: string): RetailerLogoSource | null {
+  const raw = retailerOrUrl.trim();
+  const localByName = LOCAL_LOGOS[raw.toLowerCase()];
+  if (localByName) {
+    return { src: localByName, local: true };
+  }
+
+  const domain = resolveDomain(raw);
   if (!domain) {
     return null;
   }
 
-  return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64`;
+  const localByDomain = LOCAL_LOGOS[domain];
+  if (localByDomain) {
+    return { src: localByDomain, local: true };
+  }
+
+  return {
+    src: `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64`,
+    local: false
+  };
+}
+
+/** Favicon URL for a shop name or product URL. Falls back to a letter chip. */
+export function retailerLogoUrl(retailerOrUrl: string): string | null {
+  return retailerLogoSource(retailerOrUrl)?.src ?? null;
 }
 
 export function isValidHttpUrl(rawUrl: string): boolean {

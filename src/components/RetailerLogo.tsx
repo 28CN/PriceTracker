@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 
-import { retailerLogoUrl } from '@/lib/retailer';
+import { retailerLogoSource } from '@/lib/retailer';
 
 export default function RetailerLogo({
   retailer,
@@ -12,10 +12,10 @@ export default function RetailerLogo({
   url?: string | null;
 }) {
   const [failed, setFailed] = useState(false);
-  const src = retailerLogoUrl(url || retailer);
+  const source = retailerLogoSource(url || retailer);
   const initial = (retailer || '?').trim().charAt(0).toUpperCase() || '?';
 
-  if (!src || failed) {
+  if (!source || failed) {
     return (
       <span className="retailer-logo fallback" aria-hidden>
         {initial}
@@ -26,8 +26,8 @@ export default function RetailerLogo({
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      className="retailer-logo"
-      src={src}
+      className={`retailer-logo${source.local ? ' local' : ''}`}
+      src={source.src}
       alt=""
       width={18}
       height={18}

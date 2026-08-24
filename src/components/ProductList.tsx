@@ -5,6 +5,7 @@ import { useState } from 'react';
 import EditProductForm from '@/components/EditProductForm';
 import RetailerLogo from '@/components/RetailerLogo';
 import { formatCheckedAt, formatMoney, latestTimestamp } from '@/lib/format';
+import { isKnownRetailer } from '@/lib/retailer';
 import type { ProductView } from '@/lib/types';
 
 function ProductCard({ product }: { product: ProductView }) {
@@ -88,6 +89,11 @@ function ProductCard({ product }: { product: ProductView }) {
                 <div className="row-shop">
                   <RetailerLogo retailer={link.retailer} url={link.url} />
                   <span>{link.retailer}</span>
+                  {!isKnownRetailer(link.url || link.retailer) ? (
+                    <span className="pending-support" title="Generic crawler will try; a dedicated parser can be added next update">
+                      pending support
+                    </span>
+                  ) : null}
                 </div>
                 <div className="row-meta">
                   {link.isActive ? formatCheckedAt(link.latestAt) : 'paused'}

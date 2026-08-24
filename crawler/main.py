@@ -6,6 +6,9 @@ Run it plain to crawl every active link:
 Filter it with environment variables:
     CRAWL_PRODUCT_ID / CRAWL_LINK_ID   only crawl one product or one link
     TEST_URL                           parse a single page and print the result
+
+Unknown shops are still attempted: JSON-LD, Shopify /products/*.json, then
+generic price CSS. Hosts that still fail are listed in pending-retailers.json.
 """
 
 import json
@@ -180,11 +183,16 @@ def build_dom_extractors(retailer: str, url: str) -> Tuple[Tuple[str, Optional[s
     generic: Tuple[Tuple[str, Optional[str]], ...] = (
         ('meta[itemprop="price"]', "content"),
         ('meta[property="product:price:amount"]', "content"),
+        ('meta[property="og:price:amount"]', "content"),
         ('[itemprop="price"]', "content"),
         ('[data-testid*="price" i]', None),
         ('[data-test*="price" i]', None),
+        ('.price-item--sale', None),
+        ('.price-item--regular', None),
+        ('.price--withoutTax', None),
         ('[class*="price" i] [class*="amount" i]', None),
         ('[class*="product-price" i]', None),
+        ('[class*="current-price" i]', None),
         ('[class*="price" i]', None),
     )
 
@@ -222,13 +230,14 @@ def build_dom_extractors(retailer: str, url: str) -> Tuple[Tuple[str, Optional[s
             ('[data-product-price-without-tax]', None),
             ('.productView-price .price', None),
         ) + generic
-    if matches("toysrus", "toys r us"):
-        # Shopify theme: sale / regular price blocks.
+    if matches("toysrus", "toys r us", "toyworld"):
+        # Shopify themes: sale / regular price blocks.
         return (
             ('.price__sale .price-item--sale', None),
             ('.price__regular .price-item--regular', None),
             ('[data-product-price]', None),
             ('.product__price', None),
+            ('span.money', None),
         ) + generic
 
     return generic
@@ -259,16 +268,96 @@ def extract_price_from_dom(page, url: str, retailer: str) -> Optional[Decimal]:
     return None
 
 
+def extract_price_from_shopify_json(page, url: str) -> Optional[Decimal]:
+    """Many AU specialty shops (Toys R Us, Toyworld, …) are Shopify.
+
+    Product pages expose /products/<handle>.json with a reliable variant price,
+    so this works for stores we have never seen before.
+    """
+
+    path = urlparse(url).path.rstrip("/")
+    if "/products/" not in path.lower():
+        return None
+
+    try:
+        payload = page.evaluate(
+            """async (jsonPath) => {
+                try {
+                    const res = await fetch(jsonPath, { credentials: "same-origin" });
+                    if (!res.ok) return null;
+                    return await res.json();
+                } catch (error) {
+                    return null;
+                }
+            }""",
+            f"{path}.json",
+        )
+    except Exception:
+        return None
+
+    if not isinstance(payload, dict):
+        return None
+
+    product = payload.get("product") if isinstance(payload.get("product"), dict) else payload
+    variants = product.get("variants") if isinstance(product, dict) else None
+    if not isinstance(variants, list):
+        return None
+
+    for variant in variants:
+        if not isinstance(variant, dict):
+            continue
+        parsed = parse_price_decimal(variant.get("price"))
+        if parsed and parsed > 0:
+            return parsed
+
+    return None
+
+
 def scrape_price(page, *, url: str, retailer: str) -> Tuple[Optional[Decimal], str]:
     price = extract_price_from_json_ld(page)
     if price is not None:
         return price, "JSON_LD"
+
+    price = extract_price_from_shopify_json(page, url)
+    if price is not None:
+        return price, "SHOPIFY_JSON"
 
     price = extract_price_from_dom(page, url=url, retailer=retailer)
     if price is not None:
         return price, "DOM"
 
     return None, "NONE"
+
+
+# Hosts we already have dedicated extractors (or a known-good generic path) for.
+KNOWN_HOST_FRAGMENTS = (
+    "kmart.com.au",
+    "target.com.au",
+    "bigw.com.au",
+    "coles.com.au",
+    "woolworths.com.au",
+    "therejectshop.com.au",
+    "amazon.com.au",
+    "ebay.com.au",
+    "myer.com.au",
+    "davidjones.com",
+    "catch.com.au",
+    "toysrus.com.au",
+    "toymate.com.au",
+    "toyworld.com.au",
+    "toyworld.co.nz",
+)
+
+PENDING_RETAILERS_PATH = Path(__file__).resolve().parent / "pending-retailers.json"
+
+
+def normalised_host(hostname: str) -> str:
+    return (hostname or "").lower().removeprefix("www.")
+
+
+def host_is_known(hostname: str) -> bool:
+    host = normalised_host(hostname)
+    return any(host == fragment or host.endswith("." + fragment) for fragment in KNOWN_HOST_FRAGMENTS)
 
 
 def infer_retailer_from_hostname(hostname: str) -> str:
@@ -282,11 +371,63 @@ def infer_retailer_from_hostname(hostname: str) -> str:
         "therejectshop": "The Reject Shop",
         "toymate": "Toymate",
         "toysrus": "Toys R Us",
+        "toyworld": "Toyworld",
+        "amazon.": "Amazon AU",
+        "ebay.": "eBay AU",
+        "myer": "Myer",
+        "davidjones": "David Jones",
+        "catch.com": "Catch",
     }
     for needle, label in known.items():
         if needle in h:
             return label
     return hostname or "Unknown"
+
+
+def record_pending_retailers(entries: list) -> list:
+    """Keep a file Cursor reads next time the repo is updated.
+
+    Unknown shops that the generic parsers could not price get listed here.
+    Hosts we later add to KNOWN_HOST_FRAGMENTS drop out automatically.
+    """
+
+    existing: dict = {"hosts": []}
+    if PENDING_RETAILERS_PATH.exists():
+        try:
+            existing = json.loads(PENDING_RETAILERS_PATH.read_text(encoding="utf-8"))
+        except Exception:
+            existing = {"hosts": []}
+
+    by_host = {}
+    for row in existing.get("hosts") or []:
+        host = normalised_host(str(row.get("host") or ""))
+        if host:
+            by_host[host] = row
+
+    stamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    for entry in entries:
+        host = normalised_host(str(entry.get("host") or ""))
+        if not host:
+            continue
+        previous = by_host.get(host) or {}
+        by_host[host] = {
+            "host": host,
+            "retailer": entry.get("retailer") or previous.get("retailer") or host,
+            "reason": entry.get("reason") or previous.get("reason") or "no_price",
+            "sampleUrl": entry.get("sampleUrl") or previous.get("sampleUrl") or "",
+            "lastSeen": stamp,
+        }
+
+    hosts = [
+        row
+        for host, row in sorted(by_host.items())
+        if not host_is_known(host)
+    ]
+    PENDING_RETAILERS_PATH.write_text(
+        json.dumps({"updatedAt": stamp, "hosts": hosts}, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    return hosts
 
 
 def response_data(res) -> list:
@@ -630,7 +771,16 @@ def _human_like_warmup(page, origin: str) -> None:
     page.wait_for_timeout(random.randint(1000, 2000))
 
 
-WARMUP_HOSTS = ("bigw", "coles", "woolworths", "kmart", "target", "therejectshop")
+WARMUP_HOSTS = (
+    "bigw",
+    "coles",
+    "woolworths",
+    "kmart",
+    "target",
+    "therejectshop",
+    "toysrus",
+    "toyworld",
+)
 
 
 def goto_with_retry(page, url: str, *, attempts: int = 3):
@@ -902,13 +1052,15 @@ def run() -> None:
         return
 
     stats = {"ok": 0, "failed": 0}
+    pending_entries: list = []
 
     def handler(page) -> None:
         for row in links:
             link_id = str(row.get("id"))
             url = str(row.get("url") or "")
+            hostname = urlparse(url).hostname or ""
             retailer = str(row.get("retailer") or "") or infer_retailer_from_hostname(
-                urlparse(url).hostname or ""
+                hostname
             )
             product = row.get("products") or {}
             product_name = str(product.get("name") or "this product")
@@ -962,26 +1114,42 @@ def run() -> None:
 
             if price is None:
                 stats["failed"] += 1
+                known = host_is_known(hostname)
+                if not known:
+                    pending_entries.append(
+                        {
+                            "host": normalised_host(hostname),
+                            "retailer": retailer,
+                            "reason": "blocked" if blocked else "no_price",
+                            "sampleUrl": url,
+                        }
+                    )
                 ci_hint = (
                     " (GitHub Actions IPs are blocked by Akamai at the network level —"
                     " set CRAWL_SKIP_RETAILERS=kmart,target,bigw and run those from a"
                     " local machine or configure CRAWL_PROXY)"
                     if (blocked and os.getenv("CI") and any(
-                        k in (urlparse(url).hostname or "").lower()
+                        k in hostname.lower()
                         for k in ("bigw", "kmart", "target")
                     ))
                     else ""
                 )
-                message = (
-                    f"{product_name} at {retailer}: the shop blocked our price check "
-                    f"({block or f'HTTP {status}'}). The link is probably fine; "
-                    f"we will try again next run.{ci_hint}"
-                    if blocked
-                    else (
+                if blocked:
+                    message = (
+                        f"{product_name} at {retailer}: the shop blocked our price check "
+                        f"({block or f'HTTP {status}'}). The link is probably fine; "
+                        f"we will try again next run.{ci_hint}"
+                    )
+                elif not known:
+                    message = (
+                        f"{product_name} at {retailer}: pending crawler support for "
+                        f"{normalised_host(hostname)}. Generic parsers found no price."
+                    )
+                else:
+                    message = (
                         f"{product_name} at {retailer}: could not find a price on the page. "
                         "The shop may have changed its layout or the item is out of stock."
                     )
-                )
                 log_event(supabase, level="warning", message=message, link_id=link_id)
                 save_page_snapshot(page, label=f"{retailer}-{link_id}")
                 time.sleep(random.uniform(2, 4))
@@ -1006,6 +1174,20 @@ def run() -> None:
             time.sleep(random.uniform(2, 4))
 
     run_with_page(handler)
+
+    pending_hosts = record_pending_retailers(pending_entries)
+    if pending_entries:
+        unique = sorted({row["host"] for row in pending_entries if row.get("host")})
+        log_event(
+            supabase,
+            level="info",
+            message=(
+                "Needs crawler support: "
+                + ", ".join(unique)
+                + ". Listed in crawler/pending-retailers.json for the next code update."
+            ),
+        )
+    print(f"[PENDING] {len(pending_hosts)} unknown host(s) in {PENDING_RETAILERS_PATH.name}")
 
     if stats["failed"]:
         log_event(

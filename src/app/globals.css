@@ -250,6 +250,12 @@ button {
   box-shadow: var(--shadow-soft);
 }
 
+.category-head {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+}
+
 .category-toggle {
   width: 100%;
   display: flex;
@@ -262,6 +268,32 @@ button {
   color: inherit;
   cursor: pointer;
   text-align: left;
+}
+
+.category-pin {
+  flex-shrink: 0;
+  align-self: center;
+  margin-right: 12px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 650;
+  cursor: pointer;
+  line-height: 1.2;
+}
+
+.category-pin:hover,
+.category-pin.is-pinned {
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--text) 22%, var(--border));
+}
+
+.category-pin.is-pinned {
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 
 .category-toggle-main {
@@ -290,6 +322,15 @@ button {
   color: var(--muted);
   background: color-mix(in srgb, var(--card) 70%, transparent);
   border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.category-deals {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  background: var(--accent-soft);
   border-radius: 999px;
   padding: 2px 8px;
 }
@@ -533,13 +574,17 @@ button {
 }
 
 .retailer-logo {
-  width: 1.15em;
-  height: 1.15em;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   object-fit: contain;
   flex-shrink: 0;
   background: #fff;
   border: 1px solid var(--border);
+}
+
+.retailer-logo.local {
+  object-fit: cover;
 }
 
 .retailer-logo.fallback {
@@ -550,6 +595,16 @@ button {
   font-weight: 700;
   color: var(--muted);
   background: var(--bg-accent);
+}
+
+.pending-support {
+  font-size: 10px;
+  font-weight: 650;
+  color: var(--muted);
+  border: 1px dashed var(--border);
+  border-radius: 999px;
+  padding: 0 6px;
+  line-height: 1.5;
 }
 
 .row-meta {

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 
-import CategorySection from '@/components/CategorySection';
+import CategoryList from '@/components/CategoryList';
+import { sortProducts } from '@/lib/productSort';
 import { fetchProducts } from '@/lib/queries';
 import type { ProductView } from '@/lib/types';
 
@@ -31,11 +32,10 @@ export default async function HomePage() {
     }
   }
 
-  const categories = [...grouped.keys()].sort((a, b) => {
-    if (a === 'Uncategorised') return 1;
-    if (b === 'Uncategorised') return -1;
-    return a.localeCompare(b);
-  });
+  const groups = [...grouped.entries()].map(([category, items]) => ({
+    category,
+    products: sortProducts(items)
+  }));
 
   return (
     <main>
@@ -54,16 +54,7 @@ export default async function HomePage() {
         </div>
       ) : null}
 
-      <div className="category-stack">
-        {categories.map((category) => (
-          <CategorySection
-            key={category}
-            category={category}
-            products={grouped.get(category) || []}
-            defaultOpen={false}
-          />
-        ))}
-      </div>
+      <CategoryList groups={groups} />
     </main>
   );
 }
