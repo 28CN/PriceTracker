@@ -1,6 +1,6 @@
 # 后台静默爬虫 — 开机自启或任务计划调用
 # 不弹窗口，日志写到 logs\crawl-YYYYMMDD.log
-# 爬 Big W / Kmart / Target（本地才能过 Akamai）
+# 爬 Big W / Kmart / Target / Toymate（本地才能过 Akamai / 403）
 
 $root = Split-Path $PSScriptRoot -Parent
 Set-Location $root
@@ -12,7 +12,7 @@ $date    = Get-Date -Format "yyyyMMdd"
 $logFile = Join-Path $logDir "crawl-$date.log"
 
 $env:CRAWL_BROWSER_MODE = 'cdp'
-$env:CRAWL_RETAILERS    = 'kmart,target,bigw'
+$env:CRAWL_RETAILERS    = 'kmart,target,bigw,toymate'
 $env:PYTHONUNBUFFERED   = '1'
 
 "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Crawl started" | Tee-Object -FilePath $logFile -Append

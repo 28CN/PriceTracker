@@ -72,7 +72,6 @@ export default function CategorySection({
               </span>
             ) : null}
           </span>
-          <span className="category-toggle-hint">{isOpen ? 'Collapse' : 'Expand'}</span>
         </button>
         {onTogglePin ? (
           <button
@@ -80,9 +79,15 @@ export default function CategorySection({
             className={`category-pin${isPinned ? ' is-pinned' : ''}`}
             onClick={onTogglePin}
             aria-pressed={isPinned}
-            title={isPinned ? 'Unpin this category' : 'Pin to top and keep expanded'}
+            aria-label={isPinned ? 'Unpin category' : 'Pin category'}
+            title={isPinned ? 'Unpin' : 'Pin to top'}
           >
-            {isPinned ? 'Pinned' : 'Pin'}
+            <svg className="pin-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                fill="currentColor"
+                d="M16 9V4h1c.55 0 1-.45 1-1s-.45-1-1-1H7c-.55 0-1 .45-1 1s.45 1 1 1h1v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3z"
+              />
+            </svg>
           </button>
         ) : null}
       </div>

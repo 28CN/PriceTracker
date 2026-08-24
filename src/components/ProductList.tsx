@@ -4,8 +4,8 @@ import { useState } from 'react';
 
 import EditProductForm from '@/components/EditProductForm';
 import RetailerLogo from '@/components/RetailerLogo';
-import { formatCheckedAt, formatMoney, latestTimestamp } from '@/lib/format';
-import { isKnownRetailer } from '@/lib/retailer';
+import { formatCheckedAt, formatMoney } from '@/lib/format';
+import { hasCrawlerSupport } from '@/lib/retailer';
 import type { ProductView } from '@/lib/types';
 
 function ProductCard({ product }: { product: ProductView }) {
@@ -15,12 +15,13 @@ function ProductCard({ product }: { product: ProductView }) {
     product.targetPrice !== null &&
     product.lowestPrice !== null &&
     product.lowestPrice <= product.targetPrice;
-  const checkedAt = latestTimestamp(product.links.map((link) => link.latestAt));
   const bestLink = product.links.find(
     (link) =>
       link.retailer === product.lowestRetailer ||
       (link.latestPrice !== null && link.latestPrice === product.lowestPrice)
   );
+  // Date belongs to the price on screen, not the most recently crawled shop.
+  const checkedAt = bestLink?.latestAt ?? null;
 
   function openEditor(event: React.MouseEvent) {
     event.stopPropagation();
@@ -89,9 +90,12 @@ function ProductCard({ product }: { product: ProductView }) {
                 <div className="row-shop">
                   <RetailerLogo retailer={link.retailer} url={link.url} />
                   <span>{link.retailer}</span>
-                  {!isKnownRetailer(link.url || link.retailer) ? (
-                    <span className="pending-support" title="Generic crawler will try; a dedicated parser can be added next update">
-                      pending support
+                  {!hasCrawlerSupport(link.url || link.retailer) ? (
+                    <span
+                      className="pending-support"
+                      title="No crawler for this shop yet"
+                    >
+                      ?
                     </span>
                   ) : null}
                 </div>

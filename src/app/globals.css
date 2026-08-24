@@ -273,16 +273,24 @@ button {
 .category-pin {
   flex-shrink: 0;
   align-self: center;
-  margin-right: 12px;
-  padding: 4px 8px;
+  margin-right: 10px;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 8px;
   border: 1px solid var(--border);
   background: var(--card);
   color: var(--muted);
-  font-size: 11px;
-  font-weight: 650;
   cursor: pointer;
-  line-height: 1.2;
+}
+
+.category-pin .pin-icon {
+  width: 16px;
+  height: 16px;
+  transform: rotate(45deg);
 }
 
 .category-pin:hover,
@@ -294,6 +302,10 @@ button {
 .category-pin.is-pinned {
   background: var(--accent-soft);
   color: var(--accent);
+}
+
+.category-pin.is-pinned .pin-icon {
+  transform: none;
 }
 
 .category-toggle-main {

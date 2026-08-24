@@ -84,18 +84,18 @@ jobs:
       - name: Install xvfb
         run: sudo apt-get update && sudo apt-get install -y xvfb
 
-      # Big W, Kmart, and Target use Akamai, which blocks GitHub Actions IPs at
-      # the network level regardless of browser mode. Those three are skipped here
-      # by default and should be crawled from a local machine or a proxy.
+      # Big W, Kmart, Target and Toymate block GitHub Actions IPs (Akamai / 403).
+      # Those shops are skipped here by default and should be crawled from a
+      # local machine (`crawl-local.bat`) or a proxy.
       # To skip them: set the CRAWL_SKIP_RETAILERS repository variable to
-      #   kmart,target,bigw
+      #   kmart,target,bigw,toymate
       # To use a proxy: set CRAWL_PROXY (and optionally USERNAME/PASSWORD) secrets.
       - name: Warn if Akamai-protected shops are not skipped
         run: |
           SKIP="${{ vars.CRAWL_SKIP_RETAILERS }}"
           PROXY="${{ secrets.CRAWL_PROXY }}"
-          if [ -z "$PROXY" ] && [[ "$SKIP" != *"kmart"* || "$SKIP" != *"target"* || "$SKIP" != *"bigw"* ]]; then
-            echo "::warning::Big W, Kmart, and Target block GitHub Actions IPs (Akamai 403). Set the CRAWL_SKIP_RETAILERS repository variable to 'kmart,target,bigw' and crawl them from a local machine, OR set CRAWL_PROXY to route through a residential IP. These shops will fail until one of those is configured."
+          if [ -z "$PROXY" ] && [[ "$SKIP" != *"kmart"* || "$SKIP" != *"target"* || "$SKIP" != *"bigw"* || "$SKIP" != *"toymate"* ]]; then
+            echo "::warning::Big W, Kmart, Target, and Toymate block GitHub Actions IPs. Set CRAWL_SKIP_RETAILERS to 'kmart,target,bigw,toymate' and crawl them from a local machine, OR set CRAWL_PROXY. The crawler also skips these on CI by default."
           fi
 
       # A browser Playwright starts is refused by several shops even headful, so

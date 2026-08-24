@@ -473,12 +473,19 @@ def _link_matches(row: dict, needles: set) -> bool:
 def filter_links_by_retailer(links: list) -> list:
     """Split the work between machines.
 
-    Kmart and Target only answer a browser driven from a desktop session, so the
-    scheduled cloud run skips them and a local run picks them up.
+    Kmart, Target, Big W and Toymate only answer a browser driven from a
+    desktop session, so the scheduled cloud run skips them and a local run
+    picks them up.
     """
 
     only = _retailer_needles("CRAWL_RETAILERS")
     skip = _retailer_needles("CRAWL_SKIP_RETAILERS")
+
+    # GitHub Actions IPs are refused even when the skip variable was never set.
+    ci_blocked = {"kmart", "target", "bigw", "toymate"}
+    if os.getenv("CI") and not os.getenv("CRAWL_PROXY", "").strip() and not only:
+        skip = skip | ci_blocked
+        print(f"[INFO] CI skip (bot-walled shops): {', '.join(sorted(skip))}")
 
     if only:
         links = [row for row in links if _link_matches(row, only)]
@@ -780,6 +787,7 @@ WARMUP_HOSTS = (
     "therejectshop",
     "toysrus",
     "toyworld",
+    "toymate",
 )
 
 
@@ -1105,12 +1113,17 @@ def run() -> None:
                 continue
 
             # A blocked response still gets one parse attempt: some bot walls
-            # answer 403 while serving the real page underneath.
+            # answer 403 while serving the real page underneath. Only trust
+            # structured product data in that case — CSS on an error page
+            # would write a fake price and bump the "checked" date.
             try:
                 price, source = scrape_price(page, url=url, retailer=retailer)
             except Exception as error:
                 price, source = None, "ERROR"
                 print(f"[WARN] scrape failed for {url}: {error}")
+
+            if blocked and source not in {"JSON_LD", "SHOPIFY_JSON"}:
+                price = None
 
             if price is None:
                 stats["failed"] += 1
@@ -1126,11 +1139,11 @@ def run() -> None:
                     )
                 ci_hint = (
                     " (GitHub Actions IPs are blocked by Akamai at the network level —"
-                    " set CRAWL_SKIP_RETAILERS=kmart,target,bigw and run those from a"
+                    " set CRAWL_SKIP_RETAILERS=kmart,target,bigw,toymate and run those from a"
                     " local machine or configure CRAWL_PROXY)"
                     if (blocked and os.getenv("CI") and any(
                         k in hostname.lower()
-                        for k in ("bigw", "kmart", "target")
+                        for k in ("bigw", "kmart", "target", "toymate")
                     ))
                     else ""
                 )

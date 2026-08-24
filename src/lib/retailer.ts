@@ -12,6 +12,7 @@ const RETAILERS: RetailerEntry[] = [
   { match: /(^|\.)coles\.com\.au$/, name: 'Coles', domain: 'coles.com.au' },
   { match: /(^|\.)woolworths\.com\.au$/, name: 'Woolworths', domain: 'woolworths.com.au' },
   { match: /(^|\.)therejectshop\.com\.au$/, name: 'The Reject Shop', domain: 'therejectshop.com.au' },
+  { match: /(^|\.)rejectshop\.com\.au$/, name: 'The Reject Shop', domain: 'therejectshop.com.au' },
   { match: /(^|\.)amazon\.com\.au$/, name: 'Amazon AU', domain: 'amazon.com.au' },
   { match: /(^|\.)ebay\.com\.au$/, name: 'eBay AU', domain: 'ebay.com.au' },
   { match: /(^|\.)myer\.com\.au$/, name: 'Myer', domain: 'myer.com.au' },
@@ -26,12 +27,19 @@ const RETAILERS: RetailerEntry[] = [
 /** Local files in /public/retailers, used when the live favicon is missing or tiny. */
 const LOCAL_LOGOS: Record<string, string> = {
   'therejectshop.com.au': '/retailers/reject-shop.png',
-  'the reject shop': '/retailers/reject-shop.png'
+  'rejectshop.com.au': '/retailers/reject-shop.png',
+  'the reject shop': '/retailers/reject-shop.png',
+  'reject shop': '/retailers/reject-shop.png'
 };
 
+function normalisedName(value: string): string {
+  return value.toLowerCase().replace(/^the\s+/, '').replace(/[^a-z0-9]+/g, '');
+}
+
 function findRetailer(hostname: string): RetailerEntry | null {
+  const host = hostname.replace(/^www\./, '');
   for (const entry of RETAILERS) {
-    if (entry.match.test(hostname)) {
+    if (entry.match.test(host) || entry.match.test(hostname)) {
       return entry;
     }
   }
@@ -74,7 +82,7 @@ function resolveDomain(retailerOrUrl: string): string | null {
 
   if (!domain) {
     const byName = RETAILERS.find(
-      (entry) => entry.name.toLowerCase() === raw.toLowerCase()
+      (entry) => normalisedName(entry.name) === normalisedName(raw)
     );
     return byName?.domain ?? null;
   }
@@ -83,6 +91,11 @@ function resolveDomain(retailerOrUrl: string): string | null {
 }
 
 export function isKnownRetailer(retailerOrUrl: string): boolean {
+  return hasCrawlerSupport(retailerOrUrl);
+}
+
+/** True when this shop has a dedicated crawler path, not merely a logo. */
+export function hasCrawlerSupport(retailerOrUrl: string): boolean {
   const raw = retailerOrUrl.trim();
   if (!raw) {
     return false;
@@ -90,13 +103,17 @@ export function isKnownRetailer(retailerOrUrl: string): boolean {
 
   try {
     if (/^https?:\/\//i.test(raw)) {
-      return findRetailer(new URL(raw).hostname.toLowerCase()) !== null;
+      const hostname = new URL(raw).hostname.toLowerCase();
+      if (findRetailer(hostname)) {
+        return true;
+      }
     }
   } catch {
-    return false;
+    // Fall through to a name match.
   }
 
-  return RETAILERS.some((entry) => entry.name.toLowerCase() === raw.toLowerCase());
+  const needle = normalisedName(raw);
+  return RETAILERS.some((entry) => normalisedName(entry.name) === needle);
 }
 
 export type RetailerLogoSource = {
@@ -110,6 +127,13 @@ export function retailerLogoSource(retailerOrUrl: string): RetailerLogoSource | 
   const localByName = LOCAL_LOGOS[raw.toLowerCase()];
   if (localByName) {
     return { src: localByName, local: true };
+  }
+
+  const localByAlias = Object.entries(LOCAL_LOGOS).find(
+    ([key]) => normalisedName(key) === normalisedName(raw)
+  );
+  if (localByAlias) {
+    return { src: localByAlias[1], local: true };
   }
 
   const domain = resolveDomain(raw);

@@ -79,7 +79,7 @@ Useful environment variables:
 | `TEST_URL` | parse one page and print the price, without touching the database |
 | `CRAWL_PRODUCT_ID` | only crawl the links belonging to one product |
 | `CRAWL_LINK_ID` | only crawl a single link |
-| `CRAWL_RETAILERS` | only crawl matching shops, e.g. `kmart,target,bigw` |
+| `CRAWL_RETAILERS` | only crawl matching shops, e.g. `kmart,target,bigw,toymate` |
 | `CRAWL_SKIP_RETAILERS` | crawl everything except these shops |
 | `CRAWL_BROWSER_MODE` | `cdp` (default) or `launch`, see below |
 | `CRAWL_BROWSER_PATH` | use a specific Chrome or Edge binary |
@@ -114,19 +114,20 @@ by how the process was started.
 
 `CRAWL_BROWSER_MODE=cdp` is the default. If no Chrome or Edge is installed, or
 there is no display, the crawler says so and falls back to letting Playwright
-launch one, which still works for Coles, Woolworths, The Reject Shop, Toys R Us,
-Toyworld and Big W.
+launch one, which still works for Coles, Woolworths, The Reject Shop, Toys R Us
+and Toyworld.
 
 Unknown specialty shops are crawled with a generic path (JSON-LD, Shopify
 product JSON, then CSS). If that is not enough, the host is appended to
-`crawler/pending-retailers.json` and a crawler notice is raised. Kmart and Target
-still need this PC (`crawl-local.bat`) because they refuse datacentre browsers.
+`crawler/pending-retailers.json` and a crawler notice is raised. Kmart, Target,
+Big W and Toymate need this PC (`crawl-local.bat`) because they refuse
+datacentre browsers.
 
 ## Splitting the work between machines
 
 GitHub Actions has no display of its own, so the workflow runs the crawler under
 `xvfb-run`. Whether the shops answer a datacentre address is a separate question
-from the browser, and Kmart and Target may still refuse from there.
+from the browser, and Kmart, Target, Big W and Toymate may still refuse from there.
 
 If they do, crawl them from your own PC instead:
 

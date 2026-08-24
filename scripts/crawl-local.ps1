@@ -73,7 +73,7 @@ try {
     # Limit the run to the shops that only work from here, so the scheduled cloud
     # run keeps ownership of the rest. Clear it to crawl everything.
     if (-not $env:CRAWL_RETAILERS) {
-        $env:CRAWL_RETAILERS = 'kmart,target,bigw'
+        $env:CRAWL_RETAILERS = 'kmart,target,bigw,toymate'
     }
 
     Write-Host "Crawling $($env:CRAWL_RETAILERS) from this machine..." -ForegroundColor Cyan
