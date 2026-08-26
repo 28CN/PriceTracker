@@ -239,6 +239,36 @@ def build_dom_extractors(retailer: str, url: str) -> Tuple[Tuple[str, Optional[s
             ('.product__price', None),
             ('span.money', None),
         ) + generic
+    if matches("bunnings"):
+        return (
+            ('[data-locator="product-price"]', None),
+            ('[class*="productPrice" i]', None),
+            ('[data-testid="price"]', None),
+        ) + generic
+    if matches("bestandless", "best & less", "bestandless"):
+        return (
+            ('.price__sale .price-item--sale', None),
+            ('.product__price', None),
+            ('span.money', None),
+        ) + generic
+    if matches("chemistwarehouse", "chemist warehouse"):
+        return (
+            ('.product__price', None),
+            ('.pdp-price', None),
+            ('[data-testid="product-price"]', None),
+        ) + generic
+    if matches("priceline"):
+        return (
+            ('.product-price', None),
+            ('.price-box .price', None),
+            ('[itemprop="price"]', 'content'),
+        ) + generic
+    if matches("terrywhitechemmart", "terry white"):
+        return (
+            ('.product-price', None),
+            ('.price-box .price', None),
+            ('[itemprop="price"]', 'content'),
+        ) + generic
 
     return generic
 
@@ -346,6 +376,11 @@ KNOWN_HOST_FRAGMENTS = (
     "toymate.com.au",
     "toyworld.com.au",
     "toyworld.co.nz",
+    "bunnings.com.au",
+    "bestandless.com.au",
+    "chemistwarehouse.com.au",
+    "priceline.com.au",
+    "terrywhitechemmart.com.au",
 )
 
 PENDING_RETAILERS_PATH = Path(__file__).resolve().parent / "pending-retailers.json"
@@ -377,6 +412,11 @@ def infer_retailer_from_hostname(hostname: str) -> str:
         "myer": "Myer",
         "davidjones": "David Jones",
         "catch.com": "Catch",
+        "bunnings": "Bunnings",
+        "bestandless": "Best & Less",
+        "chemistwarehouse": "Chemist Warehouse",
+        "priceline": "Priceline",
+        "terrywhitechemmart": "Terry White",
     }
     for needle, label in known.items():
         if needle in h:
@@ -482,7 +522,7 @@ def filter_links_by_retailer(links: list) -> list:
     skip = _retailer_needles("CRAWL_SKIP_RETAILERS")
 
     # GitHub Actions IPs are refused even when the skip variable was never set.
-    ci_blocked = {"kmart", "target", "bigw", "toymate"}
+    ci_blocked = {"kmart", "target", "bigw", "toymate", "bunnings", "chemistwarehouse"}
     if os.getenv("CI") and not os.getenv("CRAWL_PROXY", "").strip() and not only:
         skip = skip | ci_blocked
         print(f"[INFO] CI skip (bot-walled shops): {', '.join(sorted(skip))}")

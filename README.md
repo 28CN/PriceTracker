@@ -13,8 +13,9 @@ shows the cheapest shop up front and the full list when you tap a product.
 ### 1. Database
 
 Run [`supabase/schema.sql`](supabase/schema.sql) in the Supabase SQL editor. It adds
-the `categories` and `crawl_events` tables, links products to a category, and makes
-`target_price` optional. It is safe to run more than once.
+the `categories` and `crawl_events` tables, Beta `list_kind` / `image_url` columns,
+links products to a category, and makes `target_price` optional. It is safe to run
+more than once.
 
 ### 2. GitHub repository secrets
 

@@ -16,7 +16,13 @@ const emptyLinks = (): LinkDraft[] => [
   { url: '', retailer: '' }
 ];
 
-export default function AddProductForm({ categories }: { categories: CategoryView[] }) {
+export default function AddProductForm({
+  categories,
+  listKind
+}: {
+  categories: CategoryView[];
+  listKind?: 'daily' | 'daigou';
+}) {
   const router = useRouter();
 
   const [categoryId, setCategoryId] = useState('');
@@ -75,6 +81,7 @@ export default function AddProductForm({ categories }: { categories: CategoryVie
           categoryId: categoryId || null,
           newCategoryName: categoryId ? null : newCategoryName,
           targetPrice: targetPrice || null,
+          listKind: listKind || undefined,
           links: links.filter((link) => link.url.trim().length > 0)
         })
       });

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 
+import { parseListKind } from '@/lib/listKind';
 import { detectRetailer, isValidHttpUrl } from '@/lib/retailer';
 import { getWriteClient } from '@/lib/supabase';
 
@@ -14,6 +15,8 @@ export async function POST(request: Request) {
       categoryId?: string | null;
       newCategoryName?: string | null;
       targetPrice?: string | number | null;
+      listKind?: string | null;
+      imageUrl?: string | null;
       links?: IncomingLink[];
     };
 
@@ -72,14 +75,38 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Target price must be a number.' }, { status: 400 });
     }
 
-    const { data: product, error: productError } = await supabase
+    const listKind = parseListKind(body.listKind) ?? 'daigou';
+    const imageUrl = (body.imageUrl || '').trim() || null;
+
+    const row: Record<string, unknown> = {
+      name,
+      category_id: categoryId,
+      target_price: targetPrice,
+      list_kind: listKind,
+      image_url: imageUrl
+    };
+
+    let { data: product, error: productError } = await supabase
       .from('products')
-      .insert({ name, category_id: categoryId, target_price: targetPrice })
+      .insert(row)
       .select('id')
       .single();
 
-    if (productError) {
-      return NextResponse.json({ error: productError.message }, { status: 500 });
+    if (productError && /list_kind|image_url/.test(productError.message)) {
+      const retry = await supabase
+        .from('products')
+        .insert({ name, category_id: categoryId, target_price: targetPrice })
+        .select('id')
+        .single();
+      product = retry.data;
+      productError = retry.error;
+    }
+
+    if (productError || !product) {
+      return NextResponse.json(
+        { error: productError?.message || 'Could not save the product.' },
+        { status: 500 }
+      );
     }
 
     if (cleanedLinks.length > 0) {

@@ -11,6 +11,9 @@ export default function TopBar() {
           <p className="brand">PriceTracker</p>
         </Link>
         <div className="topbar-actions">
+          <Link className="button topbar-manage topbar-beta" href="/beta">
+            Beta
+          </Link>
           <Link className="button topbar-manage" href="/manage">
             Manage
           </Link>

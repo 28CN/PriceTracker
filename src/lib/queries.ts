@@ -2,13 +2,18 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { toNumber } from './format';
 import { getReadClient } from './supabase';
+import type { ListKind } from './listKind';
 import type { CategoryView, LinkView, ProductView } from './types';
+
+export type ProductScope = 'live' | ListKind;
 
 type RawProduct = {
   id: string;
   name: string;
   target_price: number | string | null;
   category_id: string | null;
+  list_kind?: string | null;
+  image_url?: string | null;
   categories: { id: string; name: string } | { id: string; name: string }[] | null;
 };
 
@@ -95,13 +100,24 @@ async function fetchLatestPrices(
   return latest;
 }
 
-export async function fetchProducts(): Promise<ProductView[]> {
+export async function fetchProducts(scope: ProductScope = 'live'): Promise<ProductView[]> {
   const supabase = getReadClient();
+  const withKind =
+    'id, name, target_price, category_id, list_kind, image_url, categories(id, name)';
+  const legacy = 'id, name, target_price, category_id, categories(id, name)';
 
-  const { data, error } = await supabase
-    .from('products')
-    .select('id, name, target_price, category_id, categories(id, name)')
-    .order('name', { ascending: true });
+  const base = supabase.from('products').select(withKind).order('name', { ascending: true });
+  const scoped = scope === 'live' ? base.neq('list_kind', 'daily') : base.eq('list_kind', scope);
+  let { data, error } = await scoped;
+
+  if (error && /list_kind|image_url/.test(error.message)) {
+    const fallback = await supabase
+      .from('products')
+      .select(legacy)
+      .order('name', { ascending: true });
+    data = fallback.data as typeof data;
+    error = fallback.error;
+  }
 
   if (error) {
     throw new Error(error.message);
@@ -153,6 +169,8 @@ export async function fetchProducts(): Promise<ProductView[]> {
       categoryId: product.category_id,
       categoryName: categoryName(product.categories),
       targetPrice: toNumber(product.target_price),
+      listKind: product.list_kind === 'daily' ? 'daily' : 'daigou',
+      imageUrl: product.image_url || null,
       links,
       lowestPrice: cheapest?.latestPrice ?? null,
       lowestRetailer: cheapest?.retailer ?? null

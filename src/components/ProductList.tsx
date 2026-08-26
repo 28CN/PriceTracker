@@ -44,6 +44,10 @@ function ProductCard({ product }: { product: ProductView }) {
           aria-expanded={isOpen}
         >
           <div className="row-main">
+            {product.imageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img className="product-thumb" src={product.imageUrl} alt="" referrerPolicy="no-referrer" />
+            ) : null}
             <h2 className="product-name">{product.name}</h2>
             {hitsTarget ? <span className="hit">Under target</span> : null}
             {product.targetPrice !== null ? (

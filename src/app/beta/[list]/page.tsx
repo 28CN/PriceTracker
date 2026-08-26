@@ -1,22 +1,26 @@
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 
 import CategoryList from '@/components/CategoryList';
+import { LIST_LABELS, parseListKind } from '@/lib/listKind';
 import { sortProducts } from '@/lib/productSort';
 import { fetchProducts } from '@/lib/queries';
 import type { ProductView } from '@/lib/types';
 
-// Prices change behind the scenes, so never serve a cached snapshot. Marking the
-// route dynamic is not enough on its own: Vercel's Data Cache would still answer
-// the Supabase queries from an old snapshot, and it outlives redeploys.
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
 
-export default async function HomePage() {
+export default async function BetaListPage({ params }: { params: { list: string } }) {
+  const list = parseListKind(params.list);
+  if (!list) {
+    notFound();
+  }
+
   let products: ProductView[] = [];
   let loadError: string | null = null;
 
   try {
-    products = await fetchProducts('live');
+    products = await fetchProducts(list);
   } catch (error) {
     loadError = error instanceof Error ? error.message : 'Failed to load products.';
   }
@@ -48,8 +52,9 @@ export default async function HomePage() {
       {!loadError && products.length === 0 ? (
         <div className="card empty" style={{ marginTop: 12 }}>
           <p className="hint">
-            Nothing tracked yet. Use <Link href="/manage">Manage</Link> to add a product and its shop
-            links.
+            Nothing on {LIST_LABELS[list]} yet. Use{' '}
+            <Link href={`/beta/${list}/search`}>Search</Link> or{' '}
+            <Link href={`/beta/${list}/manage`}>Manage</Link> to add products.
           </p>
         </div>
       ) : null}

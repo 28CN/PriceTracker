@@ -13,6 +13,8 @@ export type ProductView = {
   categoryId: string | null;
   categoryName: string | null;
   targetPrice: number | null;
+  listKind: 'daily' | 'daigou';
+  imageUrl: string | null;
   links: LinkView[];
   lowestPrice: number | null;
   lowestRetailer: string | null;

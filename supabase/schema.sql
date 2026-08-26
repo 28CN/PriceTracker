@@ -63,3 +63,19 @@ create policy "public read tracked links" on public.tracked_links
 drop policy if exists "public read price history" on public.price_history;
 create policy "public read price history" on public.price_history
   for select using (true);
+
+-- 6. Beta lists. Existing rows stay on the daigou (restock) list. The live
+-- home page hides list_kind = 'daily' so Beta grocery items do not mix in.
+alter table public.products
+  add column if not exists list_kind text not null default 'daigou';
+
+alter table public.products
+  drop constraint if exists products_list_kind_check;
+
+alter table public.products
+  add constraint products_list_kind_check check (list_kind in ('daily', 'daigou'));
+
+alter table public.products
+  add column if not exists image_url text;
+
+create index if not exists products_list_kind_idx on public.products (list_kind);
