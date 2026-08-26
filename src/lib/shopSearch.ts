@@ -436,6 +436,14 @@ export function findSearchRetailer(id: string): SearchRetailer | undefined {
   return SEARCH_RETAILERS.find((shop) => shop.id === id);
 }
 
+export function googleShoppingUrl(query: string): string {
+  return `https://www.google.com.au/search?tbm=shop&q=${encodeURIComponent(query)}`;
+}
+
+function cloudBlockedMessage(): string {
+  return 'Vercel’s datacentre IP is blocked by this shop. That is not a ban of this site, and waiting overnight will not help. Open the shop in your own browser instead.';
+}
+
 export async function searchRetailer(retailerId: string, query: string): Promise<ShopSearchResult> {
   const shop = findSearchRetailer(retailerId);
   if (!shop) {
@@ -457,7 +465,7 @@ export async function searchRetailer(retailerId: string, query: string): Promise
       retailerId: shop.id,
       results: [],
       fallbackUrl,
-      error: 'Search from this server is blocked. Open the shop search instead.'
+      error: cloudBlockedMessage()
     };
   }
 
@@ -469,18 +477,20 @@ export async function searchRetailer(retailerId: string, query: string): Promise
         retailerId: shop.id,
         results: [],
         fallbackUrl,
-        error: 'No products returned. Open the shop search to check.'
+        error:
+          'No products came back to the cloud server. Open the shop search in your browser (your home IP is usually allowed).'
       };
     }
     return { retailer: shop.name, retailerId: shop.id, results, fallbackUrl };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Search failed.';
+    const blocked = /403|401|429|blocked/i.test(message);
     return {
       retailer: shop.name,
       retailerId: shop.id,
       results: [],
       fallbackUrl,
-      error: `${message} Open the shop search instead.`
+      error: blocked ? cloudBlockedMessage() : `${message} Open the shop search in your browser.`
     };
   }
 }

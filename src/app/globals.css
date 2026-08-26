@@ -697,18 +697,27 @@ button {
 input[type='text'],
 input[type='url'],
 input[type='number'],
-select {
+input[type='search'],
+select,
+textarea {
   width: 100%;
   padding: 10px 11px;
   border-radius: 10px;
   border: 1px solid var(--border);
   background: var(--card);
   color: var(--text);
+  font: inherit;
   font-size: 16px; /* keeps iOS from zooming on focus */
 }
 
+textarea {
+  min-height: 84px;
+  resize: vertical;
+}
+
 input:focus,
-select:focus {
+select:focus,
+textarea:focus {
   outline: 2px solid #c7d7f5;
   outline-offset: 1px;
 }

@@ -6,7 +6,13 @@ import { useMemo, useState } from 'react';
 import RetailerLogo from '@/components/RetailerLogo';
 import { formatMoney } from '@/lib/format';
 import { LIST_LABELS, type ListKind } from '@/lib/listKind';
-import { SEARCH_RETAILERS, type SearchHit, type ShopSearchResult } from '@/lib/shopSearch';
+import { detectRetailer, isValidHttpUrl } from '@/lib/retailer';
+import {
+  SEARCH_RETAILERS,
+  googleShoppingUrl,
+  type SearchHit,
+  type ShopSearchResult
+} from '@/lib/shopSearch';
 import type { CategoryView, ProductView } from '@/lib/types';
 
 type SelectedKey = string;
@@ -39,6 +45,7 @@ export default function SearchPanel({
   const [newName, setNewName] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [pasteText, setPasteText] = useState('');
 
   const selectedHits = useMemo(() => Object.values(selected), [selected]);
 
@@ -106,6 +113,48 @@ export default function SearchPanel({
 
     setResults(settled);
     setIsSearching(false);
+  }
+
+  function openInShops() {
+    const q = query.trim();
+    if (q.length < 2) return;
+    for (const id of selectedShops) {
+      const shop = SEARCH_RETAILERS.find((item) => item.id === id);
+      if (shop) {
+        window.open(shop.fallbackUrl(q), '_blank', 'noopener,noreferrer');
+      }
+    }
+  }
+
+  function addPastedUrls() {
+    const urls = pasteText
+      .split(/[\s,]+/)
+      .map((item) => item.trim())
+      .filter((item) => isValidHttpUrl(item));
+
+    if (urls.length === 0) {
+      setFeedback({ tone: 'error', text: 'Paste at least one http(s) product URL.' });
+      return;
+    }
+
+    setSelected((current) => {
+      const next = { ...current };
+      for (const url of urls) {
+        const retailer = detectRetailer(url) || 'Shop';
+        const hit: SearchHit = {
+          retailer,
+          retailerId: 'pasted',
+          name: retailer,
+          price: null,
+          url,
+          imageUrl: null
+        };
+        next[hitKey(hit)] = hit;
+      }
+      return next;
+    });
+    setPasteText('');
+    setFeedback({ tone: 'ok', text: `Added ${urls.length} link(s). Save them below.` });
   }
 
   async function saveSelected(event: React.FormEvent) {
@@ -212,13 +261,69 @@ export default function SearchPanel({
             className="button primary"
             disabled={isSearching || selectedShops.length === 0}
           >
-            {isSearching ? 'Searching…' : 'Search'}
+            {isSearching ? 'Searching…' : 'Search from this server'}
           </button>
+          <button
+            type="button"
+            className="button"
+            disabled={query.trim().length < 2 || selectedShops.length === 0}
+            onClick={openInShops}
+          >
+            Open shops in my browser
+          </button>
+          {query.trim().length >= 2 ? (
+            <a
+              className="button"
+              href={googleShoppingUrl(query.trim())}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Google Shopping
+            </a>
+          ) : (
+            <button type="button" className="button" disabled>
+              Google Shopping
+            </button>
+          )}
         </div>
         <p className="hint" style={{ marginTop: 8 }}>
-          Each shop is queried on its own. Click a card to open the official page and check it is
-          the right product. Kmart, Target and Big W often cannot be searched from this server.
+          Search from this server uses Vercel’s IP, which Coles / Woolworths / Bunnings often
+          refuse (403). That is not a ban of this site, and trying again tomorrow will not change
+          it. “Open shops in my browser” and Google Shopping use your home connection, like a
+          normal customer.
         </p>
+      </form>
+
+      <form
+        className="card"
+        style={{ marginTop: 12 }}
+        onSubmit={(event) => {
+          event.preventDefault();
+          addPastedUrls();
+        }}
+      >
+        <p className="section-title" style={{ margin: 0 }}>
+          Or paste product page URLs
+        </p>
+        <p className="hint" style={{ marginTop: 6 }}>
+          After you find the right item on the shop (or Google), copy the product page link here.
+          Then save it to this list like a search card.
+        </p>
+        <div className="field">
+          <label htmlFor="paste-urls">Product URLs</label>
+          <textarea
+            id="paste-urls"
+            rows={3}
+            value={pasteText}
+            onChange={(event) => setPasteText(event.target.value)}
+            placeholder="https://www.bunnings.com.au/..."
+          />
+        </div>
+        <div className="form-actions">
+          <button type="submit" className="button primary">
+            Use these links
+          </button>
+        </div>
       </form>
 
       {results.map((block) => (
