@@ -653,6 +653,11 @@ button {
   font-weight: 500;
 }
 
+.row-price.unavailable {
+  color: var(--warn);
+  font-weight: 600;
+}
+
 .open-link {
   font-size: 13px;
   text-decoration: none;

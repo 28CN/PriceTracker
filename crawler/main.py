@@ -21,6 +21,7 @@ import subprocess
 import time
 import urllib.error
 import urllib.request
+from datetime import datetime, timezone
 from decimal import Decimal, ROUND_HALF_UP
 from decimal import InvalidOperation as DecimalInvalidOperation
 from pathlib import Path
@@ -110,6 +111,80 @@ def node_is_product(node: dict) -> bool:
     return any(isinstance(t, str) and "product" in t.lower() for t in types)
 
 
+def _availability_token(value: Any) -> str:
+    if isinstance(value, dict):
+        value = value.get("@id") or value.get("name") or ""
+    return (
+        str(value or "")
+        .lower()
+        .replace("https://schema.org/", "")
+        .replace("http://schema.org/", "")
+    )
+
+
+def offer_stock(offers: Any) -> str:
+    """in_stock / unavailable / unknown from schema.org Offer.availability."""
+
+    found_unavailable = False
+    found_in_stock = False
+    for candidate in offers if isinstance(offers, list) else [offers]:
+        if not isinstance(candidate, dict):
+            continue
+        token = _availability_token(candidate.get("availability"))
+        if not token:
+            continue
+        if any(
+            key in token
+            for key in ("outofstock", "soldout", "discontinued", "outofbusiness")
+        ):
+            found_unavailable = True
+        elif any(
+            key in token
+            for key in (
+                "instock",
+                "limitedavailability",
+                "preorder",
+                "presale",
+                "onlineonly",
+                "instoreonly",
+                "backorder",
+            )
+        ):
+            found_in_stock = True
+
+    if found_unavailable and not found_in_stock:
+        return "unavailable"
+    if found_in_stock:
+        return "in_stock"
+    return "unknown"
+
+
+def _page_url_key(url: str) -> Tuple[str, str]:
+    parsed = urlparse(url)
+    host = (parsed.hostname or "").lower().removeprefix("www.")
+    path = (parsed.path or "").rstrip("/").lower()
+    return host, path
+
+
+def url_matches_page(candidate: Any, page_url: str) -> bool:
+    if not isinstance(candidate, str) or not candidate.startswith("http"):
+        return False
+    try:
+        return _page_url_key(candidate) == _page_url_key(page_url)
+    except Exception:
+        return False
+
+
+def product_matches_page(node: dict, page_url: str) -> bool:
+    if url_matches_page(node.get("@id"), page_url) or url_matches_page(node.get("url"), page_url):
+        return True
+    offers = node.get("offers")
+    for offer in offers if isinstance(offers, list) else [offers]:
+        if isinstance(offer, dict) and url_matches_page(offer.get("url"), page_url):
+            return True
+    return False
+
+
 def price_from_offers(offers: Any) -> Optional[Decimal]:
     for candidate in offers if isinstance(offers, list) else [offers]:
         if not isinstance(candidate, dict):
@@ -141,11 +216,18 @@ def walk_price_like_values(node: Any) -> Iterable[Any]:
             yield from walk_price_like_values(item)
 
 
-def extract_price_from_json_ld(page) -> Optional[Decimal]:
+def extract_json_ld(page, page_url: str) -> Tuple[Optional[Decimal], str, bool]:
+    """Price and stock for the product that matches this URL.
+
+    Related-item carousels often embed their own Product nodes / price CSS.
+    Using the first price on the page is how an unavailable Coles item was
+    recorded as $3.50 from "Customers also purchased".
+    """
+
     try:
         blocks = page.locator('script[type="application/ld+json"]').all_text_contents()
     except Exception:
-        return None
+        return None, "unknown", False
 
     documents = []
     for block in blocks:
@@ -157,23 +239,31 @@ def extract_price_from_json_ld(page) -> Optional[Decimal]:
         except Exception:
             continue
 
-    # A Product node is far more trustworthy than any stray price field, so
-    # give those a full pass before falling back to a loose search.
+    products: list = []
     for document in documents:
         for node in iter_json_ld_nodes(document):
-            if node_is_product(node) and "offers" in node:
-                parsed = price_from_offers(node["offers"])
-                if parsed:
-                    return parsed
+            if node_is_product(node):
+                products.append(node)
 
-    for document in documents:
-        for value in walk_price_like_values(document):
+    if not products:
+        return None, "unknown", False
+
+    matched = next((node for node in products if product_matches_page(node, page_url)), None)
+    primary = matched or (products[0] if len(products) == 1 else None)
+    if primary is None:
+        return None, "unknown", False
+
+    stock = offer_stock(primary.get("offers")) if "offers" in primary else "unknown"
+    price = price_from_offers(primary.get("offers")) if "offers" in primary else None
+    if price is None:
+        for value in walk_price_like_values(primary):
             if isinstance(value, (int, float, str)):
                 parsed = parse_price_decimal(value)
                 if parsed and parsed > 0:
-                    return parsed
+                    price = parsed
+                    break
 
-    return None
+    return price, stock, True
 
 
 def build_dom_extractors(retailer: str, url: str) -> Tuple[Tuple[str, Optional[str]], ...]:
@@ -211,6 +301,8 @@ def build_dom_extractors(retailer: str, url: str) -> Tuple[Tuple[str, Optional[s
             ('[data-testid="product-price"]', None),
         ) + generic
     if matches("coles.com.au", "coles"):
+        # product-pricing is reused on "Customers also purchased" tiles.
+        # scrape_price must treat OutOfStock JSON-LD as unavailable before this.
         return (('[data-testid="product-pricing"]', None),) + generic
     if matches("woolworths"):
         return (('.shelfProductTile-priceDollars', None),) + generic
@@ -343,20 +435,70 @@ def extract_price_from_shopify_json(page, url: str) -> Optional[Decimal]:
     return None
 
 
-def scrape_price(page, *, url: str, retailer: str) -> Tuple[Optional[Decimal], str]:
-    price = extract_price_from_json_ld(page)
-    if price is not None:
-        return price, "JSON_LD"
+UNAVAILABLE_PHRASES = (
+    "currently unavailable",
+    "out of stock",
+    "sold out",
+    "no longer available",
+    "product unavailable",
+    "this product is unavailable",
+)
+
+
+def page_says_unavailable(page) -> bool:
+    """Visible copy near the product, not a footer legal snippet."""
+
+    try:
+        text = page.evaluate(
+            """() => {
+                const heading = document.querySelector("h1");
+                const root =
+                    (heading && heading.closest("main, [role='main'], article")) ||
+                    document.querySelector("main") ||
+                    document.body;
+                return (root && root.innerText ? root.innerText : "").slice(0, 5000);
+            }"""
+        )
+    except Exception:
+        try:
+            text = page.inner_text("body")[:5000]
+        except Exception:
+            return False
+
+    lowered = (text or "").lower()
+    return any(phrase in lowered for phrase in UNAVAILABLE_PHRASES)
+
+
+def scrape_price(page, *, url: str, retailer: str) -> Tuple[Optional[Decimal], str, str]:
+    """Returns (price, source, stock) where stock is in_stock / unavailable / unknown."""
+
+    json_price, json_stock, matched_primary = extract_json_ld(page, url)
+    if json_stock == "unavailable":
+        return None, "JSON_LD", "unavailable"
+
+    if json_price is not None:
+        return json_price, "JSON_LD", "in_stock" if json_stock == "unknown" else json_stock
+
+    if page_says_unavailable(page):
+        return None, "DOM", "unavailable"
+
+    # Primary JSON-LD already described this SKU and had no sellable price.
+    # Do not fall through to carousel / "also purchased" CSS.
+    if matched_primary:
+        shopify = extract_price_from_shopify_json(page, url)
+        if shopify is not None:
+            return shopify, "SHOPIFY_JSON", "in_stock"
+        return None, "NONE", json_stock
 
     price = extract_price_from_shopify_json(page, url)
     if price is not None:
-        return price, "SHOPIFY_JSON"
+        return price, "SHOPIFY_JSON", "in_stock"
 
     price = extract_price_from_dom(page, url=url, retailer=retailer)
     if price is not None:
-        return price, "DOM"
+        return price, "DOM", "in_stock"
 
-    return None, "NONE"
+    return None, "NONE", "unknown"
 
 
 # Hosts we already have dedicated extractors (or a known-good generic path) for.
@@ -539,6 +681,23 @@ def insert_price_history(supabase, *, link_id: str, price: Decimal) -> None:
     supabase.table("price_history").insert(
         {"link_id": link_id, "price": str(price)}
     ).execute()
+
+
+def set_link_stock_status(supabase, *, link_id: str, status: str) -> None:
+    """Record whether the last successful parse found a sellable price."""
+
+    payload = {
+        "stock_status": status,
+        "stock_checked_at": datetime.now(timezone.utc).isoformat(),
+    }
+    try:
+        supabase.table("tracked_links").update(payload).eq("id", link_id).execute()
+    except Exception as error:
+        message = str(error)
+        if "stock_status" in message or "stock_checked_at" in message:
+            print("[WARN] stock_status column missing; run supabase/schema.sql")
+            return
+        print(f"[WARN] could not update stock_status for {link_id}: {error}")
 
 
 def log_event(supabase, *, level: str, message: str, link_id: Optional[str] = None) -> None:
@@ -1061,10 +1220,13 @@ def run_test_mode(test_url: str) -> None:
             print(f"[TEST_HTTP_{status}] url={test_url}")
             return
 
-        price, source = scrape_price(page, url=test_url, retailer=retailer)
-        print(f"[TEST_RESULT] url={test_url} retailer={retailer} price={price} source={source}")
+        price, source, stock = scrape_price(page, url=test_url, retailer=retailer)
+        print(
+            f"[TEST_RESULT] url={test_url} retailer={retailer} "
+            f"price={price} source={source} stock={stock}"
+        )
 
-        if price is None:
+        if price is None and stock != "unavailable":
             save_page_snapshot(page, label=urlparse(test_url).hostname or "page")
 
     run_with_page(handler)
@@ -1157,13 +1319,28 @@ def run() -> None:
             # structured product data in that case — CSS on an error page
             # would write a fake price and bump the "checked" date.
             try:
-                price, source = scrape_price(page, url=url, retailer=retailer)
+                price, source, stock = scrape_price(page, url=url, retailer=retailer)
             except Exception as error:
-                price, source = None, "ERROR"
+                price, source, stock = None, "ERROR", "unknown"
                 print(f"[WARN] scrape failed for {url}: {error}")
 
             if blocked and source not in {"JSON_LD", "SHOPIFY_JSON"}:
                 price = None
+                if stock != "unavailable":
+                    stock = "unknown"
+
+            if stock == "unavailable":
+                set_link_stock_status(supabase, link_id=link_id, status="unavailable")
+                stats["ok"] += 1
+                log_event(
+                    supabase,
+                    level="info",
+                    message=f"{product_name} at {retailer}: currently unavailable.",
+                    link_id=link_id,
+                )
+                print(f"[UNAVAILABLE] {product_name} at {retailer}")
+                time.sleep(random.uniform(2, 4))
+                continue
 
             if price is None:
                 stats["failed"] += 1
@@ -1210,6 +1387,7 @@ def run() -> None:
 
             try:
                 insert_price_history(supabase, link_id=link_id, price=price)
+                set_link_stock_status(supabase, link_id=link_id, status="in_stock")
                 stats["ok"] += 1
                 print(f"[OK] {product_name} at {retailer}: ${price} (via {source})")
             except Exception as error:

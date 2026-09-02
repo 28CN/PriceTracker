@@ -79,3 +79,20 @@ alter table public.products
   add column if not exists image_url text;
 
 create index if not exists products_list_kind_idx on public.products (list_kind);
+
+-- 7. Stock status from the last successful parse. Unavailable items must not
+-- keep showing a related-product price (or any older figure) as if it were
+-- still for sale.
+alter table public.tracked_links
+  add column if not exists stock_status text not null default 'unknown';
+
+alter table public.tracked_links
+  drop constraint if exists tracked_links_stock_status_check;
+
+alter table public.tracked_links
+  add constraint tracked_links_stock_status_check
+  check (stock_status in ('unknown', 'in_stock', 'unavailable'));
+
+alter table public.tracked_links
+  add column if not exists stock_checked_at timestamptz;
+

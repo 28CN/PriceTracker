@@ -4,13 +4,16 @@ import { useState } from 'react';
 
 import EditProductForm from '@/components/EditProductForm';
 import RetailerLogo from '@/components/RetailerLogo';
-import { formatCheckedAt, formatMoney } from '@/lib/format';
+import { formatCheckedAt, formatMoney, latestTimestamp } from '@/lib/format';
 import { hasCrawlerSupport } from '@/lib/retailer';
 import type { ProductView } from '@/lib/types';
 
 function ProductCard({ product }: { product: ProductView }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const activeLinks = product.links.filter((link) => link.isActive);
+  const allUnavailable =
+    activeLinks.length > 0 && activeLinks.every((link) => link.stockStatus === 'unavailable');
   const hitsTarget =
     product.targetPrice !== null &&
     product.lowestPrice !== null &&
@@ -21,7 +24,9 @@ function ProductCard({ product }: { product: ProductView }) {
       (link.latestPrice !== null && link.latestPrice === product.lowestPrice)
   );
   // Date belongs to the price on screen, not the most recently crawled shop.
-  const checkedAt = bestLink?.latestAt ?? null;
+  const checkedAt = allUnavailable
+    ? latestTimestamp(activeLinks.map((link) => link.latestAt))
+    : bestLink?.latestAt ?? null;
 
   function openEditor(event: React.MouseEvent) {
     event.stopPropagation();
@@ -55,13 +60,24 @@ function ProductCard({ product }: { product: ProductView }) {
             ) : null}
           </div>
           <div className="price-block">
-            {product.lowestPrice === null ? (
+            {allUnavailable ? (
+              <span className="price muted">Unavailable</span>
+            ) : product.lowestPrice === null ? (
               <span className="price muted">No price yet</span>
             ) : (
               <span className="price">{formatMoney(product.lowestPrice)}</span>
             )}
             <span className="price-note price-note-shop">
-              {product.lowestRetailer ? (
+              {allUnavailable ? (
+                activeLinks.length === 1 ? (
+                  <>
+                    <RetailerLogo retailer={activeLinks[0].retailer} url={activeLinks[0].url} />
+                    <span>at {activeLinks[0].retailer}</span>
+                  </>
+                ) : (
+                  `${activeLinks.length} shops`
+                )
+              ) : product.lowestRetailer ? (
                 <>
                   <RetailerLogo retailer={product.lowestRetailer} url={bestLink?.url} />
                   <span>at {product.lowestRetailer}</span>
@@ -110,14 +126,20 @@ function ProductCard({ product }: { product: ProductView }) {
               <div className="row-side">
                 <span
                   className={`row-price ${
-                    link.latestPrice === null
-                      ? 'none'
-                      : link.latestPrice === product.lowestPrice
-                        ? 'best'
-                        : ''
+                    link.stockStatus === 'unavailable'
+                      ? 'unavailable'
+                      : link.latestPrice === null
+                        ? 'none'
+                        : link.latestPrice === product.lowestPrice
+                          ? 'best'
+                          : ''
                   }`}
                 >
-                  {link.latestPrice === null ? '--' : formatMoney(link.latestPrice)}
+                  {link.stockStatus === 'unavailable'
+                    ? 'Unavailable'
+                    : link.latestPrice === null
+                      ? '--'
+                      : formatMoney(link.latestPrice)}
                 </span>
                 {link.url ? (
                   <a className="open-link" href={link.url} target="_blank" rel="noreferrer">
