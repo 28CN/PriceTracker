@@ -29,7 +29,7 @@ export const SEARCH_RETAILERS: SearchRetailer[] = [
     id: 'coles',
     name: 'Coles',
     defaultOn: true,
-    fallbackUrl: (q) => `https://www.coles.com.au/search?q=${encodeURIComponent(q)}`
+    fallbackUrl: (q) => `https://www.coles.com.au/search/products?q=${encodeURIComponent(q)}`
   },
   {
     id: 'woolworths',
@@ -37,24 +37,6 @@ export const SEARCH_RETAILERS: SearchRetailer[] = [
     defaultOn: true,
     fallbackUrl: (q) =>
       `https://www.woolworths.com.au/shop/search/products?searchTerm=${encodeURIComponent(q)}`
-  },
-  {
-    id: 'bigw',
-    name: 'Big W',
-    defaultOn: false,
-    fallbackUrl: (q) => `https://www.bigw.com.au/search?text=${encodeURIComponent(q)}`
-  },
-  {
-    id: 'kmart',
-    name: 'Kmart',
-    defaultOn: false,
-    fallbackUrl: (q) => `https://www.kmart.com.au/search?q=${encodeURIComponent(q)}`
-  },
-  {
-    id: 'bunnings',
-    name: 'Bunnings',
-    defaultOn: false,
-    fallbackUrl: (q) => `https://www.bunnings.com.au/search/products?q=${encodeURIComponent(q)}`
   },
   {
     id: 'rejectshop',
@@ -67,6 +49,18 @@ export const SEARCH_RETAILERS: SearchRetailer[] = [
     name: 'Target',
     defaultOn: false,
     fallbackUrl: (q) => `https://www.target.com.au/search?text=${encodeURIComponent(q)}`
+  },
+  {
+    id: 'kmart',
+    name: 'Kmart',
+    defaultOn: false,
+    fallbackUrl: (q) => `https://www.kmart.com.au/search?q=${encodeURIComponent(q)}`
+  },
+  {
+    id: 'bunnings',
+    name: 'Bunnings',
+    defaultOn: false,
+    fallbackUrl: (q) => `https://www.bunnings.com.au/search/products?q=${encodeURIComponent(q)}`
   },
   {
     id: 'chemistwarehouse',
@@ -82,16 +76,46 @@ export const SEARCH_RETAILERS: SearchRetailer[] = [
     fallbackUrl: (q) => `https://www.priceline.com.au/search?q=${encodeURIComponent(q)}`
   },
   {
+    id: 'bigw',
+    name: 'Big W',
+    defaultOn: false,
+    fallbackUrl: (q) => `https://www.bigw.com.au/search?text=${encodeURIComponent(q)}`
+  },
+  {
     id: 'terrywhite',
     name: 'Terry White',
     defaultOn: false,
     fallbackUrl: (q) =>
-      `https://www.terrywhitechemmart.com.au/search?q=${encodeURIComponent(q)}`
+      `https://www.terrywhitechemmart.com.au/shop/products?query=${encodeURIComponent(q)}`
+  },
+  {
+    id: 'myer',
+    name: 'Myer',
+    defaultOn: false,
+    fallbackUrl: (q) => `https://www.myer.com.au/search?query=${encodeURIComponent(q)}`
+  },
+  {
+    id: 'bestandless',
+    name: 'Best & Less',
+    defaultOn: false,
+    fallbackUrl: (q) => `https://www.bestandless.com.au/search?q=${encodeURIComponent(q)}`
+  },
+  {
+    id: 'repco',
+    name: 'Repco',
+    defaultOn: false,
+    fallbackUrl: (q) => `https://www.repco.com.au/search?q=${encodeURIComponent(q)}`
+  },
+  {
+    id: 'supercheapauto',
+    name: 'Supercheap Auto',
+    defaultOn: false,
+    fallbackUrl: (q) => `https://www.supercheapauto.com.au/search?q=${encodeURIComponent(q)}`
   }
 ];
 
 const RESULT_CAP = 8;
-const FETCH_MS = 8000;
+const FETCH_MS = 12000;
 const BROWSER_UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 
@@ -106,29 +130,50 @@ function shopHeaders(origin: string, referer?: string, extra?: HeadersInit): Hea
   };
 }
 
-function cookiesFrom(response: Response): string {
-  const getter = (
-    response.headers as Headers & { getSetCookie?: () => string[] }
-  ).getSetCookie;
-  const parts = typeof getter === 'function' ? getter.call(response.headers) : [];
-  if (parts.length === 0) {
-    const single = response.headers.get('set-cookie');
-    return single ? single.split(',')[0] : '';
-  }
-  return parts.map((row) => row.split(';')[0]).join('; ');
-}
-
 async function fetchWithTimeout(url: string, init: RequestInit = {}): Promise<Response> {
   return fetch(url, { ...init, cache: 'no-store', signal: AbortSignal.timeout(FETCH_MS) });
+}
+
+function decodeEntities(value: string): string {
+  return value
+    .replace(/&amp;/gi, '&')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#x27;/gi, "'")
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)));
+}
+
+function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/['’]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
 }
 
 function toAbs(base: string, maybeUrl: string | null | undefined): string | null {
   if (!maybeUrl) return null;
   try {
-    return new URL(maybeUrl, base).toString();
+    return new URL(decodeEntities(maybeUrl).split('#')[0], base).toString();
   } catch {
     return null;
   }
+}
+
+function unwrapImageUrl(url: string | null): string | null {
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    const nested = parsed.searchParams.get('url');
+    if (parsed.pathname.includes('/_next/image') && nested) {
+      return nested;
+    }
+  } catch {
+    // Keep the original URL.
+  }
+  return url;
 }
 
 function parseMoney(value: unknown): number | null {
@@ -148,6 +193,9 @@ function parseMoney(value: unknown): number | null {
       parseMoney(record.current) ??
       parseMoney(record.amount) ??
       parseMoney(record.min) ??
+      parseMoney(record.lowPrice) ??
+      parseMoney(record.value) ??
+      parseMoney(record.formattedValue) ??
       parseMoney(record.price)
     );
   }
@@ -170,17 +218,71 @@ function pickImage(node: Record<string, unknown>): string | null {
     if (typeof nested.url === 'string') return nested.url;
     if (typeof nested.src === 'string') return nested.src;
   }
+  if (Array.isArray(direct) && direct[0] && typeof direct[0] === 'object') {
+    const nested = direct[0] as Record<string, unknown>;
+    if (typeof nested.url === 'string') return nested.url;
+    if (typeof nested.src === 'string') return nested.src;
+    if (typeof nested.uri === 'string') {
+      return nested.uri.startsWith('/')
+        ? `https://cdn.productimages.coles.com.au/productimages${nested.uri}`
+        : nested.uri;
+    }
+  }
+  if (Array.isArray(node.imageUris) && node.imageUris[0] && typeof node.imageUris[0] === 'object') {
+    const nested = node.imageUris[0] as Record<string, unknown>;
+    if (typeof nested.uri === 'string') {
+      return nested.uri.startsWith('/')
+        ? `https://cdn.productimages.coles.com.au/productimages${nested.uri}`
+        : nested.uri;
+    }
+  }
   return null;
 }
 
-function isProductUrl(url: string): boolean {
-  const u = url.toLowerCase();
-  return (
-    u.includes('/product') ||
-    u.includes('productdetails') ||
-    /\/products\//.test(u) ||
-    /_p\d+/.test(u)
-  );
+function isProductUrl(url: string, retailerId?: string): boolean {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return false;
+  }
+  const path = parsed.pathname.toLowerCase();
+  if (
+    path.includes('/search') ||
+    path.includes('/category') ||
+    path.includes('/categories') ||
+    path.includes('/policies') ||
+    path === '/'
+  ) {
+    return false;
+  }
+
+  const segments = path.split('/').filter(Boolean);
+  if (
+    segments.includes('product') ||
+    segments.includes('products') ||
+    segments.includes('productdetails') ||
+    segments.includes('buy')
+  ) {
+    return true;
+  }
+  if (path.includes('productdetails') || /_p\d+/.test(path)) {
+    return true;
+  }
+  if (
+    (retailerId === 'target' ||
+      retailerId === 'bigw' ||
+      retailerId === 'kmart' ||
+      retailerId === 'supercheapauto' ||
+      retailerId === 'repco') &&
+    segments.includes('p')
+  ) {
+    return true;
+  }
+  if (segments[0] === 'p' && /\.html$/i.test(path)) {
+    return true;
+  }
+  return false;
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -211,12 +313,18 @@ function collectHits(
   const record = asRecord(node);
   if (!record) return;
 
-  const name =
+  const brand = typeof record.brand === 'string' ? record.brand.trim() : '';
+  const baseName =
     (typeof record.DisplayName === 'string' && record.DisplayName) ||
     (typeof record.name === 'string' && record.name) ||
     (typeof record.title === 'string' && record.title) ||
     (typeof record.productName === 'string' && record.productName) ||
+    (typeof record.headline === 'string' && record.headline) ||
     '';
+  const name =
+    brand && baseName && !baseName.toLowerCase().startsWith(brand.toLowerCase())
+      ? `${brand} ${baseName}`
+      : baseName;
 
   const urlRaw =
     (typeof record.url === 'string' && record.url) ||
@@ -224,6 +332,9 @@ function collectHits(
     (typeof record.productUrl === 'string' && record.productUrl) ||
     (typeof record.pdpUrl === 'string' && record.pdpUrl) ||
     (typeof record.seoToken === 'string' && record.seoToken) ||
+    (typeof record.seoUrl === 'string' && record.seoUrl) ||
+    (typeof record.link === 'string' && record.link) ||
+    (typeof record['@id'] === 'string' && record['@id']) ||
     '';
 
   const stockcode = record.Stockcode ?? record.stockcode ?? record.sku;
@@ -236,15 +347,21 @@ function collectHits(
   if (!url && retailerId === 'woolworths' && stockcode) {
     url = `https://www.woolworths.com.au/shop/productdetails/${stockcode}/${slug || 'product'}`;
   }
+  if (!url && retailerId === 'coles' && name && (typeof record.id === 'number' || typeof record.id === 'string')) {
+    const size = typeof record.size === 'string' ? record.size : '';
+    url = `https://www.coles.com.au/product/${slugify(`${name} ${size}`)}-${record.id}`;
+  }
 
   const price =
     parseMoney(record.Price) ??
+    parseMoney(record.InstantPrice) ??
     parseMoney(record.price) ??
     parseMoney(record.currentPrice) ??
     parseMoney(record.pricing) ??
-    parseMoney(record.priceInfo);
+    parseMoney(record.priceInfo) ??
+    parseMoney(record.offers);
 
-  if (name && url && isProductUrl(url) && !seen.has(url)) {
+  if (name && url && isProductUrl(url, retailerId) && !seen.has(url)) {
     seen.add(url);
     out.push({
       retailer: retailerName,
@@ -252,7 +369,7 @@ function collectHits(
       name: name.trim(),
       price,
       url,
-      imageUrl: toAbs(origin, pickImage(record))
+      imageUrl: unwrapImageUrl(toAbs(origin, pickImage(record)))
     });
   }
 
@@ -265,14 +382,98 @@ function collectHits(
 }
 
 function extractNextData(html: string): unknown | null {
-  const match = html.match(
-    /<script id="__NEXT_DATA__"[^>]*>([^<]+)<\/script>/
-  );
+  const match = html.match(/<script id="__NEXT_DATA__"[^>]*>([^<]+)<\/script>/);
   if (!match) return null;
   try {
     return JSON.parse(match[1]);
   } catch {
     return null;
+  }
+}
+
+function extractJsonLd(html: string): unknown[] {
+  const blocks: unknown[] = [];
+  const re = /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(html))) {
+    try {
+      blocks.push(JSON.parse(match[1]));
+    } catch {
+      // Ignore broken JSON-LD blocks.
+    }
+  }
+  return blocks;
+}
+
+function nameFromUrl(url: string): string {
+  try {
+    const parts = new URL(url).pathname.split('/').filter(Boolean);
+    const last = (parts[parts.length - 1] || parts[parts.length - 2] || '')
+      .replace(/\.\w+$/, '')
+      .replace(/\b\d{4,}\b/g, '');
+    const cleaned = decodeURIComponent(last)
+      .replace(/[-_]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return cleaned.length >= 3 ? cleaned : 'Product';
+  } catch {
+    return 'Product';
+  }
+}
+
+function collectHitsFromMarkup(
+  html: string,
+  origin: string,
+  retailerId: string,
+  retailerName: string,
+  out: SearchHit[],
+  seen: Set<string>
+): void {
+  const cleaned = html
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ');
+
+  const hrefRe = /href=["']([^"']+)["']/gi;
+  const candidates: { url: string; index: number }[] = [];
+  let match: RegExpExecArray | null;
+  while ((match = hrefRe.exec(cleaned))) {
+    const abs = toAbs(origin, match[1].split('#')[0]);
+    if (!abs || !isProductUrl(abs, retailerId)) continue;
+    if (candidates.some((item) => item.url === abs)) continue;
+    candidates.push({ url: abs, index: match.index });
+  }
+
+  for (const candidate of candidates) {
+    if (out.length >= RESULT_CAP) return;
+    if (seen.has(candidate.url)) continue;
+
+    const snippet = cleaned.slice(Math.max(0, candidate.index - 500), candidate.index + 900);
+    const img = snippet.match(
+      /<img[^>]+(?:src=["']([^"']+)["'][^>]*alt=["']([^"']*)["']|alt=["']([^"']*)["'][^>]*src=["']([^"']+)["'])/i
+    );
+    const heading = snippet.match(
+      /<(?:h[1-6]|p|span|div)[^>]*>\s*([^<]{4,140})\s*<\/(?:h[1-6]|p|span|div)>/i
+    );
+    const alt = (img?.[2] || img?.[3] || '').trim();
+    const headingText = (heading?.[1] || '').replace(/\s+/g, ' ').trim();
+    let name = alt || headingText || nameFromUrl(candidate.url);
+    if (!name || /skip to|sign in|log in|cart/i.test(name)) continue;
+    if (/^(every day|special|save|shop now|add|price|product)$/i.test(name)) {
+      name = nameFromUrl(candidate.url);
+    }
+
+    const priceMatch = snippet.replace(/,/g, '').match(/\$(\d+(?:\.\d{1,2})?)/);
+    const src = img?.[1] || img?.[4] || null;
+
+    seen.add(candidate.url);
+    out.push({
+      retailer: retailerName,
+      retailerId,
+      name: decodeEntities(name).slice(0, 160),
+      price: priceMatch ? Number(priceMatch[1]) : null,
+      url: candidate.url,
+      imageUrl: unwrapImageUrl(toAbs(origin, src))
+    });
   }
 }
 
@@ -289,11 +490,21 @@ async function searchFromHtml(
     throw new Error(`HTTP ${response.status}`);
   }
   const html = await response.text();
-  const nextData = extractNextData(html);
   const hits: SearchHit[] = [];
   const seen = new Set<string>();
+
+  const nextData = extractNextData(html);
   if (nextData) {
     collectHits(nextData, origin, retailerId, retailerName, hits, seen);
+  }
+  if (hits.length < RESULT_CAP) {
+    for (const block of extractJsonLd(html)) {
+      collectHits(block, origin, retailerId, retailerName, hits, seen);
+      if (hits.length >= RESULT_CAP) break;
+    }
+  }
+  if (hits.length < RESULT_CAP) {
+    collectHitsFromMarkup(html, origin, retailerId, retailerName, hits, seen);
   }
   return hits;
 }
@@ -301,39 +512,40 @@ async function searchFromHtml(
 async function searchWoolworths(query: string): Promise<SearchHit[]> {
   const origin = 'https://www.woolworths.com.au';
   const referer = `https://www.woolworths.com.au/shop/search/products?searchTerm=${encodeURIComponent(query)}`;
-  const home = await fetchWithTimeout(`${origin}/`, { headers: shopHeaders(origin) });
-  const cookie = cookiesFrom(home);
 
-  const response = await fetchWithTimeout(`${origin}/apis/ui/Search/products`, {
-    method: 'POST',
-    headers: shopHeaders(origin, referer, {
-      'Content-Type': 'application/json',
-      Cookie: cookie
-    }),
-    body: JSON.stringify({
-      SearchTerm: query,
-      PageNumber: 1,
-      PageSize: RESULT_CAP,
-      SortType: 'TraderRelevance',
-      Location: '',
-      Filters: [],
-      IsSpecial: false
-    })
-  });
+  try {
+    const response = await fetchWithTimeout(`${origin}/apis/ui/Search/products`, {
+      method: 'POST',
+      headers: shopHeaders(origin, referer, {
+        'Content-Type': 'application/json'
+      }),
+      body: JSON.stringify({
+        SearchTerm: query,
+        PageNumber: 1,
+        PageSize: RESULT_CAP,
+        SortType: 'TraderRelevance',
+        Location: '',
+        Filters: [],
+        IsSpecial: false
+      })
+    });
 
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status}`);
+    if (response.ok) {
+      const payload = (await response.json()) as unknown;
+      const hits: SearchHit[] = [];
+      collectHits(payload, origin, 'woolworths', 'Woolworths', hits, new Set());
+      if (hits.length > 0) return hits;
+    }
+  } catch {
+    // HTML search page next; the home-page cookie hop often hangs.
   }
 
-  const payload = (await response.json()) as unknown;
-  const hits: SearchHit[] = [];
-  collectHits(payload, origin, 'woolworths', 'Woolworths', hits, new Set());
-  return hits;
+  return searchFromHtml(referer, origin, 'woolworths', 'Woolworths');
 }
 
 async function searchColes(query: string): Promise<SearchHit[]> {
   const origin = 'https://www.coles.com.au';
-  const pageUrl = `https://www.coles.com.au/search?q=${encodeURIComponent(query)}`;
+  const pageUrl = `https://www.coles.com.au/search/products?q=${encodeURIComponent(query)}`;
   const endpoints = [
     `${origin}/api/products/v2/search?q=${encodeURIComponent(query)}&limit=${RESULT_CAP}`,
     `${origin}/api/products/search?q=${encodeURIComponent(query)}`
@@ -359,22 +571,33 @@ async function searchColes(query: string): Promise<SearchHit[]> {
 
 async function searchShopify(origin: string, query: string, retailerId: string, name: string) {
   const url = `${origin}/search/suggest.json?q=${encodeURIComponent(query)}&resources[type]=product&resources[limit]=${RESULT_CAP}`;
-  const response = await fetchWithTimeout(url, { headers: shopHeaders(origin) });
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status}`);
+  try {
+    const response = await fetchWithTimeout(url, { headers: shopHeaders(origin) });
+    if (response.ok) {
+      const payload = (await response.json()) as unknown;
+      const hits: SearchHit[] = [];
+      collectHits(payload, origin, retailerId, name, hits, new Set());
+      if (hits.length > 0) return hits;
+    }
+  } catch {
+    // Fall through to search.json / HTML.
   }
-  const payload = (await response.json()) as unknown;
-  const hits: SearchHit[] = [];
-  collectHits(payload, origin, retailerId, name, hits, new Set());
-  if (hits.length > 0) return hits;
 
-  const searchJson = await fetchWithTimeout(
-    `${origin}/search.json?q=${encodeURIComponent(query)}&type=product`,
-    { headers: shopHeaders(origin) }
-  );
-  if (!searchJson.ok) return hits;
-  collectHits(await searchJson.json(), origin, retailerId, name, hits, new Set());
-  return hits;
+  try {
+    const searchJson = await fetchWithTimeout(
+      `${origin}/search.json?q=${encodeURIComponent(query)}&type=product`,
+      { headers: shopHeaders(origin) }
+    );
+    if (searchJson.ok) {
+      const hits: SearchHit[] = [];
+      collectHits(await searchJson.json(), origin, retailerId, name, hits, new Set());
+      if (hits.length > 0) return hits;
+    }
+  } catch {
+    // Fall through to the HTML search page.
+  }
+
+  return searchFromHtml(`${origin}/search?q=${encodeURIComponent(query)}`, origin, retailerId, name);
 }
 
 async function searchChemistWarehouse(query: string): Promise<SearchHit[]> {
@@ -403,6 +626,169 @@ async function searchChemistWarehouse(query: string): Promise<SearchHit[]> {
   return searchFromHtml(pageUrl, origin, 'chemistwarehouse', 'Chemist Warehouse');
 }
 
+function occImage(images: unknown, pageOrigin: string): string | null {
+  if (!Array.isArray(images)) return null;
+  const records = images.filter((item): item is Record<string, unknown> => Boolean(asRecord(item)));
+  const preferred =
+    records.find((item) => item.format === 'product') ||
+    records.find((item) => item.format === 'productListImage') ||
+    records[0];
+  const raw = preferred && typeof preferred.url === 'string' ? preferred.url : null;
+  return toAbs(pageOrigin, raw);
+}
+
+async function searchOcc(options: {
+  apiOrigin: string;
+  siteId: string;
+  pageOrigin: string;
+  query: string;
+  retailerId: string;
+  retailerName: string;
+}): Promise<SearchHit[]> {
+  const url = `${options.apiOrigin}/occ/v2/${options.siteId}/products/search?query=${encodeURIComponent(options.query)}&pageSize=${RESULT_CAP}&fields=FULL`;
+  const response = await fetchWithTimeout(url, {
+    headers: shopHeaders(options.pageOrigin, `${options.pageOrigin}/search?q=${encodeURIComponent(options.query)}`, {
+      Accept: 'application/json'
+    })
+  });
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
+  }
+  const payload = (await response.json()) as { products?: unknown[] };
+  const hits: SearchHit[] = [];
+  const seen = new Set<string>();
+  for (const item of payload.products || []) {
+    if (hits.length >= RESULT_CAP) break;
+    const record = asRecord(item);
+    if (!record) continue;
+    const name = typeof record.name === 'string' ? record.name.trim() : '';
+    const productUrl = toAbs(options.pageOrigin, typeof record.url === 'string' ? record.url : null);
+    if (!name || !productUrl || seen.has(productUrl)) continue;
+    seen.add(productUrl);
+    hits.push({
+      retailer: options.retailerName,
+      retailerId: options.retailerId,
+      name,
+      price: parseMoney(record.price),
+      url: productUrl,
+      imageUrl:
+        unwrapImageUrl(
+          (typeof record.image_url === 'string' && record.image_url) ||
+            occImage(record.images, options.pageOrigin)
+        ) || null
+    });
+  }
+  return hits;
+}
+
+async function searchMyer(query: string): Promise<SearchHit[]> {
+  const origin = 'https://www.myer.com.au';
+  const pageUrl = `${origin}/search?query=${encodeURIComponent(query)}`;
+  const response = await fetchWithTimeout(pageUrl, { headers: shopHeaders(origin, pageUrl) });
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
+  }
+  const html = await response.text();
+  const nextData = extractNextData(html);
+  const root = asRecord(nextData);
+  const queries =
+    (asRecord(asRecord(asRecord(root?.props)?.pageProps)?.dehydratedState)?.queries as unknown[]) ||
+    [];
+
+  let products: unknown[] = [];
+  for (const item of queries) {
+    const record = asRecord(item);
+    const key = record?.queryKey;
+    if (!Array.isArray(key) || key[0] !== 'search') continue;
+    const data = asRecord(asRecord(record?.state)?.data);
+    if (Array.isArray(data?.productList)) {
+      products = data.productList;
+      break;
+    }
+  }
+
+  const hits: SearchHit[] = [];
+  const seen = new Set<string>();
+  for (const item of products) {
+    if (hits.length >= RESULT_CAP) break;
+    const record = asRecord(item);
+    if (!record) continue;
+    const seoToken = typeof record.seoToken === 'string' ? record.seoToken : '';
+    const baseName = typeof record.name === 'string' ? record.name.trim() : '';
+    const brand = typeof record.brand === 'string' ? record.brand.trim() : '';
+    const name =
+      brand && baseName && !baseName.toLowerCase().startsWith(brand.toLowerCase())
+        ? `${brand} ${baseName}`
+        : baseName;
+    if (!name || !seoToken) continue;
+    const url = `${origin}/p/${seoToken}`;
+    if (seen.has(url)) continue;
+    seen.add(url);
+
+    const media = Array.isArray(record.media) ? record.media : [];
+    const firstImage = asRecord(media.find((entry) => asRecord(entry)?.type === 'IMAGES') || media[0]);
+    const baseUrl = typeof firstImage?.baseUrl === 'string' ? firstImage.baseUrl : '';
+    const imageUrl = baseUrl
+      ? `https://myer-media.com.au/wcsstore/MyerCatalogAssetStore/${baseUrl.replace('{{size}}', '720x928')}`
+      : null;
+
+    hits.push({
+      retailer: 'Myer',
+      retailerId: 'myer',
+      name,
+      price: parseMoney(record.priceFrom) ?? parseMoney(record.myerOnePriceFrom),
+      url,
+      imageUrl
+    });
+  }
+  if (hits.length > 0) return hits;
+  return searchFromHtml(pageUrl, origin, 'myer', 'Myer');
+}
+
+async function searchDemandwareSuggestions(
+  origin: string,
+  siteId: string,
+  query: string,
+  retailerId: string,
+  retailerName: string
+): Promise<SearchHit[]> {
+  const url = `${origin}/on/demandware.store/Sites-${siteId}/en_AU/Search-GetSuggestions?q=${encodeURIComponent(query)}`;
+  const response = await fetchWithTimeout(url, {
+    headers: shopHeaders(origin, `${origin}/search?q=${encodeURIComponent(query)}`)
+  });
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
+  }
+  const html = await response.text();
+  const hits: SearchHit[] = [];
+  const seen = new Set<string>();
+  const blockRe =
+    /<a class="product-link product-panel" href="([^"]+)">([\s\S]*?)<\/a>/gi;
+  let match: RegExpExecArray | null;
+  while ((match = blockRe.exec(html))) {
+    if (hits.length >= RESULT_CAP) break;
+    const productUrl = toAbs(origin, match[1]);
+    if (!productUrl || seen.has(productUrl) || !isProductUrl(productUrl, retailerId)) continue;
+    const block = match[2];
+    const nameMatch = block.match(/<div class="product-name">\s*([^<]+)/i);
+    const img = block.match(/<img[^>]+src="([^"]+)"[^>]*alt="([^"]*)"/i);
+    const priceMatch = decodeEntities(block).replace(/,/g, '').match(/\$(\d+(?:\.\d{1,2})?)/);
+    const name = (nameMatch?.[1] || img?.[2] || nameFromUrl(productUrl)).replace(/\s+/g, ' ').trim();
+    if (!name) continue;
+    seen.add(productUrl);
+    hits.push({
+      retailer: retailerName,
+      retailerId,
+      name,
+      price: priceMatch ? Number(priceMatch[1]) : null,
+      url: productUrl,
+      imageUrl: unwrapImageUrl(toAbs(origin, img?.[1] || null))
+    });
+  }
+  if (hits.length > 0) return hits;
+  return searchFromHtml(`${origin}/search?q=${encodeURIComponent(query)}`, origin, retailerId, retailerName);
+}
+
 const ADAPTERS: Record<string, (query: string) => Promise<SearchHit[]>> = {
   woolworths: searchWoolworths,
   coles: searchColes,
@@ -410,15 +796,17 @@ const ADAPTERS: Record<string, (query: string) => Promise<SearchHit[]>> = {
     searchShopify('https://www.therejectshop.com.au', q, 'rejectshop', 'The Reject Shop'),
   chemistwarehouse: searchChemistWarehouse,
   priceline: (q) =>
-    searchFromHtml(
-      `https://www.priceline.com.au/search?q=${encodeURIComponent(q)}`,
-      'https://www.priceline.com.au',
-      'priceline',
-      'Priceline'
-    ),
+    searchOcc({
+      apiOrigin: 'https://api.priceline.com.au',
+      siteId: 'priceline',
+      pageOrigin: 'https://www.priceline.com.au',
+      query: q,
+      retailerId: 'priceline',
+      retailerName: 'Priceline'
+    }),
   terrywhite: (q) =>
     searchFromHtml(
-      `https://www.terrywhitechemmart.com.au/search?q=${encodeURIComponent(q)}`,
+      `https://www.terrywhitechemmart.com.au/shop/products?query=${encodeURIComponent(q)}`,
       'https://www.terrywhitechemmart.com.au',
       'terrywhite',
       'Terry White'
@@ -429,6 +817,53 @@ const ADAPTERS: Record<string, (query: string) => Promise<SearchHit[]>> = {
       'https://www.bunnings.com.au',
       'bunnings',
       'Bunnings'
+    ),
+  kmart: (q) =>
+    searchFromHtml(
+      `https://www.kmart.com.au/search?q=${encodeURIComponent(q)}`,
+      'https://www.kmart.com.au',
+      'kmart',
+      'Kmart'
+    ),
+  target: (q) =>
+    searchFromHtml(
+      `https://www.target.com.au/search?text=${encodeURIComponent(q)}`,
+      'https://www.target.com.au',
+      'target',
+      'Target'
+    ),
+  bigw: (q) =>
+    searchFromHtml(
+      `https://www.bigw.com.au/search?text=${encodeURIComponent(q)}`,
+      'https://www.bigw.com.au',
+      'bigw',
+      'Big W'
+    ),
+  myer: searchMyer,
+  bestandless: (q) =>
+    searchOcc({
+      apiOrigin: 'https://prodapi.bestandless.com.au',
+      siteId: 'bnlsite',
+      pageOrigin: 'https://www.bestandless.com.au',
+      query: q,
+      retailerId: 'bestandless',
+      retailerName: 'Best & Less'
+    }),
+  supercheapauto: (q) =>
+    searchDemandwareSuggestions(
+      'https://www.supercheapauto.com.au',
+      'supercheap-au-Site',
+      q,
+      'supercheapauto',
+      'Supercheap Auto'
+    ),
+  repco: (q) =>
+    searchDemandwareSuggestions(
+      'https://www.repco.com.au',
+      'repco-au-Site',
+      q,
+      'repco',
+      'Repco'
     )
 };
 
@@ -440,8 +875,8 @@ export function googleShoppingUrl(query: string): string {
   return `https://www.google.com.au/search?tbm=shop&q=${encodeURIComponent(query)}`;
 }
 
-function cloudBlockedMessage(): string {
-  return 'Vercel’s datacentre IP is blocked by this shop. That is not a ban of this site, and waiting overnight will not help. Open the shop in your own browser instead.';
+function shopBlockedMessage(): string {
+  return 'This shop blocked the request. Open shop search in your browser.';
 }
 
 export async function searchRetailer(retailerId: string, query: string): Promise<ShopSearchResult> {
@@ -465,7 +900,7 @@ export async function searchRetailer(retailerId: string, query: string): Promise
       retailerId: shop.id,
       results: [],
       fallbackUrl,
-      error: cloudBlockedMessage()
+      error: shopBlockedMessage()
     };
   }
 
@@ -477,8 +912,7 @@ export async function searchRetailer(retailerId: string, query: string): Promise
         retailerId: shop.id,
         results: [],
         fallbackUrl,
-        error:
-          'No products came back to the cloud server. Open the shop search in your browser (your home IP is usually allowed).'
+        error: 'No products came back. Open shop search in your browser.'
       };
     }
     return { retailer: shop.name, retailerId: shop.id, results, fallbackUrl };
@@ -490,7 +924,7 @@ export async function searchRetailer(retailerId: string, query: string): Promise
       retailerId: shop.id,
       results: [],
       fallbackUrl,
-      error: blocked ? cloudBlockedMessage() : `${message} Open the shop search in your browser.`
+      error: blocked ? shopBlockedMessage() : `${message} Open shop search in your browser.`
     };
   }
 }
