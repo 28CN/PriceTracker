@@ -63,3 +63,19 @@ create policy "public read tracked links" on public.tracked_links
 drop policy if exists "public read price history" on public.price_history;
 create policy "public read price history" on public.price_history
   for select using (true);
+
+-- 6. Stock status from the last successful parse. Unavailable items must not
+-- keep showing a related-product price (or any older figure) as if it were
+-- still for sale.
+alter table public.tracked_links
+  add column if not exists stock_status text not null default 'unknown';
+
+alter table public.tracked_links
+  drop constraint if exists tracked_links_stock_status_check;
+
+alter table public.tracked_links
+  add constraint tracked_links_stock_status_check
+  check (stock_status in ('unknown', 'in_stock', 'unavailable'));
+
+alter table public.tracked_links
+  add column if not exists stock_checked_at timestamptz;

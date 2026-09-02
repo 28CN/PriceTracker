@@ -67,7 +67,11 @@ export default function ManageProducts({ products }: { products: ProductView[] }
                       <span>{link.retailer}</span>
                     </div>
                     <div className="row-meta">
-                      {link.latestPrice === null ? 'No price yet' : formatMoney(link.latestPrice)}
+                      {link.stockStatus === 'unavailable'
+                        ? 'Unavailable'
+                        : link.latestPrice === null
+                          ? 'No price yet'
+                          : formatMoney(link.latestPrice)}
                       {link.isActive ? '' : ' - paused'}
                     </div>
                   </div>

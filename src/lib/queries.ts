@@ -18,6 +18,8 @@ type RawLink = {
   retailer: string | null;
   url: string | null;
   is_active: boolean | null;
+  stock_status?: string | null;
+  stock_checked_at?: string | null;
 };
 
 type RawPrice = {
@@ -43,11 +45,30 @@ async function fetchLinks(
 
   const { data, error } = await supabase
     .from('tracked_links')
-    .select('id, product_id, retailer, url, is_active')
+    .select('id, product_id, retailer, url, is_active, stock_status, stock_checked_at')
     .in('product_id', productIds);
 
   // A link failure must not hide the products themselves.
   if (error) {
+    if (/stock_status|stock_checked_at/.test(error.message)) {
+      const fallback = await supabase
+        .from('tracked_links')
+        .select('id, product_id, retailer, url, is_active')
+        .in('product_id', productIds);
+      if (fallback.error) {
+        console.error('[queries] could not read tracked_links:', fallback.error.message);
+        return byProduct;
+      }
+      for (const link of (fallback.data || []) as RawLink[]) {
+        const bucket = byProduct.get(link.product_id);
+        if (bucket) {
+          bucket.push(link);
+        } else {
+          byProduct.set(link.product_id, [link]);
+        }
+      }
+      return byProduct;
+    }
     console.error('[queries] could not read tracked_links:', error.message);
     return byProduct;
   }
@@ -95,6 +116,50 @@ async function fetchLatestPrices(
   return latest;
 }
 
+function parseStockStatus(value: string | null | undefined): LinkView['stockStatus'] {
+  if (value === 'unavailable' || value === 'in_stock') {
+    return value;
+  }
+  return 'unknown';
+}
+
+type RawEvent = {
+  link_id: string | null;
+  message: string | null;
+  created_at: string;
+};
+
+async function fetchUnavailableEvents(
+  supabase: SupabaseClient,
+  linkIds: string[]
+): Promise<Map<string, RawEvent>> {
+  const latest = new Map<string, RawEvent>();
+  if (linkIds.length === 0) {
+    return latest;
+  }
+
+  const { data, error } = await supabase
+    .from('crawl_events')
+    .select('link_id, message, created_at')
+    .in('link_id', linkIds)
+    .ilike('message', '%currently unavailable%')
+    .order('created_at', { ascending: false })
+    .limit(PRICE_HISTORY_SCAN_LIMIT);
+
+  if (error) {
+    console.error('[queries] could not read crawl_events:', error.message);
+    return latest;
+  }
+
+  for (const row of (data || []) as RawEvent[]) {
+    if (row.link_id && !latest.has(row.link_id)) {
+      latest.set(row.link_id, row);
+    }
+  }
+
+  return latest;
+}
+
 export async function fetchProducts(): Promise<ProductView[]> {
   const supabase = getReadClient();
 
@@ -122,17 +187,34 @@ export async function fetchProducts(): Promise<ProductView[]> {
     supabase,
     allLinks.map((link) => link.id)
   );
+  const unavailableEvents = await fetchUnavailableEvents(
+    supabase,
+    allLinks.map((link) => link.id)
+  );
 
   return products.map((product) => {
     const links: LinkView[] = (linksByProduct.get(product.id) || []).map((link) => {
       const latest = latestPrices.get(link.id) ?? null;
+      const unavailableEvent = unavailableEvents.get(link.id);
+      let stockStatus = parseStockStatus(link.stock_status);
+      if (
+        stockStatus !== 'in_stock' &&
+        unavailableEvent &&
+        (!latest || unavailableEvent.created_at >= latest.created_at)
+      ) {
+        stockStatus = 'unavailable';
+      }
+      const unavailable = stockStatus === 'unavailable';
       return {
         id: link.id,
         retailer: link.retailer || 'Unknown shop',
         url: link.url || '',
         isActive: link.is_active !== false,
-        latestPrice: latest ? toNumber(latest.price) : null,
-        latestAt: latest?.created_at ?? null
+        stockStatus,
+        latestPrice: unavailable ? null : latest ? toNumber(latest.price) : null,
+        latestAt: unavailable
+          ? link.stock_checked_at || unavailableEvent?.created_at || latest?.created_at || null
+          : latest?.created_at ?? null
       };
     });
 

@@ -1,8 +1,11 @@
+export type StockStatus = 'unknown' | 'in_stock' | 'unavailable';
+
 export type LinkView = {
   id: string;
   retailer: string;
   url: string;
   isActive: boolean;
+  stockStatus: StockStatus;
   latestPrice: number | null;
   latestAt: string | null;
 };
