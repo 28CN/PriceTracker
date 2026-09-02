@@ -1108,7 +1108,7 @@ textarea:focus {
   font: inherit;
 }
 
-.search-card img,
+.search-card-select > img,
 .search-card-ph {
   width: 100%;
   aspect-ratio: 1;
@@ -1148,6 +1148,12 @@ textarea:focus {
   margin: 0;
   font-size: 12px;
   color: var(--muted);
+}
+
+.search-card-shop .retailer-logo {
+  width: 18px;
+  height: 18px;
+  aspect-ratio: auto;
 }
 
 .search-card-pick {

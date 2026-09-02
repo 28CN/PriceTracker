@@ -29,7 +29,7 @@ export const SEARCH_RETAILERS: SearchRetailer[] = [
     id: 'coles',
     name: 'Coles',
     defaultOn: true,
-    fallbackUrl: (q) => `https://www.coles.com.au/search?q=${encodeURIComponent(q)}`
+    fallbackUrl: (q) => `https://www.coles.com.au/search/products?q=${encodeURIComponent(q)}`
   },
   {
     id: 'woolworths',
@@ -122,13 +122,46 @@ async function fetchWithTimeout(url: string, init: RequestInit = {}): Promise<Re
   return fetch(url, { ...init, cache: 'no-store', signal: AbortSignal.timeout(FETCH_MS) });
 }
 
+function decodeEntities(value: string): string {
+  return value
+    .replace(/&amp;/gi, '&')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#x27;/gi, "'")
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)));
+}
+
+function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/['’]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
 function toAbs(base: string, maybeUrl: string | null | undefined): string | null {
   if (!maybeUrl) return null;
   try {
-    return new URL(maybeUrl, base).toString();
+    return new URL(decodeEntities(maybeUrl).split('#')[0], base).toString();
   } catch {
     return null;
   }
+}
+
+function unwrapImageUrl(url: string | null): string | null {
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    const nested = parsed.searchParams.get('url');
+    if (parsed.pathname.includes('/_next/image') && nested) {
+      return nested;
+    }
+  } catch {
+    // Keep the original URL.
+  }
+  return url;
 }
 
 function parseMoney(value: unknown): number | null {
@@ -175,44 +208,59 @@ function pickImage(node: Record<string, unknown>): string | null {
     const nested = direct[0] as Record<string, unknown>;
     if (typeof nested.url === 'string') return nested.url;
     if (typeof nested.src === 'string') return nested.src;
+    if (typeof nested.uri === 'string') {
+      return nested.uri.startsWith('/')
+        ? `https://cdn.productimages.coles.com.au/productimages${nested.uri}`
+        : nested.uri;
+    }
+  }
+  if (Array.isArray(node.imageUris) && node.imageUris[0] && typeof node.imageUris[0] === 'object') {
+    const nested = node.imageUris[0] as Record<string, unknown>;
+    if (typeof nested.uri === 'string') {
+      return nested.uri.startsWith('/')
+        ? `https://cdn.productimages.coles.com.au/productimages${nested.uri}`
+        : nested.uri;
+    }
   }
   return null;
 }
 
 function isProductUrl(url: string, retailerId?: string): boolean {
-  let path = url;
+  let parsed: URL;
   try {
-    path = new URL(url).pathname.toLowerCase();
+    parsed = new URL(url);
   } catch {
-    path = url.toLowerCase();
+    return false;
   }
-
+  const path = parsed.pathname.toLowerCase();
   if (
     path.includes('/search') ||
     path.includes('/category') ||
     path.includes('/categories') ||
+    path.includes('/policies') ||
     path === '/'
   ) {
     return false;
   }
 
+  const segments = path.split('/').filter(Boolean);
   if (
-    path.includes('/product') ||
-    path.includes('productdetails') ||
-    path.includes('/buy/') ||
-    /\/products\//.test(path) ||
-    /_p\d+/.test(path)
+    segments.includes('product') ||
+    segments.includes('products') ||
+    segments.includes('productdetails') ||
+    segments.includes('buy')
   ) {
     return true;
   }
-
+  if (path.includes('productdetails') || /_p\d+/.test(path)) {
+    return true;
+  }
   if (
     (retailerId === 'target' || retailerId === 'bigw' || retailerId === 'kmart') &&
-    /\/p\/[a-z0-9-]+/i.test(path)
+    segments.includes('p')
   ) {
     return true;
   }
-
   return false;
 }
 
@@ -244,13 +292,18 @@ function collectHits(
   const record = asRecord(node);
   if (!record) return;
 
-  const name =
+  const brand = typeof record.brand === 'string' ? record.brand.trim() : '';
+  const baseName =
     (typeof record.DisplayName === 'string' && record.DisplayName) ||
     (typeof record.name === 'string' && record.name) ||
     (typeof record.title === 'string' && record.title) ||
     (typeof record.productName === 'string' && record.productName) ||
     (typeof record.headline === 'string' && record.headline) ||
     '';
+  const name =
+    brand && baseName && !baseName.toLowerCase().startsWith(brand.toLowerCase())
+      ? `${brand} ${baseName}`
+      : baseName;
 
   const urlRaw =
     (typeof record.url === 'string' && record.url) ||
@@ -273,6 +326,10 @@ function collectHits(
   if (!url && retailerId === 'woolworths' && stockcode) {
     url = `https://www.woolworths.com.au/shop/productdetails/${stockcode}/${slug || 'product'}`;
   }
+  if (!url && retailerId === 'coles' && name && (typeof record.id === 'number' || typeof record.id === 'string')) {
+    const size = typeof record.size === 'string' ? record.size : '';
+    url = `https://www.coles.com.au/product/${slugify(`${name} ${size}`)}-${record.id}`;
+  }
 
   const price =
     parseMoney(record.Price) ??
@@ -291,7 +348,7 @@ function collectHits(
       name: name.trim(),
       price,
       url,
-      imageUrl: toAbs(origin, pickImage(record))
+      imageUrl: unwrapImageUrl(toAbs(origin, pickImage(record)))
     });
   }
 
@@ -378,8 +435,11 @@ function collectHitsFromMarkup(
     );
     const alt = (img?.[2] || img?.[3] || '').trim();
     const headingText = (heading?.[1] || '').replace(/\s+/g, ' ').trim();
-    const name = alt || headingText || nameFromUrl(candidate.url);
+    let name = alt || headingText || nameFromUrl(candidate.url);
     if (!name || /skip to|sign in|log in|cart/i.test(name)) continue;
+    if (/^(every day|special|save|shop now|add|price|product)$/i.test(name)) {
+      name = nameFromUrl(candidate.url);
+    }
 
     const priceMatch = snippet.replace(/,/g, '').match(/\$(\d+(?:\.\d{1,2})?)/);
     const src = img?.[1] || img?.[4] || null;
@@ -388,10 +448,10 @@ function collectHitsFromMarkup(
     out.push({
       retailer: retailerName,
       retailerId,
-      name: name.slice(0, 160),
+      name: decodeEntities(name).slice(0, 160),
       price: priceMatch ? Number(priceMatch[1]) : null,
       url: candidate.url,
-      imageUrl: toAbs(origin, src)
+      imageUrl: unwrapImageUrl(toAbs(origin, src))
     });
   }
 }
@@ -464,7 +524,7 @@ async function searchWoolworths(query: string): Promise<SearchHit[]> {
 
 async function searchColes(query: string): Promise<SearchHit[]> {
   const origin = 'https://www.coles.com.au';
-  const pageUrl = `https://www.coles.com.au/search?q=${encodeURIComponent(query)}`;
+  const pageUrl = `https://www.coles.com.au/search/products?q=${encodeURIComponent(query)}`;
   const endpoints = [
     `${origin}/api/products/v2/search?q=${encodeURIComponent(query)}&limit=${RESULT_CAP}`,
     `${origin}/api/products/search?q=${encodeURIComponent(query)}`
@@ -490,22 +550,33 @@ async function searchColes(query: string): Promise<SearchHit[]> {
 
 async function searchShopify(origin: string, query: string, retailerId: string, name: string) {
   const url = `${origin}/search/suggest.json?q=${encodeURIComponent(query)}&resources[type]=product&resources[limit]=${RESULT_CAP}`;
-  const response = await fetchWithTimeout(url, { headers: shopHeaders(origin) });
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status}`);
+  try {
+    const response = await fetchWithTimeout(url, { headers: shopHeaders(origin) });
+    if (response.ok) {
+      const payload = (await response.json()) as unknown;
+      const hits: SearchHit[] = [];
+      collectHits(payload, origin, retailerId, name, hits, new Set());
+      if (hits.length > 0) return hits;
+    }
+  } catch {
+    // Fall through to search.json / HTML.
   }
-  const payload = (await response.json()) as unknown;
-  const hits: SearchHit[] = [];
-  collectHits(payload, origin, retailerId, name, hits, new Set());
-  if (hits.length > 0) return hits;
 
-  const searchJson = await fetchWithTimeout(
-    `${origin}/search.json?q=${encodeURIComponent(query)}&type=product`,
-    { headers: shopHeaders(origin) }
-  );
-  if (!searchJson.ok) return hits;
-  collectHits(await searchJson.json(), origin, retailerId, name, hits, new Set());
-  return hits;
+  try {
+    const searchJson = await fetchWithTimeout(
+      `${origin}/search.json?q=${encodeURIComponent(query)}&type=product`,
+      { headers: shopHeaders(origin) }
+    );
+    if (searchJson.ok) {
+      const hits: SearchHit[] = [];
+      collectHits(await searchJson.json(), origin, retailerId, name, hits, new Set());
+      if (hits.length > 0) return hits;
+    }
+  } catch {
+    // Fall through to the HTML search page.
+  }
+
+  return searchFromHtml(`${origin}/search?q=${encodeURIComponent(query)}`, origin, retailerId, name);
 }
 
 async function searchChemistWarehouse(query: string): Promise<SearchHit[]> {
