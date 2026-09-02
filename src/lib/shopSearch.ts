@@ -39,47 +39,47 @@ export const SEARCH_RETAILERS: SearchRetailer[] = [
       `https://www.woolworths.com.au/shop/search/products?searchTerm=${encodeURIComponent(q)}`
   },
   {
-    id: 'bigw',
-    name: 'Big W',
-    defaultOn: false,
-    fallbackUrl: (q) => `https://www.bigw.com.au/search?text=${encodeURIComponent(q)}`
-  },
-  {
-    id: 'kmart',
-    name: 'Kmart',
-    defaultOn: false,
-    fallbackUrl: (q) => `https://www.kmart.com.au/search?q=${encodeURIComponent(q)}`
-  },
-  {
-    id: 'bunnings',
-    name: 'Bunnings',
-    defaultOn: false,
-    fallbackUrl: (q) => `https://www.bunnings.com.au/search/products?q=${encodeURIComponent(q)}`
-  },
-  {
     id: 'rejectshop',
     name: 'The Reject Shop',
-    defaultOn: false,
+    defaultOn: true,
     fallbackUrl: (q) => `https://www.therejectshop.com.au/search?q=${encodeURIComponent(q)}`
   },
   {
     id: 'target',
     name: 'Target',
-    defaultOn: false,
+    defaultOn: true,
     fallbackUrl: (q) => `https://www.target.com.au/search?text=${encodeURIComponent(q)}`
+  },
+  {
+    id: 'kmart',
+    name: 'Kmart',
+    defaultOn: true,
+    fallbackUrl: (q) => `https://www.kmart.com.au/search?q=${encodeURIComponent(q)}`
+  },
+  {
+    id: 'bunnings',
+    name: 'Bunnings',
+    defaultOn: true,
+    fallbackUrl: (q) => `https://www.bunnings.com.au/search/products?q=${encodeURIComponent(q)}`
   },
   {
     id: 'chemistwarehouse',
     name: 'Chemist Warehouse',
-    defaultOn: false,
+    defaultOn: true,
     fallbackUrl: (q) =>
       `https://www.chemistwarehouse.com.au/search?searchtext=${encodeURIComponent(q)}`
   },
   {
     id: 'priceline',
     name: 'Priceline',
-    defaultOn: false,
+    defaultOn: true,
     fallbackUrl: (q) => `https://www.priceline.com.au/search?q=${encodeURIComponent(q)}`
+  },
+  {
+    id: 'bigw',
+    name: 'Big W',
+    defaultOn: false,
+    fallbackUrl: (q) => `https://www.bigw.com.au/search?text=${encodeURIComponent(q)}`
   },
   {
     id: 'terrywhite',
@@ -91,7 +91,7 @@ export const SEARCH_RETAILERS: SearchRetailer[] = [
 ];
 
 const RESULT_CAP = 8;
-const FETCH_MS = 8000;
+const FETCH_MS = 12000;
 const BROWSER_UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 
@@ -148,6 +148,7 @@ function parseMoney(value: unknown): number | null {
       parseMoney(record.current) ??
       parseMoney(record.amount) ??
       parseMoney(record.min) ??
+      parseMoney(record.lowPrice) ??
       parseMoney(record.price)
     );
   }
@@ -170,17 +171,49 @@ function pickImage(node: Record<string, unknown>): string | null {
     if (typeof nested.url === 'string') return nested.url;
     if (typeof nested.src === 'string') return nested.src;
   }
+  if (Array.isArray(direct) && direct[0] && typeof direct[0] === 'object') {
+    const nested = direct[0] as Record<string, unknown>;
+    if (typeof nested.url === 'string') return nested.url;
+    if (typeof nested.src === 'string') return nested.src;
+  }
   return null;
 }
 
-function isProductUrl(url: string): boolean {
-  const u = url.toLowerCase();
-  return (
-    u.includes('/product') ||
-    u.includes('productdetails') ||
-    /\/products\//.test(u) ||
-    /_p\d+/.test(u)
-  );
+function isProductUrl(url: string, retailerId?: string): boolean {
+  let path = url;
+  try {
+    path = new URL(url).pathname.toLowerCase();
+  } catch {
+    path = url.toLowerCase();
+  }
+
+  if (
+    path.includes('/search') ||
+    path.includes('/category') ||
+    path.includes('/categories') ||
+    path === '/'
+  ) {
+    return false;
+  }
+
+  if (
+    path.includes('/product') ||
+    path.includes('productdetails') ||
+    path.includes('/buy/') ||
+    /\/products\//.test(path) ||
+    /_p\d+/.test(path)
+  ) {
+    return true;
+  }
+
+  if (
+    (retailerId === 'target' || retailerId === 'bigw' || retailerId === 'kmart') &&
+    /\/p\/[a-z0-9-]+/i.test(path)
+  ) {
+    return true;
+  }
+
+  return false;
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -216,6 +249,7 @@ function collectHits(
     (typeof record.name === 'string' && record.name) ||
     (typeof record.title === 'string' && record.title) ||
     (typeof record.productName === 'string' && record.productName) ||
+    (typeof record.headline === 'string' && record.headline) ||
     '';
 
   const urlRaw =
@@ -224,6 +258,9 @@ function collectHits(
     (typeof record.productUrl === 'string' && record.productUrl) ||
     (typeof record.pdpUrl === 'string' && record.pdpUrl) ||
     (typeof record.seoToken === 'string' && record.seoToken) ||
+    (typeof record.seoUrl === 'string' && record.seoUrl) ||
+    (typeof record.link === 'string' && record.link) ||
+    (typeof record['@id'] === 'string' && record['@id']) ||
     '';
 
   const stockcode = record.Stockcode ?? record.stockcode ?? record.sku;
@@ -239,12 +276,14 @@ function collectHits(
 
   const price =
     parseMoney(record.Price) ??
+    parseMoney(record.InstantPrice) ??
     parseMoney(record.price) ??
     parseMoney(record.currentPrice) ??
     parseMoney(record.pricing) ??
-    parseMoney(record.priceInfo);
+    parseMoney(record.priceInfo) ??
+    parseMoney(record.offers);
 
-  if (name && url && isProductUrl(url) && !seen.has(url)) {
+  if (name && url && isProductUrl(url, retailerId) && !seen.has(url)) {
     seen.add(url);
     out.push({
       retailer: retailerName,
@@ -265,14 +304,95 @@ function collectHits(
 }
 
 function extractNextData(html: string): unknown | null {
-  const match = html.match(
-    /<script id="__NEXT_DATA__"[^>]*>([^<]+)<\/script>/
-  );
+  const match = html.match(/<script id="__NEXT_DATA__"[^>]*>([^<]+)<\/script>/);
   if (!match) return null;
   try {
     return JSON.parse(match[1]);
   } catch {
     return null;
+  }
+}
+
+function extractJsonLd(html: string): unknown[] {
+  const blocks: unknown[] = [];
+  const re = /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(html))) {
+    try {
+      blocks.push(JSON.parse(match[1]));
+    } catch {
+      // Ignore broken JSON-LD blocks.
+    }
+  }
+  return blocks;
+}
+
+function nameFromUrl(url: string): string {
+  try {
+    const parts = new URL(url).pathname.split('/').filter(Boolean);
+    const last = (parts[parts.length - 1] || parts[parts.length - 2] || '')
+      .replace(/\.\w+$/, '')
+      .replace(/\b\d{4,}\b/g, '');
+    const cleaned = decodeURIComponent(last)
+      .replace(/[-_]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return cleaned.length >= 3 ? cleaned : 'Product';
+  } catch {
+    return 'Product';
+  }
+}
+
+function collectHitsFromMarkup(
+  html: string,
+  origin: string,
+  retailerId: string,
+  retailerName: string,
+  out: SearchHit[],
+  seen: Set<string>
+): void {
+  const cleaned = html
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ');
+
+  const hrefRe = /href=["']([^"']+)["']/gi;
+  const candidates: { url: string; index: number }[] = [];
+  let match: RegExpExecArray | null;
+  while ((match = hrefRe.exec(cleaned))) {
+    const abs = toAbs(origin, match[1].split('#')[0]);
+    if (!abs || !isProductUrl(abs, retailerId)) continue;
+    if (candidates.some((item) => item.url === abs)) continue;
+    candidates.push({ url: abs, index: match.index });
+  }
+
+  for (const candidate of candidates) {
+    if (out.length >= RESULT_CAP) return;
+    if (seen.has(candidate.url)) continue;
+
+    const snippet = cleaned.slice(Math.max(0, candidate.index - 500), candidate.index + 900);
+    const img = snippet.match(
+      /<img[^>]+(?:src=["']([^"']+)["'][^>]*alt=["']([^"']*)["']|alt=["']([^"']*)["'][^>]*src=["']([^"']+)["'])/i
+    );
+    const heading = snippet.match(
+      /<(?:h[1-6]|p|span|div)[^>]*>\s*([^<]{4,140})\s*<\/(?:h[1-6]|p|span|div)>/i
+    );
+    const alt = (img?.[2] || img?.[3] || '').trim();
+    const headingText = (heading?.[1] || '').replace(/\s+/g, ' ').trim();
+    const name = alt || headingText || nameFromUrl(candidate.url);
+    if (!name || /skip to|sign in|log in|cart/i.test(name)) continue;
+
+    const priceMatch = snippet.replace(/,/g, '').match(/\$(\d+(?:\.\d{1,2})?)/);
+    const src = img?.[1] || img?.[4] || null;
+
+    seen.add(candidate.url);
+    out.push({
+      retailer: retailerName,
+      retailerId,
+      name: name.slice(0, 160),
+      price: priceMatch ? Number(priceMatch[1]) : null,
+      url: candidate.url,
+      imageUrl: toAbs(origin, src)
+    });
   }
 }
 
@@ -289,11 +409,21 @@ async function searchFromHtml(
     throw new Error(`HTTP ${response.status}`);
   }
   const html = await response.text();
-  const nextData = extractNextData(html);
   const hits: SearchHit[] = [];
   const seen = new Set<string>();
+
+  const nextData = extractNextData(html);
   if (nextData) {
     collectHits(nextData, origin, retailerId, retailerName, hits, seen);
+  }
+  if (hits.length < RESULT_CAP) {
+    for (const block of extractJsonLd(html)) {
+      collectHits(block, origin, retailerId, retailerName, hits, seen);
+      if (hits.length >= RESULT_CAP) break;
+    }
+  }
+  if (hits.length < RESULT_CAP) {
+    collectHitsFromMarkup(html, origin, retailerId, retailerName, hits, seen);
   }
   return hits;
 }
@@ -328,7 +458,8 @@ async function searchWoolworths(query: string): Promise<SearchHit[]> {
   const payload = (await response.json()) as unknown;
   const hits: SearchHit[] = [];
   collectHits(payload, origin, 'woolworths', 'Woolworths', hits, new Set());
-  return hits;
+  if (hits.length > 0) return hits;
+  return searchFromHtml(referer, origin, 'woolworths', 'Woolworths');
 }
 
 async function searchColes(query: string): Promise<SearchHit[]> {
@@ -429,6 +560,27 @@ const ADAPTERS: Record<string, (query: string) => Promise<SearchHit[]>> = {
       'https://www.bunnings.com.au',
       'bunnings',
       'Bunnings'
+    ),
+  kmart: (q) =>
+    searchFromHtml(
+      `https://www.kmart.com.au/search?q=${encodeURIComponent(q)}`,
+      'https://www.kmart.com.au',
+      'kmart',
+      'Kmart'
+    ),
+  target: (q) =>
+    searchFromHtml(
+      `https://www.target.com.au/search?text=${encodeURIComponent(q)}`,
+      'https://www.target.com.au',
+      'target',
+      'Target'
+    ),
+  bigw: (q) =>
+    searchFromHtml(
+      `https://www.bigw.com.au/search?text=${encodeURIComponent(q)}`,
+      'https://www.bigw.com.au',
+      'bigw',
+      'Big W'
     )
 };
 
@@ -440,8 +592,8 @@ export function googleShoppingUrl(query: string): string {
   return `https://www.google.com.au/search?tbm=shop&q=${encodeURIComponent(query)}`;
 }
 
-function cloudBlockedMessage(): string {
-  return 'Vercel’s datacentre IP is blocked by this shop. That is not a ban of this site, and waiting overnight will not help. Open the shop in your own browser instead.';
+function shopBlockedMessage(): string {
+  return 'This shop blocked the request. Open shop search in your browser.';
 }
 
 export async function searchRetailer(retailerId: string, query: string): Promise<ShopSearchResult> {
@@ -465,7 +617,7 @@ export async function searchRetailer(retailerId: string, query: string): Promise
       retailerId: shop.id,
       results: [],
       fallbackUrl,
-      error: cloudBlockedMessage()
+      error: shopBlockedMessage()
     };
   }
 
@@ -477,8 +629,7 @@ export async function searchRetailer(retailerId: string, query: string): Promise
         retailerId: shop.id,
         results: [],
         fallbackUrl,
-        error:
-          'No products came back to the cloud server. Open the shop search in your browser (your home IP is usually allowed).'
+        error: 'No products came back. Open shop search in your browser.'
       };
     }
     return { retailer: shop.name, retailerId: shop.id, results, fallbackUrl };
@@ -490,7 +641,7 @@ export async function searchRetailer(retailerId: string, query: string): Promise
       retailerId: shop.id,
       results: [],
       fallbackUrl,
-      error: blocked ? cloudBlockedMessage() : `${message} Open the shop search in your browser.`
+      error: blocked ? shopBlockedMessage() : `${message} Open shop search in your browser.`
     };
   }
 }

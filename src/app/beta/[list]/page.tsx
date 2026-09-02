@@ -43,6 +43,23 @@ export default async function BetaListPage({ params }: { params: { list: string 
 
   return (
     <main>
+      <form className="list-search" action={`/beta/${list}/search`} method="get">
+        <label className="visually-hidden" htmlFor="list-search-q">
+          Search shops
+        </label>
+        <input
+          id="list-search-q"
+          type="search"
+          name="q"
+          placeholder="Search Coles, Woolworths, Kmart…"
+          minLength={2}
+          required
+        />
+        <button type="submit" className="button primary">
+          Search
+        </button>
+      </form>
+
       {loadError ? (
         <div className="alert" style={{ marginTop: 12 }}>
           Could not load products from Supabase: {loadError}
@@ -52,9 +69,8 @@ export default async function BetaListPage({ params }: { params: { list: string 
       {!loadError && products.length === 0 ? (
         <div className="card empty" style={{ marginTop: 12 }}>
           <p className="hint">
-            Nothing on {LIST_LABELS[list]} yet. Use{' '}
-            <Link href={`/beta/${list}/search`}>Search</Link> or{' '}
-            <Link href={`/beta/${list}/manage`}>Manage</Link> to add products.
+            Nothing on {LIST_LABELS[list]} yet. Search above, or use{' '}
+            <Link href={`/beta/${list}/manage`}>Manage</Link> to paste links.
           </p>
         </div>
       ) : null}
