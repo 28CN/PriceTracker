@@ -361,6 +361,13 @@ def build_dom_extractors(retailer: str, url: str) -> Tuple[Tuple[str, Optional[s
             ('.price-box .price', None),
             ('[itemprop="price"]', 'content'),
         ) + generic
+    if matches("supercheapauto", "super cheap auto", "repco"):
+        return (
+            ('.product-sales-price .the-price', None),
+            ('.product-sales-price', None),
+            ('.the-price', None),
+            ('[itemprop="price"]', 'content'),
+        ) + generic
 
     return generic
 
@@ -523,6 +530,8 @@ KNOWN_HOST_FRAGMENTS = (
     "chemistwarehouse.com.au",
     "priceline.com.au",
     "terrywhitechemmart.com.au",
+    "repco.com.au",
+    "supercheapauto.com.au",
 )
 
 PENDING_RETAILERS_PATH = Path(__file__).resolve().parent / "pending-retailers.json"
@@ -559,6 +568,8 @@ def infer_retailer_from_hostname(hostname: str) -> str:
         "chemistwarehouse": "Chemist Warehouse",
         "priceline": "Priceline",
         "terrywhitechemmart": "Terry White",
+        "repco": "Repco",
+        "supercheapauto": "Supercheap Auto",
     }
     for needle, label in known.items():
         if needle in h:

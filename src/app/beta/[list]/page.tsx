@@ -51,7 +51,7 @@ export default async function BetaListPage({ params }: { params: { list: string 
           id="list-search-q"
           type="search"
           name="q"
-          placeholder="Search Coles, Woolworths, Kmart…"
+          placeholder="Search Coles, Woolworths…"
           minLength={2}
           required
         />
