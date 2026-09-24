@@ -11,7 +11,7 @@ export async function GET() {
       .from('crawl_events')
       .select('id, level, message, is_read, created_at')
       .order('created_at', { ascending: false })
-      .limit(40);
+      .limit(80);
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
@@ -35,14 +35,31 @@ export async function GET() {
   }
 }
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
     const supabase = getWriteClient();
-    const { error } = await supabase
-      .from('crawl_events')
-      .update({ is_read: true })
-      .eq('is_read', false);
+    let body: { id?: string; ids?: string[] } = {};
+    try {
+      body = (await request.json()) as { id?: string; ids?: string[] };
+    } catch {
+      body = {};
+    }
 
+    const ids = [
+      ...(typeof body.id === 'string' && body.id ? [body.id] : []),
+      ...((Array.isArray(body.ids) ? body.ids : []).filter(
+        (value): value is string => typeof value === 'string' && Boolean(value)
+      ))
+    ];
+
+    let query = supabase.from('crawl_events').update({ is_read: true }).eq('is_read', false);
+    if (ids.length === 1) {
+      query = query.eq('id', ids[0]);
+    } else if (ids.length > 1) {
+      query = query.in('id', ids);
+    }
+
+    const { error } = await query;
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }

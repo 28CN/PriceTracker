@@ -80,7 +80,7 @@ Useful environment variables:
 | `TEST_URL` | parse one page and print the price, without touching the database |
 | `CRAWL_PRODUCT_ID` | only crawl the links belonging to one product |
 | `CRAWL_LINK_ID` | only crawl a single link |
-| `CRAWL_RETAILERS` | only crawl matching shops, e.g. `kmart,target,bigw,toymate` |
+| `CRAWL_RETAILERS` | only crawl matching shops (omit to crawl everything) |
 | `CRAWL_SKIP_RETAILERS` | crawl everything except these shops |
 | `CRAWL_BROWSER_MODE` | `cdp` (default) or `launch`, see below |
 | `CRAWL_BROWSER_PATH` | use a specific Chrome or Edge binary |
@@ -120,17 +120,20 @@ and Toyworld.
 
 Unknown specialty shops are crawled with a generic path (JSON-LD, Shopify
 product JSON, then CSS). If that is not enough, the host is appended to
-`crawler/pending-retailers.json` and a crawler notice is raised. Kmart, Target,
-Big W and Toymate need this PC (`crawl-local.bat`) because they refuse
-datacentre browsers.
+`crawler/pending-retailers.json` and a crawler notice is raised. Bot-walled shops
+(Kmart, Target, Big W, Toymate, Bunnings, Chemist Warehouse) need this PC when
+GitHub Actions cannot reach them.
 
 ## Splitting the work between machines
 
-GitHub Actions has no display of its own, so the workflow runs the crawler under
-`xvfb-run`. Whether the shops answer a datacentre address is a separate question
-from the browser, and Kmart, Target, Big W and Toymate may still refuse from there.
+GitHub Actions runs under `xvfb-run` and automatically skips bot-walled shops
+(unless `CRAWL_PROXY` is set). Coles, Woolworths, Repco, Supercheap Auto, Auto Barn
+and other open shops stay on the cloud schedule.
 
-If they do, crawl them from your own PC instead:
+This PC is the full backup: `scripts/crawl-background.ps1` (Task Scheduler
+Mon + Wed) and `crawl-local.bat` crawl **every** tracked shop, including the ones
+GitHub already covers. That way Wednesday always refreshes everything, and cloud
+gaps do not leave Bunnings / Kmart / etc. stale.
 
 - Easiest: double-click `crawl-local.bat` in the repo root (window stays open so you can read errors).
 - Or from a terminal already in the repo:
@@ -139,11 +142,13 @@ If they do, crawl them from your own PC instead:
 powershell -ExecutionPolicy Bypass -File scripts\crawl-local.ps1
 ```
 
-It opens a browser window (Chrome preferred, then Edge), collects the shops listed in
-`CRAWL_RETAILERS`, and closes it again. Leave the window alone while it runs.
-Schedule it with Task Scheduler if you want it unattended, and set the
-`CRAWL_SKIP_RETAILERS` repository variable to the same list so the cloud run stops
-retrying them.
+It opens a browser window (Chrome preferred, then Edge), crawls every active link
+(or only `CRAWL_RETAILERS` if you set that), and closes it again. Leave the window
+alone while it runs. Register the weekly task with:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\register-tasks.ps1
+```
 
 Do not use Win+R alone — that closes the window as soon as the script exits, so
 errors flash past. The `.bat` file (or an already-open PowerShell / Terminal) is

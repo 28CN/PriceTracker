@@ -111,6 +111,12 @@ export const SEARCH_RETAILERS: SearchRetailer[] = [
     name: 'Supercheap Auto',
     defaultOn: false,
     fallbackUrl: (q) => `https://www.supercheapauto.com.au/search?q=${encodeURIComponent(q)}`
+  },
+  {
+    id: 'autobarn',
+    name: 'Auto Barn',
+    defaultOn: false,
+    fallbackUrl: (q) => `https://autobarn.com.au/search/?text=${encodeURIComponent(q)}`
   }
 ];
 
@@ -274,7 +280,8 @@ function isProductUrl(url: string, retailerId?: string): boolean {
       retailerId === 'bigw' ||
       retailerId === 'kmart' ||
       retailerId === 'supercheapauto' ||
-      retailerId === 'repco') &&
+      retailerId === 'repco' ||
+      retailerId === 'autobarn') &&
     segments.includes('p')
   ) {
     return true;

@@ -368,6 +368,13 @@ def build_dom_extractors(retailer: str, url: str) -> Tuple[Tuple[str, Optional[s
             ('.the-price', None),
             ('[itemprop="price"]', 'content'),
         ) + generic
+    if matches("autobarn", "auto barn"):
+        # JSON-LD Offer is primary; Tailwind price class is the visible fallback.
+        return (
+            ('[class*="text-product-price" i]', None),
+            ('[class*="product-price" i]', None),
+            ('[itemprop="price"]', 'content'),
+        ) + generic
 
     return generic
 
@@ -532,6 +539,7 @@ KNOWN_HOST_FRAGMENTS = (
     "terrywhitechemmart.com.au",
     "repco.com.au",
     "supercheapauto.com.au",
+    "autobarn.com.au",
 )
 
 PENDING_RETAILERS_PATH = Path(__file__).resolve().parent / "pending-retailers.json"
@@ -570,6 +578,7 @@ def infer_retailer_from_hostname(hostname: str) -> str:
         "terrywhitechemmart": "Terry White",
         "repco": "Repco",
         "supercheapauto": "Supercheap Auto",
+        "autobarn": "Auto Barn",
     }
     for needle, label in known.items():
         if needle in h:
@@ -675,7 +684,15 @@ def filter_links_by_retailer(links: list) -> list:
     skip = _retailer_needles("CRAWL_SKIP_RETAILERS")
 
     # GitHub Actions IPs are refused even when the skip variable was never set.
-    ci_blocked = {"kmart", "target", "bigw", "toymate", "bunnings", "chemistwarehouse"}
+    # Local crawl-background.ps1 runs every shop; CI keeps the shops that usually work.
+    ci_blocked = {
+        "kmart",
+        "target",
+        "bigw",
+        "toymate",
+        "bunnings",
+        "chemistwarehouse",
+    }
     if os.getenv("CI") and not os.getenv("CRAWL_PROXY", "").strip() and not only:
         skip = skip | ci_blocked
         print(f"[INFO] CI skip (bot-walled shops): {', '.join(sorted(skip))}")
@@ -1272,6 +1289,13 @@ def run() -> None:
         print("[INFO] No active tracked links matched the current filter.")
         return
 
+    origin = "GitHub Actions" if os.getenv("CI") else "this PC"
+    log_event(
+        supabase,
+        level="info",
+        message=f"Crawl started ({origin}): {len(links)} link(s).",
+    )
+
     stats = {"ok": 0, "failed": 0}
     pending_entries: list = []
 
@@ -1434,11 +1458,17 @@ def run() -> None:
     if stats["failed"]:
         log_event(
             supabase,
-            level="info",
+            level="warning",
             message=(
                 f"Crawl finished: {stats['ok']} price(s) updated, "
                 f"{stats['failed']} link(s) had trouble."
             ),
+        )
+    else:
+        log_event(
+            supabase,
+            level="success",
+            message=f"Crawl finished: {stats['ok']} price(s) updated, no failures.",
         )
 
     print(f"[DONE] updated={stats['ok']} failed={stats['failed']}")

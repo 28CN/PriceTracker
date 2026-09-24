@@ -28,7 +28,8 @@ const RETAILERS: RetailerEntry[] = [
   { match: /(^|\.)priceline\.com\.au$/, name: 'Priceline', domain: 'priceline.com.au' },
   { match: /(^|\.)terrywhitechemmart\.com\.au$/, name: 'Terry White', domain: 'terrywhitechemmart.com.au' },
   { match: /(^|\.)repco\.com\.au$/, name: 'Repco', domain: 'repco.com.au' },
-  { match: /(^|\.)supercheapauto\.com\.au$/, name: 'Supercheap Auto', domain: 'supercheapauto.com.au' }
+  { match: /(^|\.)supercheapauto\.com\.au$/, name: 'Supercheap Auto', domain: 'supercheapauto.com.au' },
+  { match: /(^|\.)autobarn\.com\.au$/, name: 'Auto Barn', domain: 'autobarn.com.au' }
 ];
 
 /** Local files in /public/retailers, used when the live favicon is missing or tiny. */

@@ -1,6 +1,6 @@
-# 后台静默爬虫 — 开机自启或任务计划调用
-# 不弹窗口，日志写到 logs\crawl-YYYYMMDD.log
-# 爬 Big W / Kmart / Target / Toymate（本地才能过 Akamai / 403）
+# Silent full crawl — Task Scheduler (Mon/Wed) or manual.
+# Logs: logs\crawl-YYYYMMDD.log
+# Crawls every tracked shop so cloud gaps (and flaky CI shops) still refresh weekly.
 
 $root = Split-Path $PSScriptRoot -Parent
 Set-Location $root
@@ -12,8 +12,10 @@ $date    = Get-Date -Format "yyyyMMdd"
 $logFile = Join-Path $logDir "crawl-$date.log"
 
 $env:CRAWL_BROWSER_MODE = 'cdp'
-$env:CRAWL_RETAILERS    = 'kmart,target,bigw,toymate'
 $env:PYTHONUNBUFFERED   = '1'
+# Full run: do not set CRAWL_RETAILERS. Override only when debugging one shop.
+Remove-Item Env:CRAWL_RETAILERS -ErrorAction SilentlyContinue
+Remove-Item Env:CRAWL_SKIP_RETAILERS -ErrorAction SilentlyContinue
 
 "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Crawl started" | Tee-Object -FilePath $logFile -Append
 python "$root\crawler\main.py" 2>&1 | Tee-Object -FilePath $logFile -Append
