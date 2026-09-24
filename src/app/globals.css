@@ -458,6 +458,8 @@ button {
 
 .category-section.is-reorder-row {
   box-shadow: none;
+  cursor: grab;
+  will-change: transform;
 }
 
 .category-section.is-reorder-row .category-toggle {
@@ -469,10 +471,11 @@ button {
 }
 
 .category-section.is-dragging {
-  outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
-  outline-offset: 1px;
-  opacity: 0.92;
-  cursor: grabbing;
+  opacity: 0;
+  pointer-events: none;
+  box-shadow: none;
+  outline: 1px dashed color-mix(in srgb, var(--accent) 40%, var(--border));
+  outline-offset: -1px;
 }
 
 .category-board.is-reordering,
@@ -481,8 +484,29 @@ button {
   cursor: grabbing;
 }
 
-.category-section.is-reorder-row {
-  cursor: grab;
+.category-drag-ghost {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) + 2px);
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.18);
+  pointer-events: none;
+  will-change: transform;
+  opacity: 0.96;
+}
+
+.category-drag-ghost-name {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .category-section {

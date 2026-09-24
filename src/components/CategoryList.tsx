@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 
 import CategorySection from '@/components/CategorySection';
 import {
@@ -14,8 +14,21 @@ const PIN_STORAGE_KEY = 'pricetracker.pinnedCategories';
 const OTHER_ORDER_KEY = 'pricetracker.otherCategoryOrder';
 const LONG_PRESS_MS = 420;
 const MOVE_TOLERANCE_PX = 8;
+const FLIP_MS = 200;
 
 type Zone = 'pinned' | 'other';
+
+type DragGhost = {
+  category: string;
+  label: string;
+  width: number;
+  height: number;
+  offsetX: number;
+  offsetY: number;
+  x: number;
+  y: number;
+  toneClass: string;
+};
 
 function readStringList(key: string): string[] {
   if (typeof window === 'undefined') {
@@ -48,17 +61,51 @@ function indexFromRows(rows: HTMLElement[], clientY: number): number {
   return rows.length - 1;
 }
 
+function captureRects(root: HTMLElement | null): Map<string, DOMRect> {
+  const map = new Map<string, DOMRect>();
+  if (!root) {
+    return map;
+  }
+  root.querySelectorAll<HTMLElement>('[data-category]').forEach((node) => {
+    const key = node.dataset.category;
+    if (key) {
+      map.set(key, node.getBoundingClientRect());
+    }
+  });
+  return map;
+}
+
+function toneClassFor(name: string): string {
+  const tones = [
+    'tone-mint',
+    'tone-sky',
+    'tone-peach',
+    'tone-lilac',
+    'tone-sand',
+    'tone-rose',
+    'tone-teal'
+  ];
+  let hash = 0;
+  for (let i = 0; i < name.length; i += 1) {
+    hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+  }
+  return tones[hash % tones.length];
+}
+
 export default function CategoryList({ groups }: { groups: CategoryGroup[] }) {
   const [pinned, setPinned] = useState<string[]>([]);
   const [otherOrder, setOtherOrder] = useState<string[]>([]);
   const [isReordering, setIsReordering] = useState(false);
   const [dragging, setDragging] = useState<string | null>(null);
+  const [ghost, setGhost] = useState<DragGhost | null>(null);
   const dragRef = useRef<{
     zone: Zone;
     category: string;
     pointerId: number;
     startX: number;
     startY: number;
+    lastX: number;
+    lastY: number;
     activated: boolean;
     timer: number | null;
   } | null>(null);
@@ -67,6 +114,9 @@ export default function CategoryList({ groups }: { groups: CategoryGroup[] }) {
   const otherStackRef = useRef<HTMLDivElement>(null);
   const singleStackRef = useRef<HTMLDivElement>(null);
   const zoneSizesRef = useRef({ pinned: 0, other: 0 });
+  const pendingFlipRef = useRef<Map<string, DOMRect> | null>(null);
+  const ghostNodeRef = useRef<HTMLDivElement>(null);
+  const ghostPosRef = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
     const names = groups.map((group) => group.category);
@@ -96,6 +146,44 @@ export default function CategoryList({ groups }: { groups: CategoryGroup[] }) {
   const useColumns = pinnedGroups.length > 0 && otherGroups.length > 0;
   zoneSizesRef.current = { pinned: pinnedGroups.length, other: otherGroups.length };
 
+  useLayoutEffect(() => {
+    const first = pendingFlipRef.current;
+    if (!first) {
+      return;
+    }
+    pendingFlipRef.current = null;
+
+    const roots = useColumns
+      ? [pinnedStackRef.current, otherStackRef.current]
+      : [singleStackRef.current];
+
+    for (const root of roots) {
+      if (!root) {
+        continue;
+      }
+      root.querySelectorAll<HTMLElement>('[data-category]').forEach((node) => {
+        const key = node.dataset.category;
+        if (!key || key === dragging) {
+          return;
+        }
+        const prev = first.get(key);
+        if (!prev) {
+          return;
+        }
+        const next = node.getBoundingClientRect();
+        const dy = prev.top - next.top;
+        if (Math.abs(dy) < 0.5) {
+          return;
+        }
+        node.style.transition = 'none';
+        node.style.transform = `translateY(${dy}px)`;
+        void node.offsetHeight;
+        node.style.transition = `transform ${FLIP_MS}ms cubic-bezier(0.2, 0.8, 0.2, 1)`;
+        node.style.transform = '';
+      });
+    }
+  }, [pinned, otherOrder, dragging, useColumns]);
+
   function togglePin(category: string) {
     setPinned((current) => {
       if (current.includes(category)) {
@@ -120,25 +208,18 @@ export default function CategoryList({ groups }: { groups: CategoryGroup[] }) {
     });
   }
 
-  function reorderWithinZone(zone: Zone, category: string, toIndex: number) {
-    if (zone === 'pinned') {
-      setPinned((current) => {
-        const from = current.indexOf(category);
-        if (from < 0) {
-          return current;
-        }
-        const clamped = Math.max(0, Math.min(toIndex, current.length - 1));
-        if (from === clamped) {
-          return current;
-        }
-        const next = moveItem(current, from, clamped);
-        writeStringList(PIN_STORAGE_KEY, next);
-        return next;
-      });
-      return;
+  function activeStack(zone: Zone): HTMLElement | null {
+    if (useColumns) {
+      return zone === 'pinned' ? pinnedStackRef.current : otherStackRef.current;
     }
+    return singleStackRef.current;
+  }
 
-    setOtherOrder((current) => {
+  function reorderWithinZone(zone: Zone, category: string, toIndex: number) {
+    const stack = activeStack(zone);
+    const before = captureRects(stack);
+
+    const apply = (current: string[]) => {
       const from = current.indexOf(category);
       if (from < 0) {
         return current;
@@ -147,10 +228,32 @@ export default function CategoryList({ groups }: { groups: CategoryGroup[] }) {
       if (from === clamped) {
         return current;
       }
+      pendingFlipRef.current = before;
       const next = moveItem(current, from, clamped);
-      writeStringList(OTHER_ORDER_KEY, next);
+      writeStringList(zone === 'pinned' ? PIN_STORAGE_KEY : OTHER_ORDER_KEY, next);
       return next;
-    });
+    };
+
+    if (zone === 'pinned') {
+      setPinned(apply);
+      return;
+    }
+    setOtherOrder(apply);
+  }
+
+  function moveGhost(clientX: number, clientY: number) {
+    const state = dragRef.current;
+    const current = ghostNodeRef.current;
+    if (!state || !current) {
+      return;
+    }
+    // Keep latest ghost metrics on the element dataset after first paint.
+    const offsetX = Number(current.dataset.offsetX || 0);
+    const offsetY = Number(current.dataset.offsetY || 0);
+    const x = clientX - offsetX;
+    const y = clientY - offsetY;
+    ghostPosRef.current = { x, y };
+    current.style.transform = `translate3d(${x}px, ${y}px, 0)`;
   }
 
   function endDrag() {
@@ -166,7 +269,9 @@ export default function CategoryList({ groups }: { groups: CategoryGroup[] }) {
     }
     dragRef.current = null;
     setDragging(null);
+    setGhost(null);
     setIsReordering(false);
+    pendingFlipRef.current = null;
   }
 
   useEffect(() => {
@@ -178,6 +283,8 @@ export default function CategoryList({ groups }: { groups: CategoryGroup[] }) {
 
       const dx = event.clientX - state.startX;
       const dy = event.clientY - state.startY;
+      state.lastX = event.clientX;
+      state.lastY = event.clientY;
       if (!state.activated) {
         if (Math.hypot(dx, dy) > MOVE_TOLERANCE_PX && state.timer != null) {
           window.clearTimeout(state.timer);
@@ -187,6 +294,7 @@ export default function CategoryList({ groups }: { groups: CategoryGroup[] }) {
       }
 
       event.preventDefault();
+      moveGhost(event.clientX, event.clientY);
 
       if (useColumns) {
         const stack =
@@ -249,9 +357,46 @@ export default function CategoryList({ groups }: { groups: CategoryGroup[] }) {
       if (!state || state.category !== category) {
         return;
       }
+
       state.activated = true;
       setIsReordering(true);
       setDragging(category);
+
+      // Wait one frame so rows collapse to single-line height before measuring.
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+          const live = dragRef.current;
+          if (!live || !live.activated || live.category !== category) {
+            return;
+          }
+          const source = document.querySelector<HTMLElement>(
+            `[data-category="${CSS.escape(category)}"]`
+          );
+          const rect = source?.getBoundingClientRect();
+          if (!rect) {
+            return;
+          }
+
+          const pointerX = live.lastX;
+          const pointerY = live.lastY;
+          const offsetX = Math.min(Math.max(pointerX - rect.left, 16), rect.width - 16);
+          const offsetY = Math.min(Math.max(pointerY - rect.top, 12), rect.height - 12);
+          const x = pointerX - offsetX;
+          const y = pointerY - offsetY;
+          ghostPosRef.current = { x, y };
+          setGhost({
+            category,
+            label: category,
+            width: rect.width,
+            height: Math.max(rect.height, 44),
+            offsetX,
+            offsetY,
+            x,
+            y,
+            toneClass: toneClassFor(category)
+          });
+        });
+      });
     }, LONG_PRESS_MS);
 
     dragRef.current = {
@@ -260,6 +405,8 @@ export default function CategoryList({ groups }: { groups: CategoryGroup[] }) {
       pointerId: event.pointerId,
       startX: event.clientX,
       startY: event.clientY,
+      lastX: event.clientX,
+      lastY: event.clientY,
       activated: false,
       timer
     };
@@ -301,29 +448,51 @@ export default function CategoryList({ groups }: { groups: CategoryGroup[] }) {
   const boardClass = `category-board${isReordering ? ' is-reordering' : ''}`;
   const stackClass = `category-stack${isReordering ? ' is-reordering' : ''}`;
 
+  const ghostLayer = ghost ? (
+    <div
+      ref={ghostNodeRef}
+      className={`category-drag-ghost ${ghost.toneClass}`}
+      data-offset-x={ghost.offsetX}
+      data-offset-y={ghost.offsetY}
+      style={{
+        width: ghost.width,
+        height: ghost.height,
+        transform: `translate3d(${ghost.x}px, ${ghost.y}px, 0)`
+      }}
+    >
+      <span className="category-drag-ghost-name">{ghost.label}</span>
+    </div>
+  ) : null;
+
   if (!useColumns) {
     return (
-      <div className={stackClass} ref={singleStackRef}>
-        {pinnedGroups.map((group) => renderGroup(group, 'pinned'))}
-        {otherGroups.map((group) => renderGroup(group, 'other'))}
-      </div>
+      <>
+        <div className={stackClass} ref={singleStackRef}>
+          {pinnedGroups.map((group) => renderGroup(group, 'pinned'))}
+          {otherGroups.map((group) => renderGroup(group, 'other'))}
+        </div>
+        {ghostLayer}
+      </>
     );
   }
 
   return (
-    <div className={boardClass}>
-      <div className="category-column">
-        <p className="category-column-label">Pinned</p>
-        <div className={stackClass} ref={pinnedStackRef}>
-          {pinnedGroups.map((group) => renderGroup(group, 'pinned'))}
+    <>
+      <div className={boardClass}>
+        <div className="category-column">
+          <p className="category-column-label">Pinned</p>
+          <div className={stackClass} ref={pinnedStackRef}>
+            {pinnedGroups.map((group) => renderGroup(group, 'pinned'))}
+          </div>
+        </div>
+        <div className="category-column">
+          <p className="category-column-label">Everything else</p>
+          <div className={stackClass} ref={otherStackRef}>
+            {otherGroups.map((group) => renderGroup(group, 'other'))}
+          </div>
         </div>
       </div>
-      <div className="category-column">
-        <p className="category-column-label">Everything else</p>
-        <div className={stackClass} ref={otherStackRef}>
-          {otherGroups.map((group) => renderGroup(group, 'other'))}
-        </div>
-      </div>
-    </div>
+      {ghostLayer}
+    </>
   );
 }
