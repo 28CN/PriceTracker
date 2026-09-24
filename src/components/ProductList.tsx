@@ -28,6 +28,24 @@ function ProductCard({ product }: { product: ProductView }) {
     ? latestTimestamp(activeLinks.map((link) => link.latestAt))
     : bestLink?.latestAt ?? null;
 
+  const shopRetailer = allUnavailable
+    ? activeLinks.length === 1
+      ? activeLinks[0].retailer
+      : null
+    : product.lowestRetailer;
+  const shopUrl = allUnavailable
+    ? activeLinks.length === 1
+      ? activeLinks[0].url
+      : undefined
+    : bestLink?.url;
+  const shopLabel = allUnavailable
+    ? activeLinks.length === 1
+      ? activeLinks[0].retailer
+      : `${activeLinks.length} shops`
+    : product.lowestRetailer
+      ? product.lowestRetailer
+      : `${product.links.length} link${product.links.length === 1 ? '' : 's'}`;
+
   function openEditor(event: React.MouseEvent) {
     event.stopPropagation();
     setIsEditing(true);
@@ -48,45 +66,45 @@ function ProductCard({ product }: { product: ProductView }) {
           }}
           aria-expanded={isOpen}
         >
-          <div className="row-main">
+          <div className="card-title-row">
             {product.imageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img className="product-thumb" src={product.imageUrl} alt="" referrerPolicy="no-referrer" />
             ) : null}
             <h2 className="product-name">{product.name}</h2>
-            {hitsTarget ? <span className="hit">Under target</span> : null}
-            {product.targetPrice !== null ? (
-              <span className="price-note">Target {formatMoney(product.targetPrice)}</span>
-            ) : null}
           </div>
-          <div className="price-block">
-            {allUnavailable ? (
-              <span className="price muted">Unavailable</span>
-            ) : product.lowestPrice === null ? (
-              <span className="price muted">No price yet</span>
-            ) : (
-              <span className="price">{formatMoney(product.lowestPrice)}</span>
-            )}
-            <span className="price-note price-note-shop">
+
+          <div className="card-meta-row">
+            <div className="card-meta-left">
+              {hitsTarget ? <span className="hit">Under target</span> : null}
+              {product.targetPrice !== null ? (
+                <span className="price-note">Target {formatMoney(product.targetPrice)}</span>
+              ) : (
+                <span className="price-note muted-empty">No target</span>
+              )}
+            </div>
+
+            <div className="price-block">
               {allUnavailable ? (
-                activeLinks.length === 1 ? (
+                <span className="price muted">Unavailable</span>
+              ) : product.lowestPrice === null ? (
+                <span className="price muted">No price yet</span>
+              ) : (
+                <span className="price">{formatMoney(product.lowestPrice)}</span>
+              )}
+              <span className="price-note price-note-shop">
+                {shopRetailer ? (
                   <>
-                    <RetailerLogo retailer={activeLinks[0].retailer} url={activeLinks[0].url} />
-                    <span>at {activeLinks[0].retailer}</span>
+                    <span className="shop-at">at</span>
+                    <RetailerLogo retailer={shopRetailer} url={shopUrl} />
+                    <span className="shop-name">{shopLabel}</span>
                   </>
                 ) : (
-                  `${activeLinks.length} shops`
-                )
-              ) : product.lowestRetailer ? (
-                <>
-                  <RetailerLogo retailer={product.lowestRetailer} url={bestLink?.url} />
-                  <span>at {product.lowestRetailer}</span>
-                </>
-              ) : (
-                `${product.links.length} link${product.links.length === 1 ? '' : 's'}`
-              )}
-            </span>
-            <span className="price-note">Checked {formatCheckedAt(checkedAt)}</span>
+                  <span className="shop-name">{shopLabel}</span>
+                )}
+              </span>
+              <span className="price-note">Checked {formatCheckedAt(checkedAt)}</span>
+            </div>
           </div>
         </button>
         <button type="button" className="card-edit-btn" onClick={openEditor}>

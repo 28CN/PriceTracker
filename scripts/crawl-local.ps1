@@ -70,13 +70,15 @@ try {
     $env:CRAWL_BROWSER_MODE = 'cdp'
     $env:PYTHONUNBUFFERED = '1'
 
-    # Limit the run to the shops that only work from here, so the scheduled cloud
-    # run keeps ownership of the rest. Clear it to crawl everything.
-    if (-not $env:CRAWL_RETAILERS) {
-        $env:CRAWL_RETAILERS = 'kmart,target,bigw,toymate'
+    # Crawl every shop from this PC. GitHub Actions still handles the ones that
+    # work in the cloud; this run is the weekly full refresh (including those).
+    # Set CRAWL_RETAILERS to a comma list if you only want a subset.
+    if ($env:CRAWL_RETAILERS) {
+        Write-Host "Crawling $($env:CRAWL_RETAILERS) from this machine..." -ForegroundColor Cyan
+    } else {
+        Remove-Item Env:CRAWL_RETAILERS -ErrorAction SilentlyContinue
+        Write-Host 'Crawling all tracked shops from this machine...' -ForegroundColor Cyan
     }
-
-    Write-Host "Crawling $($env:CRAWL_RETAILERS) from this machine..." -ForegroundColor Cyan
     Write-Host 'A Chrome or Edge window will open. Leave it alone until this finishes.' -ForegroundColor DarkGray
     Write-Host ''
 
