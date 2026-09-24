@@ -84,18 +84,15 @@ jobs:
       - name: Install xvfb
         run: sudo apt-get update && sudo apt-get install -y xvfb
 
-      # Big W, Kmart, Target and Toymate block GitHub Actions IPs (Akamai / 403).
-      # Those shops are skipped here by default and should be crawled from a
-      # local machine (`crawl-local.bat`) or a proxy.
-      # To skip them: set the CRAWL_SKIP_RETAILERS repository variable to
-      #   kmart,target,bigw,toymate
-      # To use a proxy: set CRAWL_PROXY (and optionally USERNAME/PASSWORD) secrets.
-      - name: Warn if Akamai-protected shops are not skipped
+      # Bot-walled shops are skipped automatically when CI=true (see filter_links_by_retailer):
+      # kmart, target, bigw, toymate, bunnings, chemistwarehouse.
+      # Crawl those from this PC via scripts/crawl-background.ps1 (full weekly run).
+      # Optional overrides: vars.CRAWL_SKIP_RETAILERS, secrets.CRAWL_PROXY.
+      - name: Warn if Akamai-protected shops rely on local crawl
         run: |
-          SKIP="${{ vars.CRAWL_SKIP_RETAILERS }}"
           PROXY="${{ secrets.CRAWL_PROXY }}"
-          if [ -z "$PROXY" ] && [[ "$SKIP" != *"kmart"* || "$SKIP" != *"target"* || "$SKIP" != *"bigw"* || "$SKIP" != *"toymate"* ]]; then
-            echo "::warning::Big W, Kmart, Target, and Toymate block GitHub Actions IPs. Set CRAWL_SKIP_RETAILERS to 'kmart,target,bigw,toymate' and crawl them from a local machine, OR set CRAWL_PROXY. The crawler also skips these on CI by default."
+          if [ -z "$PROXY" ]; then
+            echo "::notice::CI skips bot-walled shops by default. Local Task Scheduler runs every shop (including Coles/Woolworths/Repco/SCA/Auto Barn) as a full weekly backup."
           fi
 
       # A browser Playwright starts is refused by several shops even headful, so

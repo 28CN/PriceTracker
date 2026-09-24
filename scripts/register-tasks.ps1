@@ -1,5 +1,6 @@
 # 以管理员身份运行此脚本来注册定时任务
 # 右键 -> 用 PowerShell 运行，或在管理员 PowerShell 里执行
+# 任务会跑 scripts\crawl-background.ps1：本机全量爬虫（含 GitHub 已覆盖的店）
 
 $scriptPath = Join-Path (Split-Path $PSScriptRoot -Parent) "scripts\crawl-background.ps1"
 $pwsh       = "powershell.exe"
