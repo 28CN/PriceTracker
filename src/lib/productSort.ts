@@ -23,11 +23,14 @@ export type CategoryGroup = {
   products: ProductView[];
 };
 
+/** Pinned keep their saved order; others use otherOrder, then deals, then name. */
 export function sortCategoryGroups(
   groups: CategoryGroup[],
-  pinned: string[]
+  pinned: string[],
+  otherOrder: string[] = []
 ): CategoryGroup[] {
   const pinRank = new Map(pinned.map((name, index) => [name, index]));
+  const otherRank = new Map(otherOrder.map((name, index) => [name, index]));
 
   return [...groups].sort((a, b) => {
     const aPinned = pinRank.has(a.category);
@@ -37,6 +40,15 @@ export function sortCategoryGroups(
     }
     if (aPinned !== bPinned) {
       return aPinned ? -1 : 1;
+    }
+
+    const aOther = otherRank.has(a.category);
+    const bOther = otherRank.has(b.category);
+    if (aOther && bOther) {
+      return (otherRank.get(a.category) ?? 0) - (otherRank.get(b.category) ?? 0);
+    }
+    if (aOther !== bOther) {
+      return aOther ? -1 : 1;
     }
 
     const aHit = a.products.some(hitsTarget);
@@ -49,4 +61,21 @@ export function sortCategoryGroups(
     if (b.category === 'Uncategorised') return -1;
     return a.category.localeCompare(b.category);
   });
+}
+
+export function moveItem<T>(items: T[], from: number, to: number): T[] {
+  if (from === to || from < 0 || to < 0 || from >= items.length || to >= items.length) {
+    return items;
+  }
+  const next = [...items];
+  const [item] = next.splice(from, 1);
+  next.splice(to, 0, item);
+  return next;
+}
+
+export function syncOrderList(preferred: string[], present: string[]): string[] {
+  const presentSet = new Set(present);
+  const kept = preferred.filter((name) => presentSet.has(name));
+  const missing = present.filter((name) => !kept.includes(name));
+  return [...kept, ...missing];
 }

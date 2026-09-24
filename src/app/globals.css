@@ -451,6 +451,40 @@ button {
   margin-top: 0;
 }
 
+.category-stack.is-reordering,
+.category-board.is-reordering .category-stack {
+  gap: 6px;
+}
+
+.category-section.is-reorder-row {
+  box-shadow: none;
+}
+
+.category-section.is-reorder-row .category-toggle {
+  padding: 10px 12px;
+}
+
+.category-section.is-reorder-row .category-name {
+  font-size: 14px;
+}
+
+.category-section.is-dragging {
+  outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  outline-offset: 1px;
+  opacity: 0.92;
+  cursor: grabbing;
+}
+
+.category-board.is-reordering,
+.category-stack.is-reordering {
+  user-select: none;
+  cursor: grabbing;
+}
+
+.category-section.is-reorder-row {
+  cursor: grab;
+}
+
 .category-section {
   border: 1px solid var(--border);
   border-radius: calc(var(--radius) + 2px);

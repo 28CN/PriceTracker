@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type HTMLAttributes } from 'react';
 
 import ProductList from '@/components/ProductList';
 import { hitsTarget } from '@/lib/productSort';
@@ -29,18 +29,25 @@ export default function CategorySection({
   products,
   defaultOpen = false,
   isPinned = false,
-  onTogglePin
+  onTogglePin,
+  isReordering = false,
+  isDragging = false,
+  dragHandleProps
 }: {
   category: string;
   products: ProductView[];
   defaultOpen?: boolean;
   isPinned?: boolean;
   onTogglePin?: () => void;
+  isReordering?: boolean;
+  isDragging?: boolean;
+  dragHandleProps?: HTMLAttributes<HTMLElement>;
 }) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const wasPinned = useRef(isPinned);
   const tone = categoryTone(category);
   const dealCount = products.filter(hitsTarget).length;
+  const showBody = isOpen && !isReordering;
 
   useEffect(() => {
     if (isPinned && !wasPinned.current) {
@@ -50,23 +57,34 @@ export default function CategorySection({
   }, [isPinned]);
 
   return (
-    <section className={`category-section ${tone} ${isOpen ? 'is-open' : 'is-collapsed'}`}>
+    <section
+      className={`category-section ${tone} ${showBody ? 'is-open' : 'is-collapsed'}${
+        isReordering ? ' is-reorder-row' : ''
+      }${isDragging ? ' is-dragging' : ''}`}
+      data-category={category}
+      {...dragHandleProps}
+    >
       <div className="category-head">
         <button
           type="button"
           className="category-toggle"
-          onClick={() => setIsOpen((current) => !current)}
-          aria-expanded={isOpen}
+          onClick={() => {
+            if (isReordering) {
+              return;
+            }
+            setIsOpen((current) => !current);
+          }}
+          aria-expanded={showBody}
         >
           <span className="category-toggle-main">
             <span className="category-chevron" aria-hidden>
-              {isOpen ? '▾' : '▸'}
+              {showBody ? '▾' : '▸'}
             </span>
             <span className="category-name">{category}</span>
             <span className="category-count">
               {products.length} product{products.length === 1 ? '' : 's'}
             </span>
-            {dealCount > 0 ? (
+            {dealCount > 0 && !isReordering ? (
               <span className="category-deals">
                 {dealCount} under target
               </span>
@@ -78,6 +96,7 @@ export default function CategorySection({
             type="button"
             className={`category-pin${isPinned ? ' is-pinned' : ''}`}
             onClick={onTogglePin}
+            onPointerDown={(event) => event.stopPropagation()}
             aria-pressed={isPinned}
             aria-label={isPinned ? 'Unpin category' : 'Pin category'}
             title={isPinned ? 'Unpin' : 'Pin to top'}
@@ -92,7 +111,7 @@ export default function CategorySection({
         ) : null}
       </div>
 
-      {isOpen ? (
+      {showBody ? (
         <div className="category-body">
           <ProductList products={products} />
         </div>
