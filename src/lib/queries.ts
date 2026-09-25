@@ -39,45 +39,19 @@ function categoryName(value: RawProduct['categories']): string | null {
   return record?.name ?? null;
 }
 
-async function fetchLinks(
-  supabase: SupabaseClient,
-  productIds: string[]
-): Promise<Map<string, RawLink[]>> {
-  const byProduct = new Map<string, RawLink[]>();
+const LINK_SELECTS = [
+  'id, product_id, retailer, url, is_active, stock_status, stock_checked_at, image_url, created_at',
+  // Older databases may still lack stock columns; keep the product photo.
+  'id, product_id, retailer, url, is_active, image_url, created_at',
+  'id, product_id, retailer, url, is_active, image_url',
+  'id, product_id, retailer, url, is_active'
+] as const;
 
-  const { data, error } = await supabase
-    .from('tracked_links')
-    .select(
-      'id, product_id, retailer, url, is_active, stock_status, stock_checked_at, image_url, created_at'
-    )
-    .in('product_id', productIds);
-
-  // A link failure must not hide the products themselves.
-  if (error) {
-    if (/stock_status|stock_checked_at|image_url|created_at/.test(error.message)) {
-      const fallback = await supabase
-        .from('tracked_links')
-        .select('id, product_id, retailer, url, is_active')
-        .in('product_id', productIds);
-      if (fallback.error) {
-        console.error('[queries] could not read tracked_links:', fallback.error.message);
-        return byProduct;
-      }
-      for (const link of (fallback.data || []) as RawLink[]) {
-        const bucket = byProduct.get(link.product_id);
-        if (bucket) {
-          bucket.push(link);
-        } else {
-          byProduct.set(link.product_id, [link]);
-        }
-      }
-      return byProduct;
-    }
-    console.error('[queries] could not read tracked_links:', error.message);
-    return byProduct;
-  }
-
-  for (const link of (data || []) as RawLink[]) {
+function collectLinksByProduct(
+  byProduct: Map<string, RawLink[]>,
+  rows: RawLink[]
+): void {
+  for (const link of rows) {
     const bucket = byProduct.get(link.product_id);
     if (bucket) {
       bucket.push(link);
@@ -85,7 +59,37 @@ async function fetchLinks(
       byProduct.set(link.product_id, [link]);
     }
   }
+}
 
+async function fetchLinks(
+  supabase: SupabaseClient,
+  productIds: string[]
+): Promise<Map<string, RawLink[]>> {
+  const byProduct = new Map<string, RawLink[]>();
+  let lastError: string | null = null;
+
+  for (const columns of LINK_SELECTS) {
+    const { data, error } = await supabase
+      .from('tracked_links')
+      .select(columns)
+      .in('product_id', productIds);
+
+    if (!error) {
+      collectLinksByProduct(byProduct, (data || []) as unknown as RawLink[]);
+      return byProduct;
+    }
+
+    lastError = error.message;
+    // Only fall through when a requested column is missing; other errors stop here.
+    if (!/does not exist|42703/.test(error.message)) {
+      console.error('[queries] could not read tracked_links:', error.message);
+      return byProduct;
+    }
+  }
+
+  if (lastError) {
+    console.error('[queries] could not read tracked_links:', lastError);
+  }
   return byProduct;
 }
 

@@ -68,7 +68,8 @@ export async function GET() {
           retailer: l.retailer,
           latestPrice: l.latestPrice,
           latestAt: l.latestAt,
-          isActive: l.isActive
+          isActive: l.isActive,
+          imageUrl: l.imageUrl ? 'yes' : null
         })),
         lowestPrice: product.lowestPrice,
         lowestRetailer: product.lowestRetailer
