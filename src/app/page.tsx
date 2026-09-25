@@ -1,8 +1,10 @@
 import Link from 'next/link';
 
 import CategoryList from '@/components/CategoryList';
+import { fetchCategoryLayout, type CategoryLayout } from '@/lib/categoryLayout';
 import { sortProducts } from '@/lib/productSort';
 import { fetchProducts } from '@/lib/queries';
+import { getReadClient } from '@/lib/supabase';
 import type { ProductView } from '@/lib/types';
 
 // Prices change behind the scenes, so never serve a cached snapshot. Marking the
@@ -14,9 +16,13 @@ export const fetchCache = 'force-no-store';
 export default async function HomePage() {
   let products: ProductView[] = [];
   let loadError: string | null = null;
+  let layout: CategoryLayout | null = null;
 
   try {
-    products = await fetchProducts();
+    [products, layout] = await Promise.all([
+      fetchProducts(),
+      fetchCategoryLayout(getReadClient())
+    ]);
   } catch (error) {
     loadError = error instanceof Error ? error.message : 'Failed to load products.';
   }
@@ -54,7 +60,7 @@ export default async function HomePage() {
         </div>
       ) : null}
 
-      <CategoryList groups={groups} />
+      <CategoryList groups={groups} savedLayout={layout} />
     </main>
   );
 }

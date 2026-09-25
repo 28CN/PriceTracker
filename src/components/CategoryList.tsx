@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 
 import CategorySection from '@/components/CategorySection';
+import type { CategoryLayout } from '@/lib/categoryLayout';
 import {
   moveItem,
   sortCategoryGroups,
@@ -45,7 +46,20 @@ function readStringList(key: string): string[] {
 }
 
 function writeStringList(key: string, value: string[]) {
-  window.localStorage.setItem(key, JSON.stringify(value));
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // Private mode or a full quota; the server copy still holds the layout.
+  }
+}
+
+function saveLayoutToServer(layout: CategoryLayout) {
+  void fetch('/api/preferences', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(layout),
+    keepalive: true
+  }).catch(() => undefined);
 }
 
 function indexFromRows(rows: HTMLElement[], clientY: number): number {
@@ -92,9 +106,16 @@ function toneClassFor(name: string): string {
   return tones[hash % tones.length];
 }
 
-export default function CategoryList({ groups }: { groups: CategoryGroup[] }) {
-  const [pinned, setPinned] = useState<string[]>([]);
-  const [otherOrder, setOtherOrder] = useState<string[]>([]);
+export default function CategoryList({
+  groups,
+  savedLayout
+}: {
+  groups: CategoryGroup[];
+  savedLayout: CategoryLayout | null;
+}) {
+  const [pinned, setPinned] = useState<string[]>(savedLayout?.pinned ?? []);
+  const [otherOrder, setOtherOrder] = useState<string[]>(savedLayout?.otherOrder ?? []);
+  const layoutReadyRef = useRef(false);
   const [isReordering, setIsReordering] = useState(false);
   const [dragging, setDragging] = useState<string | null>(null);
   const [ghost, setGhost] = useState<DragGhost | null>(null);
@@ -118,24 +139,44 @@ export default function CategoryList({ groups }: { groups: CategoryGroup[] }) {
   const ghostNodeRef = useRef<HTMLDivElement>(null);
   const ghostPosRef = useRef({ x: 0, y: 0 });
 
+  // Server copy wins so every browser and deployment URL agrees. localStorage
+  // only covers the gap before app_settings exists. Names of categories that
+  // are missing from this load are kept, so a partial load never unpins them.
   useEffect(() => {
-    const names = groups.map((group) => group.category);
-    const storedPinned = readStringList(PIN_STORAGE_KEY);
-    const pinSet = new Set(storedPinned);
-    const nextPinned = syncOrderList(
-      storedPinned,
-      names.filter((name) => pinSet.has(name))
-    );
-    const nextOther = syncOrderList(
-      readStringList(OTHER_ORDER_KEY),
-      names.filter((name) => !nextPinned.includes(name))
-    );
+    if (layoutReadyRef.current) {
+      return;
+    }
+    layoutReadyRef.current = true;
 
-    setPinned(nextPinned);
-    setOtherOrder(nextOther);
-    writeStringList(PIN_STORAGE_KEY, nextPinned);
-    writeStringList(OTHER_ORDER_KEY, nextOther);
-  }, [groups]);
+    const storedPinned = savedLayout ? savedLayout.pinned : readStringList(PIN_STORAGE_KEY);
+    const storedOther = savedLayout ? savedLayout.otherOrder : readStringList(OTHER_ORDER_KEY);
+    setPinned(storedPinned);
+    setOtherOrder(storedOther);
+    writeStringList(PIN_STORAGE_KEY, storedPinned);
+    writeStringList(OTHER_ORDER_KEY, storedOther);
+    if (!savedLayout && (storedPinned.length > 0 || storedOther.length > 0)) {
+      saveLayoutToServer({ pinned: storedPinned, otherOrder: storedOther });
+    }
+  }, [savedLayout]);
+
+  const didMountRef = useRef(false);
+  useEffect(() => {
+    if (!didMountRef.current) {
+      didMountRef.current = true;
+      return;
+    }
+    if (!layoutReadyRef.current) {
+      return;
+    }
+    writeStringList(PIN_STORAGE_KEY, pinned);
+    writeStringList(OTHER_ORDER_KEY, otherOrder);
+    saveLayoutToServer({ pinned, otherOrder });
+  }, [pinned, otherOrder]);
+
+  const otherNames = useMemo(
+    () => syncOrderList(otherOrder, groups.map((g) => g.category).filter((n) => !pinned.includes(n))),
+    [groups, pinned, otherOrder]
+  );
 
   const ordered = useMemo(
     () => sortCategoryGroups(groups, pinned, otherOrder),
@@ -185,27 +226,13 @@ export default function CategoryList({ groups }: { groups: CategoryGroup[] }) {
   }, [pinned, otherOrder, dragging, useColumns]);
 
   function togglePin(category: string) {
-    setPinned((current) => {
-      if (current.includes(category)) {
-        const next = current.filter((name) => name !== category);
-        writeStringList(PIN_STORAGE_KEY, next);
-        setOtherOrder((others) => {
-          const prepended = [category, ...others.filter((name) => name !== category)];
-          writeStringList(OTHER_ORDER_KEY, prepended);
-          return prepended;
-        });
-        return next;
-      }
-
-      const next = [...current, category];
-      writeStringList(PIN_STORAGE_KEY, next);
-      setOtherOrder((others) => {
-        const trimmed = others.filter((name) => name !== category);
-        writeStringList(OTHER_ORDER_KEY, trimmed);
-        return trimmed;
-      });
-      return next;
-    });
+    if (pinned.includes(category)) {
+      setPinned(pinned.filter((name) => name !== category));
+      setOtherOrder([category, ...otherNames.filter((name) => name !== category)]);
+      return;
+    }
+    setPinned([...pinned, category]);
+    setOtherOrder(otherOrder.filter((name) => name !== category));
   }
 
   function activeStack(zone: Zone): HTMLElement | null {
@@ -219,26 +246,27 @@ export default function CategoryList({ groups }: { groups: CategoryGroup[] }) {
     const stack = activeStack(zone);
     const before = captureRects(stack);
 
-    const apply = (current: string[]) => {
-      const from = current.indexOf(category);
-      if (from < 0) {
-        return current;
-      }
-      const clamped = Math.max(0, Math.min(toIndex, current.length - 1));
-      if (from === clamped) {
-        return current;
-      }
-      pendingFlipRef.current = before;
-      const next = moveItem(current, from, clamped);
-      writeStringList(zone === 'pinned' ? PIN_STORAGE_KEY : OTHER_ORDER_KEY, next);
-      return next;
-    };
+    const present = new Set(groups.map((group) => group.category));
+    const source = zone === 'pinned' ? pinned : otherNames;
+    const visible = source.filter((name) => present.has(name));
+    const hidden = source.filter((name) => !present.has(name));
 
-    if (zone === 'pinned') {
-      setPinned(apply);
+    const from = visible.indexOf(category);
+    if (from < 0) {
       return;
     }
-    setOtherOrder(apply);
+    const clamped = Math.max(0, Math.min(toIndex, visible.length - 1));
+    if (from === clamped) {
+      return;
+    }
+    pendingFlipRef.current = before;
+    const next = [...moveItem(visible, from, clamped), ...hidden];
+
+    if (zone === 'pinned') {
+      setPinned(next);
+      return;
+    }
+    setOtherOrder(next);
   }
 
   function moveGhost(clientX: number, clientY: number) {

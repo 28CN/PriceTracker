@@ -84,3 +84,17 @@ alter table public.tracked_links
 -- one image per product using shop priority, then the order links were added.
 alter table public.tracked_links
   add column if not exists image_url text;
+
+-- 8. Site-wide settings such as pinned categories, so they survive refreshes,
+-- other browsers, and new deployment URLs.
+create table if not exists public.app_settings (
+  key text primary key,
+  value jsonb not null,
+  updated_at timestamptz not null default now()
+);
+
+alter table public.app_settings enable row level security;
+
+drop policy if exists "public read app settings" on public.app_settings;
+create policy "public read app settings" on public.app_settings
+  for select using (true);
