@@ -8,6 +8,8 @@ export type LinkView = {
   stockStatus: StockStatus;
   latestPrice: number | null;
   latestAt: string | null;
+  imageUrl: string | null;
+  createdAt: string | null;
 };
 
 export type ProductView = {

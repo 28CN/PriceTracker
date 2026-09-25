@@ -266,6 +266,167 @@ def extract_json_ld(page, page_url: str) -> Tuple[Optional[Decimal], str, bool]:
     return price, stock, True
 
 
+def _absolute_http_url(value: str, page_url: str) -> Optional[str]:
+    raw = value.strip()
+    if raw.startswith("//"):
+        raw = "https:" + raw
+    elif raw.startswith("/"):
+        parsed = urlparse(page_url)
+        raw = f"{parsed.scheme}://{parsed.netloc}{raw}"
+    if raw.startswith("http://") or raw.startswith("https://"):
+        return raw
+    return None
+
+
+def _collect_image_urls(value: Any, page_url: str, out: list) -> None:
+    if isinstance(value, str):
+        url = _absolute_http_url(value, page_url)
+        if url:
+            out.append(url)
+        return
+    if isinstance(value, list):
+        for item in value:
+            _collect_image_urls(item, page_url, out)
+        return
+    if isinstance(value, dict):
+        for key in ("url", "contentUrl", "src", "@id"):
+            if key in value:
+                _collect_image_urls(value.get(key), page_url, out)
+
+
+def _prefer_product_image(urls: list) -> Optional[str]:
+    """PNG first, then WebP, then JPEG. Skip icons and placeholders."""
+
+    cleaned: list = []
+    seen = set()
+    for url in urls:
+        if not isinstance(url, str) or url in seen:
+            continue
+        lowered = url.lower()
+        if any(
+            token in lowered
+            for token in ("sprite", "favicon", "logo", "placeholder", "1x1", "pixel.gif")
+        ):
+            continue
+        seen.add(url)
+        cleaned.append(url)
+    if not cleaned:
+        return None
+
+    def rank(url: str) -> int:
+        path = urlparse(url).path.lower()
+        if ".png" in path:
+            return 0
+        if ".webp" in path:
+            return 1
+        if ".jpg" in path or ".jpeg" in path:
+            return 2
+        return 3
+
+    return min(cleaned, key=rank)
+
+
+def _json_ld_documents(page) -> list:
+    try:
+        blocks = page.locator('script[type="application/ld+json"]').all_text_contents()
+    except Exception:
+        return []
+
+    documents = []
+    for block in blocks:
+        block = (block or "").strip()
+        if not block:
+            continue
+        try:
+            documents.append(json.loads(block))
+        except Exception:
+            continue
+    return documents
+
+
+def _primary_product_node(page, page_url: str) -> Optional[dict]:
+    products: list = []
+    for document in _json_ld_documents(page):
+        for node in iter_json_ld_nodes(document):
+            if node_is_product(node):
+                products.append(node)
+    if not products:
+        return None
+    matched = next((node for node in products if product_matches_page(node, page_url)), None)
+    return matched or (products[0] if len(products) == 1 else None)
+
+
+def image_from_json_ld(page, page_url: str) -> Optional[str]:
+    primary = _primary_product_node(page, page_url)
+    if not primary:
+        return None
+    found: list = []
+    _collect_image_urls(primary.get("image"), page_url, found)
+    return _prefer_product_image(found)
+
+
+def image_from_shopify_json(page, url: str) -> Optional[str]:
+    path = urlparse(url).path.rstrip("/")
+    if "/products/" not in path.lower():
+        return None
+
+    try:
+        payload = page.evaluate(
+            """async (jsonPath) => {
+                try {
+                    const res = await fetch(jsonPath, { credentials: "same-origin" });
+                    if (!res.ok) return null;
+                    return await res.json();
+                } catch (error) {
+                    return null;
+                }
+            }""",
+            f"{path}.json",
+        )
+    except Exception:
+        return None
+
+    if not isinstance(payload, dict):
+        return None
+
+    product = payload.get("product") if isinstance(payload.get("product"), dict) else payload
+    if not isinstance(product, dict):
+        return None
+
+    found: list = []
+    _collect_image_urls(product.get("image"), url, found)
+    _collect_image_urls(product.get("images"), url, found)
+    return _prefer_product_image(found)
+
+
+def image_from_open_graph(page, page_url: str) -> Optional[str]:
+    try:
+        content = page.locator('meta[property="og:image"]').first.get_attribute("content")
+    except Exception:
+        return None
+    if not content:
+        return None
+    url = _absolute_http_url(content, page_url)
+    return _prefer_product_image([url] if url else [])
+
+
+def extract_product_image(page, page_url: str) -> Optional[str]:
+    """The product photo, not a carousel tile or a site logo.
+
+    JSON-LD Product.image is the same node we already trust for the price.
+    Shopify's product JSON and og:image are fallbacks when that field is empty.
+    """
+
+    for finder in (image_from_json_ld, image_from_shopify_json, image_from_open_graph):
+        try:
+            found = finder(page, page_url)
+        except Exception:
+            found = None
+        if found:
+            return found
+    return None
+
+
 def build_dom_extractors(retailer: str, url: str) -> Tuple[Tuple[str, Optional[str]], ...]:
     hostname = (urlparse(url).hostname or "").lower()
     name = (retailer or "").lower()
@@ -726,6 +887,17 @@ def set_link_stock_status(supabase, *, link_id: str, status: str) -> None:
             print("[WARN] stock_status column missing; run supabase/schema.sql")
             return
         print(f"[WARN] could not update stock_status for {link_id}: {error}")
+
+
+def set_link_image(supabase, *, link_id: str, image_url: str) -> None:
+    try:
+        supabase.table("tracked_links").update({"image_url": image_url}).eq("id", link_id).execute()
+    except Exception as error:
+        message = str(error)
+        if "image_url" in message:
+            print("[WARN] image_url column missing; run supabase/schema.sql")
+            return
+        print(f"[WARN] could not save image for {link_id}: {error}")
 
 
 def log_event(supabase, *, level: str, message: str, link_id: Optional[str] = None) -> None:
@@ -1249,9 +1421,10 @@ def run_test_mode(test_url: str) -> None:
             return
 
         price, source, stock = scrape_price(page, url=test_url, retailer=retailer)
+        image_url = extract_product_image(page, test_url)
         print(
             f"[TEST_RESULT] url={test_url} retailer={retailer} "
-            f"price={price} source={source} stock={stock}"
+            f"price={price} source={source} stock={stock} image={image_url}"
         )
 
         if price is None and stock != "unavailable":
@@ -1353,6 +1526,14 @@ def run() -> None:
             # answer 403 while serving the real page underneath. Only trust
             # structured product data in that case — CSS on an error page
             # would write a fake price and bump the "checked" date.
+            try:
+                image_url = extract_product_image(page, url)
+            except Exception as error:
+                image_url = None
+                print(f"[WARN] image extract failed for {url}: {error}")
+            if image_url:
+                set_link_image(supabase, link_id=link_id, image_url=image_url)
+
             try:
                 price, source, stock = scrape_price(page, url=url, retailer=retailer)
             except Exception as error:

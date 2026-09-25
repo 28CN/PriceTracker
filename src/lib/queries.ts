@@ -20,6 +20,8 @@ type RawLink = {
   is_active: boolean | null;
   stock_status?: string | null;
   stock_checked_at?: string | null;
+  image_url?: string | null;
+  created_at?: string | null;
 };
 
 type RawPrice = {
@@ -45,12 +47,14 @@ async function fetchLinks(
 
   const { data, error } = await supabase
     .from('tracked_links')
-    .select('id, product_id, retailer, url, is_active, stock_status, stock_checked_at')
+    .select(
+      'id, product_id, retailer, url, is_active, stock_status, stock_checked_at, image_url, created_at'
+    )
     .in('product_id', productIds);
 
   // A link failure must not hide the products themselves.
   if (error) {
-    if (/stock_status|stock_checked_at/.test(error.message)) {
+    if (/stock_status|stock_checked_at|image_url|created_at/.test(error.message)) {
       const fallback = await supabase
         .from('tracked_links')
         .select('id, product_id, retailer, url, is_active')
@@ -214,7 +218,9 @@ export async function fetchProducts(): Promise<ProductView[]> {
         latestPrice: unavailable ? null : latest ? toNumber(latest.price) : null,
         latestAt: unavailable
           ? link.stock_checked_at || unavailableEvent?.created_at || latest?.created_at || null
-          : latest?.created_at ?? null
+          : latest?.created_at ?? null,
+        imageUrl: link.image_url || null,
+        createdAt: link.created_at || null
       };
     });
 

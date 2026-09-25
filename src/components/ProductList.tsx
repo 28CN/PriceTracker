@@ -5,6 +5,7 @@ import { useState } from 'react';
 import EditProductForm from '@/components/EditProductForm';
 import RetailerLogo from '@/components/RetailerLogo';
 import { formatCheckedAt, formatMoney, latestTimestamp } from '@/lib/format';
+import { pickProductImage } from '@/lib/productImage';
 import { hasCrawlerSupport } from '@/lib/retailer';
 import type { ProductView } from '@/lib/types';
 
@@ -38,6 +39,9 @@ function ProductCard({ product }: { product: ProductView }) {
       ? activeLinks[0].url
       : undefined
     : bestLink?.url;
+  const photo = pickProductImage(product.links);
+  const [thumbOk, setThumbOk] = useState(true);
+
   const shopLabel = allUnavailable
     ? activeLinks.length === 1
       ? activeLinks[0].retailer
@@ -67,6 +71,14 @@ function ProductCard({ product }: { product: ProductView }) {
           aria-expanded={isOpen}
         >
           <div className="card-title-row">
+            {photo?.imageUrl && thumbOk ? (
+              <img
+                className="product-thumb"
+                src={`/api/thumb?link=${encodeURIComponent(photo.id)}`}
+                alt=""
+                onError={() => setThumbOk(false)}
+              />
+            ) : null}
             <h2 className="product-name">{product.name}</h2>
           </div>
 

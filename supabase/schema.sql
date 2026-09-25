@@ -79,3 +79,8 @@ alter table public.tracked_links
 
 alter table public.tracked_links
   add column if not exists stock_checked_at timestamptz;
+
+-- 7. Product photo captured from the same page as the price. The site picks
+-- one image per product using shop priority, then the order links were added.
+alter table public.tracked_links
+  add column if not exists image_url text;
