@@ -1,17 +1,16 @@
 import type { LinkView } from './types';
 
-/** Costco, then UWS, then Kmart, then Big W. Everything else follows add order. */
+/** Coles, then Woolworths, then Kmart, then Big W. */
 const PREFERRED_SHOPS: RegExp[] = [
-  /\bcostco\b|\bcost\b|costco\./i,
-  /\buws\b|uws\./i,
+  /\bcoles\b|coles\./i,
+  /\bwoolworths\b|woolworths\./i,
   /\bkmart\b|kmart\./i,
   /\bbig\s*w\b|bigw\./i
 ];
 
 function shopRank(link: LinkView): number {
   const haystack = `${link.retailer} ${link.url}`;
-  const index = PREFERRED_SHOPS.findIndex((pattern) => pattern.test(haystack));
-  return index === -1 ? PREFERRED_SHOPS.length : index;
+  return PREFERRED_SHOPS.findIndex((pattern) => pattern.test(haystack));
 }
 
 function formatRank(url: string): number {
@@ -22,22 +21,29 @@ function formatRank(url: string): number {
   return 3;
 }
 
-export function pickProductImage(links: LinkView[]): LinkView | null {
+export function pickProductImage(links: LinkView[], pricedLinkId?: string | null): LinkView | null {
   const candidates = links.filter((link) => link.imageUrl);
   if (candidates.length === 0) {
     return null;
   }
 
-  const ranked = [...candidates].sort((a, b) => {
-    const shop = shopRank(a) - shopRank(b);
-    if (shop !== 0) return shop;
-    const format = formatRank(a.imageUrl || '') - formatRank(b.imageUrl || '');
-    if (format !== 0) return format;
-    const aTime = a.createdAt || '';
-    const bTime = b.createdAt || '';
-    if (aTime !== bTime) return aTime < bTime ? -1 : 1;
-    return a.retailer.localeCompare(b.retailer);
-  });
+  const preferred = candidates
+    .filter((link) => shopRank(link) >= 0)
+    .sort((a, b) => {
+      const shop = shopRank(a) - shopRank(b);
+      if (shop !== 0) return shop;
+      return formatRank(a.imageUrl || '') - formatRank(b.imageUrl || '');
+    });
+  if (preferred.length > 0) {
+    return preferred[0];
+  }
 
-  return ranked[0];
+  // Target, Bunnings, Repco, pharmacies, and the rest: the shop that supplied the price.
+  if (pricedLinkId) {
+    const priced = candidates.find((link) => link.id === pricedLinkId);
+    if (priced) return priced;
+  }
+
+  const withPrice = candidates.find((link) => link.latestPrice !== null);
+  return withPrice ?? candidates[0];
 }

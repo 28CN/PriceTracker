@@ -39,7 +39,7 @@ function ProductCard({ product }: { product: ProductView }) {
       ? activeLinks[0].url
       : undefined
     : bestLink?.url;
-  const photo = pickProductImage(product.links);
+  const photo = pickProductImage(product.links, bestLink?.id);
   const [thumbOk, setThumbOk] = useState(true);
 
   const shopLabel = allUnavailable
