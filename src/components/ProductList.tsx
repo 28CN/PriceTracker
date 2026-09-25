@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 import EditProductForm from '@/components/EditProductForm';
 import RetailerLogo from '@/components/RetailerLogo';
@@ -40,7 +40,11 @@ function ProductCard({ product }: { product: ProductView }) {
       : undefined
     : bestLink?.url;
   const photo = pickProductImage(product.links, bestLink?.id);
-  const [thumbOk, setThumbOk] = useState(true);
+  const [thumbStatus, setThumbStatus] = useState<'pending' | 'ready' | 'gone'>('pending');
+  const [thumbSrc, setThumbSrc] = useState(() =>
+    photo?.id ? `/api/thumb?link=${encodeURIComponent(photo.id)}` : ''
+  );
+  const triedRawRef = useRef(false);
 
   const shopLabel = allUnavailable
     ? activeLinks.length === 1
@@ -54,6 +58,16 @@ function ProductCard({ product }: { product: ProductView }) {
     event.stopPropagation();
     setIsEditing(true);
     setIsOpen(true);
+  }
+
+  function handleThumbError() {
+    if (photo?.imageUrl && !triedRawRef.current) {
+      triedRawRef.current = true;
+      setThumbStatus('pending');
+      setThumbSrc(photo.imageUrl);
+      return;
+    }
+    setThumbStatus('gone');
   }
 
   return (
@@ -71,12 +85,14 @@ function ProductCard({ product }: { product: ProductView }) {
           aria-expanded={isOpen}
         >
           <div className="card-title-row">
-            {photo?.imageUrl && thumbOk ? (
+            {photo?.imageUrl && thumbStatus !== 'gone' ? (
               <img
-                className="product-thumb"
-                src={`/api/thumb?link=${encodeURIComponent(photo.id)}`}
+                className={`product-thumb${thumbStatus === 'ready' ? ' is-ready' : ' is-loading'}`}
+                src={thumbSrc}
                 alt=""
-                onError={() => setThumbOk(false)}
+                referrerPolicy="no-referrer"
+                onLoad={() => setThumbStatus('ready')}
+                onError={handleThumbError}
               />
             ) : null}
             <h2 className="product-name">{product.name}</h2>

@@ -726,17 +726,36 @@ button {
   gap: 10px;
   min-width: 0;
   width: 100%;
+  position: relative;
 }
 
 .product-thumb {
-  width: 72px;
-  height: 72px;
   flex-shrink: 0;
   object-fit: contain;
-  padding: 6px;
-  border-radius: 12px;
-  border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--border));
-  background: color-mix(in srgb, var(--accent) 16%, var(--card));
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: #ffffff;
+}
+
+.product-thumb.is-loading {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.product-thumb.is-ready {
+  width: 72px;
+  height: 72px;
+  padding: 4px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .product-thumb.is-ready {
+    background: #ffffff;
+    filter: brightness(0.9) contrast(0.96);
+  }
 }
 
 .card-meta-row {

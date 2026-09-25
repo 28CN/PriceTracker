@@ -47,16 +47,23 @@ export async function GET(request: NextRequest) {
   let upstream: Response;
   try {
     upstream = await fetch(data.image_url, {
-      headers: { Accept: 'image/png,image/webp,image/jpeg,image/*;q=0.8' },
+      headers: {
+        Accept: 'image/png,image/webp,image/jpeg,image/*;q=0.8,*/*;q=0.5',
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+        'Accept-Language': 'en-AU,en;q=0.9'
+      },
       redirect: 'follow',
-      cache: 'no-store'
+      cache: 'no-store',
+      signal: AbortSignal.timeout(12_000)
     });
   } catch {
-    return new NextResponse('Upstream failed', { status: 502 });
+    // Vercel often cannot reach Big W / Woolworths CDNs; the shopper's browser can.
+    return NextResponse.redirect(data.image_url, 302);
   }
 
   if (!upstream.ok) {
-    return new NextResponse('Upstream failed', { status: 502 });
+    return NextResponse.redirect(data.image_url, 302);
   }
 
   const length = Number(upstream.headers.get('content-length') || 0);
