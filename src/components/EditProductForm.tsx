@@ -11,6 +11,58 @@ type Props = {
   onClose: () => void;
 };
 
+type PhotoOption = { url: string; retailer: string };
+
+function photoOptions(product: ProductView): PhotoOption[] {
+  const seen = new Set<string>();
+  const options: PhotoOption[] = [];
+  for (const link of product.links) {
+    for (const url of [link.imageUrl, ...link.imageCandidates]) {
+      if (url && !seen.has(url)) {
+        seen.add(url);
+        options.push({ url, retailer: link.retailer });
+      }
+    }
+  }
+  if (product.imageUrl && !seen.has(product.imageUrl)) {
+    options.unshift({ url: product.imageUrl, retailer: 'Custom' });
+  }
+  return options;
+}
+
+function PhotoTile({
+  option,
+  selected,
+  onSelect
+}: {
+  option: PhotoOption;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const [broken, setBroken] = useState(false);
+  if (broken) {
+    return null;
+  }
+  return (
+    <button
+      type="button"
+      className={`photo-option${selected ? ' is-selected' : ''}`}
+      onClick={onSelect}
+      aria-pressed={selected}
+      title={option.retailer}
+    >
+      <img
+        src={option.url}
+        alt=""
+        loading="lazy"
+        referrerPolicy="no-referrer"
+        onError={() => setBroken(true)}
+      />
+      <span className="photo-option-label">{option.retailer}</span>
+    </button>
+  );
+}
+
 export default function EditProductForm({ product, onClose }: Props) {
   const router = useRouter();
 
@@ -28,17 +80,26 @@ export default function EditProductForm({ product, onClose }: Props) {
   );
   const [newUrl, setNewUrl] = useState('');
   const [newRetailer, setNewRetailer] = useState('');
+  const options = photoOptions(product);
+  const [imageChoice, setImageChoice] = useState<string | null>(product.imageUrl);
+  const [pastedImage, setPastedImage] = useState('');
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null);
 
   async function saveProductFields() {
+    const chosenImage = pastedImage.trim() || imageChoice;
+    const payload: Record<string, unknown> = {
+      name,
+      targetPrice: targetPrice.trim() === '' ? null : targetPrice
+    };
+    if ((chosenImage || null) !== (product.imageUrl || null)) {
+      payload.imageUrl = chosenImage || null;
+    }
+
     const response = await fetch(`/api/products/${product.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name,
-        targetPrice: targetPrice.trim() === '' ? null : targetPrice
-      })
+      body: JSON.stringify(payload)
     });
     const data = (await response.json()) as { error?: string };
     if (!response.ok) {
@@ -169,6 +230,49 @@ export default function EditProductForm({ product, onClose }: Props) {
           placeholder="12.00"
           value={targetPrice}
           onChange={(event) => setTargetPrice(event.target.value)}
+        />
+      </div>
+
+      <p className="section-title" style={{ marginTop: 8 }}>
+        Photo
+      </p>
+      <div className="photo-picker">
+        <button
+          type="button"
+          className={`photo-option photo-option-auto${
+            !imageChoice && !pastedImage.trim() ? ' is-selected' : ''
+          }`}
+          onClick={() => {
+            setImageChoice(null);
+            setPastedImage('');
+          }}
+          aria-pressed={!imageChoice && !pastedImage.trim()}
+        >
+          <span className="photo-option-auto-text">Auto</span>
+          <span className="photo-option-label">Default</span>
+        </button>
+        {options.map((option) => (
+          <PhotoTile
+            key={option.url}
+            option={option}
+            selected={!pastedImage.trim() && imageChoice === option.url}
+            onSelect={() => {
+              setImageChoice(option.url);
+              setPastedImage('');
+            }}
+          />
+        ))}
+      </div>
+      {options.length === 0 ? (
+        <p className="hint">No photos yet. They appear after the next crawl.</p>
+      ) : null}
+      <div className="field" style={{ marginTop: 6 }}>
+        <input
+          type="url"
+          inputMode="url"
+          placeholder="Or paste an image URL (https://...)"
+          value={pastedImage}
+          onChange={(event) => setPastedImage(event.target.value)}
         />
       </div>
 

@@ -7,6 +7,14 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 const MAX_BYTES = 8 * 1024 * 1024;
+const UUID = /^[0-9a-f-]{36}$/i;
+
+// The `v` query param changes whenever the stored URL does, so long caching is safe.
+const CACHE_HEADER = 'public, max-age=604800, s-maxage=2592000, stale-while-revalidate=2592000';
+
+// These CDNs refuse datacentre IPs. Sending the browser straight there avoids
+// a multi-second server timeout on every uncached request.
+const BROWSER_ONLY_HOSTS = [/(^|\.)bigw\.com\.au$/, /(^|\.)woolworths\.media$/, /(^|\.)woolworths\.com\.au$/];
 
 function isPublicHttps(raw: string): boolean {
   try {
@@ -27,26 +35,53 @@ function isPublicHttps(raw: string): boolean {
   }
 }
 
-export async function GET(request: NextRequest) {
+function redirectToSource(url: string): NextResponse {
+  const response = NextResponse.redirect(url, 302);
+  response.headers.set('Cache-Control', CACHE_HEADER);
+  return response;
+}
+
+async function storedImageUrl(request: NextRequest): Promise<string | null | 'bad'> {
+  const productId = request.nextUrl.searchParams.get('product') || '';
   const linkId = request.nextUrl.searchParams.get('link') || '';
-  if (!/^[0-9a-f-]{36}$/i.test(linkId)) {
-    return new NextResponse('Bad request', { status: 400 });
+  const supabase = getReadClient();
+
+  if (productId) {
+    if (!UUID.test(productId)) return 'bad';
+    const { data, error } = await supabase
+      .from('products')
+      .select('image_url')
+      .eq('id', productId)
+      .maybeSingle();
+    return error ? null : (data?.image_url as string | null) ?? null;
   }
 
-  const supabase = getReadClient();
+  if (!UUID.test(linkId)) return 'bad';
   const { data, error } = await supabase
     .from('tracked_links')
     .select('image_url')
     .eq('id', linkId)
     .maybeSingle();
+  return error ? null : (data?.image_url as string | null) ?? null;
+}
 
-  if (error || !data?.image_url || !isPublicHttps(data.image_url)) {
+export async function GET(request: NextRequest) {
+  const imageUrl = await storedImageUrl(request);
+  if (imageUrl === 'bad') {
+    return new NextResponse('Bad request', { status: 400 });
+  }
+  if (!imageUrl || !isPublicHttps(imageUrl)) {
     return new NextResponse('Not found', { status: 404 });
+  }
+
+  const host = new URL(imageUrl).hostname.toLowerCase();
+  if (BROWSER_ONLY_HOSTS.some((pattern) => pattern.test(host))) {
+    return redirectToSource(imageUrl);
   }
 
   let upstream: Response;
   try {
-    upstream = await fetch(data.image_url, {
+    upstream = await fetch(imageUrl, {
       headers: {
         Accept: 'image/png,image/webp,image/jpeg,image/*;q=0.8,*/*;q=0.5',
         'User-Agent':
@@ -55,25 +90,24 @@ export async function GET(request: NextRequest) {
       },
       redirect: 'follow',
       cache: 'no-store',
-      signal: AbortSignal.timeout(12_000)
+      signal: AbortSignal.timeout(8_000)
     });
   } catch {
-    // Vercel often cannot reach Big W / Woolworths CDNs; the shopper's browser can.
-    return NextResponse.redirect(data.image_url, 302);
+    return redirectToSource(imageUrl);
   }
 
   if (!upstream.ok) {
-    return NextResponse.redirect(data.image_url, 302);
+    return redirectToSource(imageUrl);
   }
 
   const length = Number(upstream.headers.get('content-length') || 0);
   if (length > MAX_BYTES) {
-    return new NextResponse('Image too large', { status: 413 });
+    return redirectToSource(imageUrl);
   }
 
   const input = Buffer.from(await upstream.arrayBuffer());
   if (input.length === 0 || input.length > MAX_BYTES) {
-    return new NextResponse('Image too large', { status: 413 });
+    return redirectToSource(imageUrl);
   }
 
   let output: Buffer;
@@ -93,14 +127,14 @@ export async function GET(request: NextRequest) {
         .png()
         .toBuffer();
     } catch {
-      return new NextResponse('Could not read image', { status: 422 });
+      return redirectToSource(imageUrl);
     }
   }
 
   return new NextResponse(new Uint8Array(output), {
     headers: {
       'Content-Type': 'image/png',
-      'Cache-Control': 'public, max-age=86400, stale-while-revalidate=604800'
+      'Cache-Control': CACHE_HEADER
     }
   });
 }

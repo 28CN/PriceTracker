@@ -48,6 +48,12 @@ export default function CategorySection({
   const tone = categoryTone(category);
   const dealCount = products.filter(hitsTarget).length;
   const showBody = isOpen && !isReordering;
+  // Mount the list on first open, then only hide it, so photos and card
+  // state are not thrown away on every collapse.
+  const [hasOpened, setHasOpened] = useState(defaultOpen);
+  if (showBody && !hasOpened) {
+    setHasOpened(true);
+  }
 
   useEffect(() => {
     if (isPinned && !wasPinned.current) {
@@ -111,8 +117,8 @@ export default function CategorySection({
         ) : null}
       </div>
 
-      {showBody ? (
-        <div className="category-body">
+      {hasOpened ? (
+        <div className="category-body" hidden={!showBody}>
           <ProductList products={products} />
         </div>
       ) : null}

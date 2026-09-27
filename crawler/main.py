@@ -294,8 +294,11 @@ def _collect_image_urls(value: Any, page_url: str, out: list) -> None:
                 _collect_image_urls(value.get(key), page_url, out)
 
 
-def _prefer_product_image(urls: list) -> Optional[str]:
-    """PNG first, then WebP, then JPEG. Skip icons and placeholders."""
+MAX_IMAGE_CANDIDATES = 12
+
+
+def _clean_image_urls(urls: list) -> list:
+    """Dedupe in gallery order and drop icons and placeholders."""
 
     cleaned: list = []
     seen = set()
@@ -310,6 +313,13 @@ def _prefer_product_image(urls: list) -> Optional[str]:
             continue
         seen.add(url)
         cleaned.append(url)
+    return cleaned
+
+
+def _prefer_product_image(urls: list) -> Optional[str]:
+    """PNG first, then WebP, then JPEG."""
+
+    cleaned = _clean_image_urls(urls)
     if not cleaned:
         return None
 
@@ -356,19 +366,19 @@ def _primary_product_node(page, page_url: str) -> Optional[dict]:
     return matched or (products[0] if len(products) == 1 else None)
 
 
-def image_from_json_ld(page, page_url: str) -> Optional[str]:
+def images_from_json_ld(page, page_url: str) -> list:
     primary = _primary_product_node(page, page_url)
     if not primary:
-        return None
+        return []
     found: list = []
     _collect_image_urls(primary.get("image"), page_url, found)
-    return _prefer_product_image(found)
+    return _clean_image_urls(found)
 
 
-def image_from_shopify_json(page, url: str) -> Optional[str]:
+def images_from_shopify_json(page, url: str) -> list:
     path = urlparse(url).path.rstrip("/")
     if "/products/" not in path.lower():
-        return None
+        return []
 
     try:
         payload = page.evaluate(
@@ -384,47 +394,56 @@ def image_from_shopify_json(page, url: str) -> Optional[str]:
             f"{path}.json",
         )
     except Exception:
-        return None
+        return []
 
     if not isinstance(payload, dict):
-        return None
+        return []
 
     product = payload.get("product") if isinstance(payload.get("product"), dict) else payload
     if not isinstance(product, dict):
-        return None
+        return []
 
     found: list = []
     _collect_image_urls(product.get("image"), url, found)
     _collect_image_urls(product.get("images"), url, found)
-    return _prefer_product_image(found)
+    return _clean_image_urls(found)
 
 
-def image_from_open_graph(page, page_url: str) -> Optional[str]:
+def images_from_open_graph(page, page_url: str) -> list:
     try:
-        content = page.locator('meta[property="og:image"]').first.get_attribute("content")
+        contents = page.locator('meta[property="og:image"]').evaluate_all(
+            "nodes => nodes.map(node => node.getAttribute('content') || '')"
+        )
     except Exception:
-        return None
-    if not content:
-        return None
-    url = _absolute_http_url(content, page_url)
-    return _prefer_product_image([url] if url else [])
+        return []
+    found = [_absolute_http_url(value, page_url) for value in contents if value]
+    return _clean_image_urls([url for url in found if url])
 
 
-def extract_product_image(page, page_url: str) -> Optional[str]:
-    """The product photo, not a carousel tile or a site logo.
+def extract_product_images(page, page_url: str) -> Tuple[Optional[str], list]:
+    """(default photo, gallery candidates) for the product on this page.
 
     JSON-LD Product.image is the same node we already trust for the price.
-    Shopify's product JSON and og:image are fallbacks when that field is empty.
+    Shopify's product JSON and og:image fill in when that field is empty.
+    Candidates keep gallery order so Edit can offer a different shot, e.g.
+    a newer series on a page that lists several.
     """
 
-    for finder in (image_from_json_ld, image_from_shopify_json, image_from_open_graph):
+    default: Optional[str] = None
+    candidates: list = []
+    for finder in (images_from_json_ld, images_from_shopify_json, images_from_open_graph):
         try:
             found = finder(page, page_url)
         except Exception:
-            found = None
-        if found:
-            return found
-    return None
+            found = []
+        if found and default is None:
+            default = _prefer_product_image(found)
+        candidates.extend(found)
+    return default, _clean_image_urls(candidates)[:MAX_IMAGE_CANDIDATES]
+
+
+def extract_product_image(page, page_url: str) -> Optional[str]:
+    return extract_product_images(page, page_url)[0]
 
 
 def build_dom_extractors(retailer: str, url: str) -> Tuple[Tuple[str, Optional[str]], ...]:
@@ -889,14 +908,26 @@ def set_link_stock_status(supabase, *, link_id: str, status: str) -> None:
         print(f"[WARN] could not update stock_status for {link_id}: {error}")
 
 
-def set_link_image(supabase, *, link_id: str, image_url: str) -> None:
+def set_link_image(supabase, *, link_id: str, image_url: str, candidates: list) -> None:
+    table = supabase.table("tracked_links")
     try:
-        supabase.table("tracked_links").update({"image_url": image_url}).eq("id", link_id).execute()
+        table.update({"image_url": image_url, "image_candidates": candidates}).eq(
+            "id", link_id
+        ).execute()
+        return
     except Exception as error:
         message = str(error)
-        if "image_url" in message:
-            print("[WARN] image_url column missing; run supabase/schema.sql")
+        if "image_candidates" not in message:
+            if "image_url" in message:
+                print("[WARN] image_url column missing; run supabase/schema.sql")
+            else:
+                print(f"[WARN] could not save image for {link_id}: {error}")
             return
+        print("[WARN] image_candidates column missing; run supabase/schema.sql")
+
+    try:
+        table.update({"image_url": image_url}).eq("id", link_id).execute()
+    except Exception as error:
         print(f"[WARN] could not save image for {link_id}: {error}")
 
 
@@ -1421,10 +1452,11 @@ def run_test_mode(test_url: str) -> None:
             return
 
         price, source, stock = scrape_price(page, url=test_url, retailer=retailer)
-        image_url = extract_product_image(page, test_url)
+        image_url, image_candidates = extract_product_images(page, test_url)
         print(
             f"[TEST_RESULT] url={test_url} retailer={retailer} "
-            f"price={price} source={source} stock={stock} image={image_url}"
+            f"price={price} source={source} stock={stock} image={image_url} "
+            f"candidates={len(image_candidates)}"
         )
 
         if price is None and stock != "unavailable":
@@ -1527,12 +1559,14 @@ def run() -> None:
             # structured product data in that case — CSS on an error page
             # would write a fake price and bump the "checked" date.
             try:
-                image_url = extract_product_image(page, url)
+                image_url, image_candidates = extract_product_images(page, url)
             except Exception as error:
-                image_url = None
+                image_url, image_candidates = None, []
                 print(f"[WARN] image extract failed for {url}: {error}")
             if image_url:
-                set_link_image(supabase, link_id=link_id, image_url=image_url)
+                set_link_image(
+                    supabase, link_id=link_id, image_url=image_url, candidates=image_candidates
+                )
 
             try:
                 price, source, stock = scrape_price(page, url=url, retailer=retailer)

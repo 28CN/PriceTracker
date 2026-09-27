@@ -98,3 +98,11 @@ alter table public.app_settings enable row level security;
 drop policy if exists "public read app settings" on public.app_settings;
 create policy "public read app settings" on public.app_settings
   for select using (true);
+
+-- 9. Every gallery photo the crawler saw per link, plus a per-product choice
+-- made in Edit. products.image_url wins over the automatic pick when set.
+alter table public.tracked_links
+  add column if not exists image_candidates jsonb;
+
+alter table public.products
+  add column if not exists image_url text;

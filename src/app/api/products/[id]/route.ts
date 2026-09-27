@@ -11,9 +11,26 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     const body = (await request.json().catch(() => ({}))) as {
       name?: string;
       targetPrice?: string | number | null;
+      imageUrl?: string | null;
     };
 
     const patch: Record<string, unknown> = {};
+
+    if (body.imageUrl !== undefined) {
+      const raw = body.imageUrl === null ? '' : String(body.imageUrl).trim();
+      if (raw) {
+        let parsed: URL | null = null;
+        try {
+          parsed = new URL(raw);
+        } catch {
+          parsed = null;
+        }
+        if (!parsed || parsed.protocol !== 'https:') {
+          return NextResponse.json({ error: 'Image must be an https:// URL.' }, { status: 400 });
+        }
+      }
+      patch.image_url = raw || null;
+    }
 
     if (body.name !== undefined) {
       const name = String(body.name).trim();
@@ -45,6 +62,12 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     const { error } = await supabase.from('products').update(patch).eq('id', params.id);
 
     if (error) {
+      if (/image_url/.test(error.message) && /does not exist|42703|schema cache/.test(error.message)) {
+        return NextResponse.json(
+          { error: 'Run supabase/schema.sql first: products.image_url is missing.' },
+          { status: 500 }
+        );
+      }
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 

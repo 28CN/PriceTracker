@@ -1,4 +1,37 @@
-import type { LinkView } from './types';
+import type { LinkView, ProductView } from './types';
+
+/** Short stable hash so a changed image URL gets a fresh cache entry. */
+function urlVersion(url: string): string {
+  let hash = 0;
+  for (let i = 0; i < url.length; i += 1) {
+    hash = (hash * 31 + url.charCodeAt(i)) >>> 0;
+  }
+  return hash.toString(36);
+}
+
+export type ThumbSource = {
+  /** Resized, trimmed copy served by /api/thumb. */
+  proxied: string;
+  /** Original shop URL, used when the proxy fails in the browser. */
+  raw: string;
+};
+
+export function productThumb(product: ProductView, pricedLinkId?: string | null): ThumbSource | null {
+  if (product.imageUrl) {
+    return {
+      proxied: `/api/thumb?product=${encodeURIComponent(product.id)}&v=${urlVersion(product.imageUrl)}`,
+      raw: product.imageUrl
+    };
+  }
+  const link = pickProductImage(product.links, pricedLinkId);
+  if (!link?.imageUrl) {
+    return null;
+  }
+  return {
+    proxied: `/api/thumb?link=${encodeURIComponent(link.id)}&v=${urlVersion(link.imageUrl)}`,
+    raw: link.imageUrl
+  };
+}
 
 /** Coles, then Woolworths, then Kmart, then Big W. */
 const PREFERRED_SHOPS: RegExp[] = [

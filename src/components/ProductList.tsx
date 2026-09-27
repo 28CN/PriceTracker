@@ -1,11 +1,12 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 
 import EditProductForm from '@/components/EditProductForm';
+import ProductThumb from '@/components/ProductThumb';
 import RetailerLogo from '@/components/RetailerLogo';
 import { formatCheckedAt, formatMoney, latestTimestamp } from '@/lib/format';
-import { pickProductImage } from '@/lib/productImage';
+import { productThumb } from '@/lib/productImage';
 import { hasCrawlerSupport } from '@/lib/retailer';
 import type { ProductView } from '@/lib/types';
 
@@ -39,12 +40,7 @@ function ProductCard({ product }: { product: ProductView }) {
       ? activeLinks[0].url
       : undefined
     : bestLink?.url;
-  const photo = pickProductImage(product.links, bestLink?.id);
-  const [thumbStatus, setThumbStatus] = useState<'pending' | 'ready' | 'gone'>('pending');
-  const [thumbSrc, setThumbSrc] = useState(() =>
-    photo?.id ? `/api/thumb?link=${encodeURIComponent(photo.id)}` : ''
-  );
-  const triedRawRef = useRef(false);
+  const thumb = productThumb(product, bestLink?.id);
 
   const shopLabel = allUnavailable
     ? activeLinks.length === 1
@@ -58,16 +54,6 @@ function ProductCard({ product }: { product: ProductView }) {
     event.stopPropagation();
     setIsEditing(true);
     setIsOpen(true);
-  }
-
-  function handleThumbError() {
-    if (photo?.imageUrl && !triedRawRef.current) {
-      triedRawRef.current = true;
-      setThumbStatus('pending');
-      setThumbSrc(photo.imageUrl);
-      return;
-    }
-    setThumbStatus('gone');
   }
 
   return (
@@ -85,16 +71,7 @@ function ProductCard({ product }: { product: ProductView }) {
           aria-expanded={isOpen}
         >
           <div className="card-title-row">
-            {photo?.imageUrl && thumbStatus !== 'gone' ? (
-              <img
-                className={`product-thumb${thumbStatus === 'ready' ? ' is-ready' : ' is-loading'}`}
-                src={thumbSrc}
-                alt=""
-                referrerPolicy="no-referrer"
-                onLoad={() => setThumbStatus('ready')}
-                onError={handleThumbError}
-              />
-            ) : null}
+            {thumb ? <ProductThumb key={thumb.proxied} source={thumb} /> : null}
             <h2 className="product-name">{product.name}</h2>
           </div>
 

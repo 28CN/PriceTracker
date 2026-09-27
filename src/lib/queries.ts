@@ -9,6 +9,7 @@ type RawProduct = {
   name: string;
   target_price: number | string | null;
   category_id: string | null;
+  image_url?: string | null;
   categories: { id: string; name: string } | { id: string; name: string }[] | null;
 };
 
@@ -21,6 +22,7 @@ type RawLink = {
   stock_status?: string | null;
   stock_checked_at?: string | null;
   image_url?: string | null;
+  image_candidates?: unknown;
   created_at?: string | null;
 };
 
@@ -40,12 +42,27 @@ function categoryName(value: RawProduct['categories']): string | null {
 }
 
 const LINK_SELECTS = [
+  'id, product_id, retailer, url, is_active, stock_status, stock_checked_at, image_url, image_candidates, created_at',
   'id, product_id, retailer, url, is_active, stock_status, stock_checked_at, image_url, created_at',
   // Older databases may still lack stock columns; keep the product photo.
+  'id, product_id, retailer, url, is_active, image_url, image_candidates, created_at',
   'id, product_id, retailer, url, is_active, image_url, created_at',
   'id, product_id, retailer, url, is_active, image_url',
   'id, product_id, retailer, url, is_active'
 ] as const;
+
+const PRODUCT_SELECTS = [
+  'id, name, target_price, category_id, image_url, categories(id, name)',
+  'id, name, target_price, category_id, categories(id, name)'
+] as const;
+
+function isMissingColumn(message: string): boolean {
+  return /does not exist|42703/.test(message);
+}
+
+function stringList(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
+}
 
 function collectLinksByProduct(
   byProduct: Map<string, RawLink[]>,
@@ -81,7 +98,7 @@ async function fetchLinks(
 
     lastError = error.message;
     // Only fall through when a requested column is missing; other errors stop here.
-    if (!/does not exist|42703/.test(error.message)) {
+    if (!isMissingColumn(error.message)) {
       console.error('[queries] could not read tracked_links:', error.message);
       return byProduct;
     }
@@ -171,16 +188,21 @@ async function fetchUnavailableEvents(
 export async function fetchProducts(): Promise<ProductView[]> {
   const supabase = getReadClient();
 
-  const { data, error } = await supabase
-    .from('products')
-    .select('id, name, target_price, category_id, categories(id, name)')
-    .order('name', { ascending: true });
+  let products: RawProduct[] = [];
+  for (const columns of PRODUCT_SELECTS) {
+    const { data, error } = await supabase
+      .from('products')
+      .select(columns)
+      .order('name', { ascending: true });
 
-  if (error) {
-    throw new Error(error.message);
+    if (!error) {
+      products = (data || []) as unknown as RawProduct[];
+      break;
+    }
+    if (!isMissingColumn(error.message) || columns === PRODUCT_SELECTS[PRODUCT_SELECTS.length - 1]) {
+      throw new Error(error.message);
+    }
   }
-
-  const products = (data || []) as unknown as RawProduct[];
   if (products.length === 0) {
     return [];
   }
@@ -224,6 +246,7 @@ export async function fetchProducts(): Promise<ProductView[]> {
           ? link.stock_checked_at || unavailableEvent?.created_at || latest?.created_at || null
           : latest?.created_at ?? null,
         imageUrl: link.image_url || null,
+        imageCandidates: stringList(link.image_candidates),
         createdAt: link.created_at || null
       };
     });
@@ -245,6 +268,7 @@ export async function fetchProducts(): Promise<ProductView[]> {
       categoryId: product.category_id,
       categoryName: categoryName(product.categories),
       targetPrice: toNumber(product.target_price),
+      imageUrl: product.image_url || null,
       links,
       lowestPrice: cheapest?.latestPrice ?? null,
       lowestRetailer: cheapest?.retailer ?? null

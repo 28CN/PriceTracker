@@ -9,6 +9,7 @@ export type LinkView = {
   latestPrice: number | null;
   latestAt: string | null;
   imageUrl: string | null;
+  imageCandidates: string[];
   createdAt: string | null;
 };
 
@@ -18,6 +19,8 @@ export type ProductView = {
   categoryId: string | null;
   categoryName: string | null;
   targetPrice: number | null;
+  /** Photo chosen in Edit; null means pick automatically from the links. */
+  imageUrl: string | null;
   links: LinkView[];
   lowestPrice: number | null;
   lowestRetailer: string | null;
