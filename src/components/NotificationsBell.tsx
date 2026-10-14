@@ -3,41 +3,24 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { formatWhen } from '@/lib/format';
+import { EARLIER_AFTER_MS, eventTone as baseTone } from '@/lib/notices';
 import type { CrawlEventView } from '@/lib/types';
 
 const SESSION_GAP_MS = 20 * 60 * 1000;
+const EARLIER_KEY = '__earlier__';
 
 type NoticeGroup = {
   id: string;
   title: string;
   startedAt: string;
+  endedAt: string;
   events: CrawlEventView[];
   unread: number;
   worst: string;
 };
 
 function eventTone(event: CrawlEventView): string {
-  const level = (event.level || 'info').toLowerCase();
-  const msg = event.message.toLowerCase();
-  if (level === 'error' || msg.includes('would not load') || msg.includes('looks dead')) {
-    return 'error';
-  }
-  if (level === 'success' || (msg.includes('crawl finished') && msg.includes('no failures'))) {
-    return 'success';
-  }
-  if (msg.includes('blocked') || msg.includes('akamai') || msg.includes('bot')) {
-    return 'blocked';
-  }
-  if (msg.includes('unavailable')) {
-    return 'stock';
-  }
-  if (level === 'warning' || msg.includes('could not find a price') || msg.includes('had trouble')) {
-    return 'warning';
-  }
-  if (msg.startsWith('crawl started')) {
-    return 'session';
-  }
-  return level === 'info' ? 'info' : level;
+  return event.resolved ? 'success' : baseTone(event);
 }
 
 function groupTitle(events: CrawlEventView[]): string {
@@ -99,6 +82,7 @@ function groupEvents(events: CrawlEventView[]): NoticeGroup[] {
       id: chronological[0]?.id || `group-${index}`,
       title: groupTitle(chronological),
       startedAt: chronological[0]?.createdAt || '',
+      endedAt: chronological[chronological.length - 1]?.createdAt || '',
       events: chronological,
       unread: chronological.filter((event) => !event.isRead).length,
       worst: worstTone(chronological)
@@ -166,6 +150,16 @@ export default function NotificationsBell() {
   }, [isOpen]);
 
   const groups = useMemo(() => groupEvents(events), [events]);
+  const [recentGroups, earlierGroups] = useMemo(() => {
+    const cutoff = Date.now() - EARLIER_AFTER_MS;
+    const recent: NoticeGroup[] = [];
+    const earlier: NoticeGroup[] = [];
+    for (const group of groups) {
+      (new Date(group.endedAt).getTime() < cutoff ? earlier : recent).push(group);
+    }
+    return [recent, earlier];
+  }, [groups]);
+  const earlierUnread = earlierGroups.reduce((sum, group) => sum + group.unread, 0);
 
   useEffect(() => {
     if (!isOpen || groups.length === 0) {
@@ -175,10 +169,10 @@ export default function NotificationsBell() {
       if (Object.keys(current).length > 0) {
         return current;
       }
-      const first = groups[0];
+      const first = recentGroups[0];
       return first ? { [first.id]: true } : {};
     });
-  }, [isOpen, groups]);
+  }, [isOpen, groups, recentGroups]);
 
   async function markAllRead() {
     setUnread(0);
@@ -206,6 +200,54 @@ export default function NotificationsBell() {
       body: JSON.stringify({ id })
     }).catch(() => undefined);
   }
+
+  function renderGroup(group: NoticeGroup) {
+    const open = Boolean(expanded[group.id]);
+    return (
+      <div key={group.id} className={`notice-group ${group.worst}`}>
+        <button
+          type="button"
+          className="notice-group-head"
+          onClick={() => {
+            setExpanded((current) => ({ ...current, [group.id]: !open }));
+          }}
+          aria-expanded={open}
+        >
+          <span className="notice-group-title">{group.title}</span>
+          <span className="notice-group-meta">
+            {group.unread > 0 ? <span className="notice-group-unread">{group.unread}</span> : null}
+            <span className="notice-group-count">{group.events.length}</span>
+            <span className="notice-group-chevron" aria-hidden>
+              {open ? '▾' : '▸'}
+            </span>
+          </span>
+        </button>
+
+        {open
+          ? group.events.map((event) => {
+              const tone = eventTone(event);
+              return (
+                <button
+                  key={event.id}
+                  type="button"
+                  className={`event ${tone}${event.isRead ? ' is-read' : ''}`}
+                  onClick={() => void markOneRead(event.id)}
+                  title={event.isRead ? 'Already read' : 'Mark as read'}
+                >
+                  <p>{event.message}</p>
+                  <time>
+                    {formatWhen(event.createdAt)}
+                    {event.resolved ? <span className="event-resolved">Resolved</span> : null}
+                  </time>
+                </button>
+              );
+            })
+          : null}
+      </div>
+    );
+  }
+
+  const earlierOpen = Boolean(expanded[EARLIER_KEY]);
 
   return (
     <div className="panel-wrap" ref={wrapRef}>
@@ -244,50 +286,32 @@ export default function NotificationsBell() {
             <p className="hint">Nothing to report. Every link is behaving itself.</p>
           ) : null}
 
-          {groups.map((group) => {
-            const open = Boolean(expanded[group.id]);
-            return (
-              <div key={group.id} className={`notice-group ${group.worst}`}>
-                <button
-                  type="button"
-                  className="notice-group-head"
-                  onClick={() => {
-                    setExpanded((current) => ({ ...current, [group.id]: !open }));
-                  }}
-                  aria-expanded={open}
-                >
-                  <span className="notice-group-title">{group.title}</span>
-                  <span className="notice-group-meta">
-                    {group.unread > 0 ? (
-                      <span className="notice-group-unread">{group.unread}</span>
-                    ) : null}
-                    <span className="notice-group-count">{group.events.length}</span>
-                    <span className="notice-group-chevron" aria-hidden>
-                      {open ? '▾' : '▸'}
-                    </span>
-                  </span>
-                </button>
+          {recentGroups.map(renderGroup)}
 
-                {open
-                  ? group.events.map((event) => {
-                      const tone = eventTone(event);
-                      return (
-                        <button
-                          key={event.id}
-                          type="button"
-                          className={`event ${tone}${event.isRead ? ' is-read' : ''}`}
-                          onClick={() => void markOneRead(event.id)}
-                          title={event.isRead ? 'Already read' : 'Mark as read'}
-                        >
-                          <p>{event.message}</p>
-                          <time>{formatWhen(event.createdAt)}</time>
-                        </button>
-                      );
-                    })
-                  : null}
-              </div>
-            );
-          })}
+          {earlierGroups.length > 0 ? (
+            <div className="notice-earlier">
+              <button
+                type="button"
+                className="notice-earlier-head"
+                onClick={() => {
+                  setExpanded((current) => ({ ...current, [EARLIER_KEY]: !earlierOpen }));
+                }}
+                aria-expanded={earlierOpen}
+              >
+                <span>Earlier notices (over 14 days)</span>
+                <span className="notice-group-meta">
+                  {earlierUnread > 0 ? (
+                    <span className="notice-group-unread">{earlierUnread}</span>
+                  ) : null}
+                  <span className="notice-group-count">{earlierGroups.length}</span>
+                  <span className="notice-group-chevron" aria-hidden>
+                    {earlierOpen ? '▾' : '▸'}
+                  </span>
+                </span>
+              </button>
+              {earlierOpen ? earlierGroups.map(renderGroup) : null}
+            </div>
+          ) : null}
         </div>
       ) : null}
     </div>

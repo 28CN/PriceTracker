@@ -28,9 +28,11 @@ from pathlib import Path
 from typing import Any, Iterable, Iterator, Optional, Tuple
 from urllib.parse import urlparse
 
+import httpx
 from dotenv import load_dotenv
 from playwright.sync_api import sync_playwright
 from supabase import create_client
+from supabase.lib.client_options import SyncClientOptions
 
 try:
     from playwright_stealth import Stealth  # playwright-stealth v2.x
@@ -51,6 +53,50 @@ def get_env(name: str) -> str:
     if not value:
         raise RuntimeError(f"Missing required environment variable: {name}")
     return value
+
+
+SKEW_RETRY_DELAYS = (0.3, 0.9, 2.0)
+
+
+class ClockSkewRetryTransport(httpx.BaseTransport):
+    """Retry Supabase's transient "JWT issued at future" (PGRST303) refusals.
+
+    sb_secret_ keys are exchanged for a gateway-minted JWT whose iat can land
+    slightly ahead of PostgREST's clock; the same request passes a moment later.
+    """
+
+    def __init__(self) -> None:
+        self._inner = httpx.HTTPTransport()
+
+    def handle_request(self, request: httpx.Request) -> httpx.Response:
+        response = self._inner.handle_request(request)
+        for delay in SKEW_RETRY_DELAYS:
+            if response.status_code not in (401, 403):
+                return response
+            response.read()
+            if "PGRST303" not in response.text and "issued at future" not in response.text:
+                return response
+            response.close()
+            print(f"[WARN] Supabase clock skew (PGRST303); retrying in {delay}s")
+            time.sleep(delay)
+            response = self._inner.handle_request(request)
+        return response
+
+    def close(self) -> None:
+        self._inner.close()
+
+
+def create_supabase():
+    http_client = httpx.Client(
+        transport=ClockSkewRetryTransport(),
+        timeout=120,
+        follow_redirects=True,
+    )
+    return create_client(
+        get_env("SUPABASE_URL"),
+        get_env("SUPABASE_SERVICE_ROLE_KEY"),
+        options=SyncClientOptions(httpx_client=http_client),
+    )
 
 
 def parse_price_decimal(text: Any) -> Optional[Decimal]:
@@ -1475,7 +1521,7 @@ def run() -> None:
         run_test_mode(test_url)
         return
 
-    supabase = create_client(get_env("SUPABASE_URL"), get_env("SUPABASE_SERVICE_ROLE_KEY"))
+    supabase = create_supabase()
 
     product_filter = os.getenv("CRAWL_PRODUCT_ID", "").strip() or None
     link_filter = os.getenv("CRAWL_LINK_ID", "").strip() or None

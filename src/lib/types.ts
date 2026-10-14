@@ -33,8 +33,11 @@ export type CategoryView = {
 
 export type CrawlEventView = {
   id: string;
+  linkId: string | null;
   level: string;
   message: string;
   isRead: boolean;
   createdAt: string;
+  /** A link problem that has since been fixed (edited, disabled, or crawled fine). */
+  resolved?: boolean;
 };

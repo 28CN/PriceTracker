@@ -42,10 +42,30 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     }
 
     const supabase = getWriteClient();
+    const { data: before } = await supabase
+      .from('tracked_links')
+      .select('url, is_active')
+      .eq('id', params.id)
+      .maybeSingle();
+
     const { error } = await supabase.from('tracked_links').update(patch).eq('id', params.id);
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    // A replaced or disabled link makes its old problem notices moot.
+    const urlChanged = typeof patch.url === 'string' && before && patch.url !== before.url;
+    const disabled = patch.is_active === false && before?.is_active !== false;
+    if (urlChanged || disabled) {
+      const { error: noticeError } = await supabase
+        .from('crawl_events')
+        .update({ is_read: true })
+        .eq('link_id', params.id)
+        .eq('is_read', false);
+      if (noticeError) {
+        console.error('[links] could not clear notices:', noticeError.message);
+      }
     }
 
     return NextResponse.json({ ok: true });

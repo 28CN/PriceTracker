@@ -12,12 +12,37 @@ function requireEnv(name: string): string {
 // survives redeploys. Without this every query keeps answering from whichever
 // snapshot happened to populate the cache first, so newly crawled prices never
 // appear no matter how often the project is redeployed.
-const uncachedFetch: typeof fetch = (input, init) =>
-  fetch(input, { ...init, cache: 'no-store' });
+//
+// With sb_secret_/sb_publishable_ keys the Supabase gateway mints a short-lived
+// JWT per request; clock skew between its nodes sometimes makes PostgREST
+// reject it as "JWT issued at future" (PGRST303). The same request succeeds a
+// moment later, so retry only that exact failure.
+const SKEW_RETRY_DELAYS_MS = [300, 900, 2000];
+
+async function isClockSkewRejection(response: Response): Promise<boolean> {
+  if (response.status !== 401 && response.status !== 403) {
+    return false;
+  }
+  const body = await response.clone().text().catch(() => '');
+  return /PGRST303|issued at future/i.test(body);
+}
+
+const resilientFetch: typeof fetch = async (input, init) => {
+  const options: RequestInit = { ...init, cache: 'no-store' };
+  let response = await fetch(input, options);
+  for (const delay of SKEW_RETRY_DELAYS_MS) {
+    if (!(await isClockSkewRejection(response))) {
+      return response;
+    }
+    await new Promise((resolve) => setTimeout(resolve, delay));
+    response = await fetch(input, options);
+  }
+  return response;
+};
 
 const clientOptions = {
   auth: { persistSession: false, autoRefreshToken: false },
-  global: { fetch: uncachedFetch }
+  global: { fetch: resilientFetch }
 } as const;
 
 // Read-only client for server rendering.  Uses the service-role key so that

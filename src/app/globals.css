@@ -411,6 +411,37 @@ button {
   color: var(--muted);
 }
 
+.event-resolved {
+  margin-left: 8px;
+  padding: 0 6px;
+  border-radius: 8px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  font-weight: 700;
+}
+
+.notice-earlier {
+  border-top: 1px dashed var(--border);
+  margin-top: 4px;
+  padding-top: 8px;
+}
+
+.notice-earlier-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 4px 10px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: left;
+}
+
 /* Category sections ------------------------------------------------------ */
 
 .category-board {
