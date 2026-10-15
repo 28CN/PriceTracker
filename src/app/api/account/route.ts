@@ -58,9 +58,7 @@ export async function PATCH(request: NextRequest) {
     target_price_email: body.targetPriceEmail === true,
     popular_deals_email: body.popularDealsEmail === true,
     personalised_recommendations_email: body.personalisedRecommendationsEmail === true,
-    digest_frequency: ['instant', 'daily', 'weekly'].includes(body.digestFrequency)
-      ? body.digestFrequency
-      : 'instant',
+    digest_frequency: 'weekly',
     timezone: typeof body.timezone === 'string' ? body.timezone : 'Australia/Sydney'
   };
 

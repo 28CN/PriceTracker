@@ -13,35 +13,14 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json().catch(() => null);
-  const currentPassword = typeof body?.currentPassword === 'string' ? body.currentPassword : '';
   const newPassword = typeof body?.newPassword === 'string' ? body.newPassword : '';
   const passwordError = validatePassword(newPassword);
-  if (!currentPassword || passwordError) {
-    return NextResponse.json(
-      { error: passwordError || 'Enter your current password.' },
-      { status: 400 }
-    );
+  if (passwordError) {
+    return NextResponse.json({ error: passwordError }, { status: 400 });
   }
 
   const admin = createAdminSupabaseClient();
-  const { data: account } = await admin
-    .from('account_private')
-    .select('auth_email')
-    .eq('user_id', auth.userId)
-    .single();
-  if (!account?.auth_email) {
-    return NextResponse.json({ error: 'Account credentials were not found.' }, { status: 500 });
-  }
-
-  const { error: reauthError } = await auth.supabase.auth.signInWithPassword({
-    email: account.auth_email,
-    password: currentPassword
-  });
-  if (reauthError) {
-    return NextResponse.json({ error: 'Current password is incorrect.' }, { status: 401 });
-  }
-
-  const { error: updateError } = await auth.supabase.auth.updateUser({
+  const { error: updateError } = await admin.auth.admin.updateUserById(auth.userId, {
     password: newPassword
   });
   if (updateError) {

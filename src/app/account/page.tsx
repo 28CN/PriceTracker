@@ -2,6 +2,7 @@ import AccountSettings, { type AccountSettingsData } from '@/components/AccountS
 import AdminMfaPanel from '@/components/AdminMfaPanel';
 import { requireViewer } from '@/lib/auth';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
+import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
@@ -65,6 +66,11 @@ export default async function AccountPage() {
         <span className="eyebrow">Account</span>
         <h1>Profile, privacy and alerts</h1>
         <p>Control what is public and choose which notifications are worth sending.</p>
+        {viewer.isAdmin ? (
+          <Link className="button secondary" href="/manage">
+            Manage featured products
+          </Link>
+        ) : null}
       </header>
       <AccountSettings initial={initial} />
       {viewer.isAdmin ? <div className="account-settings admin-security-wrap"><AdminMfaPanel /></div> : null}

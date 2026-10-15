@@ -11,15 +11,19 @@ const RESERVED_USERNAMES = new Set([
   'admin',
   'api',
   'auth',
+  'forgot-password',
   'login',
   'logout',
   'manage',
   'privacy',
   'register',
+  'reset-password',
   'security',
   'settings',
   'signup',
   'support',
+  'unsubscribe',
+  'verify-email',
   'www'
 ]);
 

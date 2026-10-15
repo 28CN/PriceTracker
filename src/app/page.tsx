@@ -2,10 +2,12 @@ import Link from 'next/link';
 
 import CategoryList from '@/components/CategoryList';
 import DashboardHero from '@/components/DashboardHero';
+import GuestLanding from '@/components/GuestLanding';
 import { getViewer } from '@/lib/auth';
 import { fetchCategoryLayout, type CategoryLayout } from '@/lib/categoryLayout';
 import { sortProducts } from '@/lib/productSort';
 import { fetchProducts } from '@/lib/queries';
+import { createAdminSupabaseClient } from '@/lib/supabase/admin';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import type { ProductView } from '@/lib/types';
 
@@ -16,30 +18,31 @@ export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
 
 export default async function HomePage() {
+  const viewer = await getViewer();
+  if (!viewer) {
+    const admin = createAdminSupabaseClient();
+    const { data: adminRole } = await admin
+      .from('user_roles')
+      .select('user_id')
+      .eq('role', 'admin')
+      .limit(1)
+      .maybeSingle();
+    const featured = adminRole?.user_id
+      ? (await fetchProducts(admin, adminRole.user_id)).slice(0, 6)
+      : [];
+    return <GuestLanding featured={featured} />;
+  }
+
   let products: ProductView[] = [];
   let loadError: string | null = null;
   let layout: CategoryLayout | null = null;
   const supabase = await createServerSupabaseClient();
-  const viewer = await getViewer();
 
   try {
-    let ownerId = viewer?.id;
-    if (!ownerId) {
-      const { data: publicProfile } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('username', 'melody2251')
-        .eq('watchlist_visibility', 'public')
-        .maybeSingle();
-      ownerId = publicProfile?.id;
-    }
-
-    if (ownerId) {
-      [products, layout] = await Promise.all([
-        fetchProducts(supabase, ownerId),
-        viewer ? fetchCategoryLayout(supabase, ownerId) : Promise.resolve(null)
-      ]);
-    }
+    [products, layout] = await Promise.all([
+      fetchProducts(supabase, viewer.id),
+      fetchCategoryLayout(supabase, viewer.id)
+    ]);
   } catch (error) {
     loadError = error instanceof Error ? error.message : 'Failed to load products.';
   }
@@ -62,7 +65,7 @@ export default async function HomePage() {
 
   return (
     <main>
-      <DashboardHero products={products} accountHref={viewer ? '/account' : '/login'} />
+      <DashboardHero products={products} accountHref="/account" />
 
       {loadError ? (
         <div className="alert">

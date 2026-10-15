@@ -1,6 +1,6 @@
 'use client';
 
-import { Camera, CheckCircle2, ShieldCheck, Trash2 } from 'lucide-react';
+import { Camera, CheckCircle2, Eye, EyeOff, MoreHorizontal, ShieldCheck, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { FormEvent, useMemo, useState } from 'react';
 
@@ -44,6 +44,10 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
   const [securityMessage, setSecurityMessage] =
     useState<{ type: 'ok' | 'error'; text: string } | null>(null);
   const [deleteMessage, setDeleteMessage] = useState<string | null>(null);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [dataMessage, setDataMessage] =
+    useState<{ type: 'ok' | 'error'; text: string } | null>(null);
+  const [clearing, setClearing] = useState<'watchlist' | 'price-history' | null>(null);
 
   const avatarUrl = avatarPath
     ? supabase.storage.from('avatars').getPublicUrl(avatarPath).data.publicUrl
@@ -69,7 +73,7 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
         popularDealsEmail: form.get('popularDealsEmail') === 'on',
         personalisedRecommendationsEmail:
           form.get('personalisedRecommendationsEmail') === 'on',
-        digestFrequency: form.get('digestFrequency'),
+        digestFrequency: 'weekly',
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || initial.timezone
       })
     });
@@ -149,7 +153,6 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        currentPassword: form.get('currentPassword'),
         newPassword
       })
     });
@@ -181,6 +184,32 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
       return;
     }
     router.push('/register');
+    router.refresh();
+  }
+
+  async function clearData(scope: 'watchlist' | 'price-history') {
+    const label = scope === 'watchlist' ? 'your entire watchlist' : 'all saved price history';
+    if (!window.confirm(`Permanently clear ${label}? This cannot be undone.`)) return;
+    setClearing(scope);
+    setDataMessage(null);
+    const response = await fetch('/api/account/data', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scope })
+    });
+    const result = (await response.json().catch(() => null)) as { error?: string } | null;
+    setClearing(null);
+    if (!response.ok) {
+      setDataMessage({
+        type: 'error',
+        text: result?.error || 'Could not clear the selected data.'
+      });
+      return;
+    }
+    setDataMessage({
+      type: 'ok',
+      text: scope === 'watchlist' ? 'Watchlist cleared.' : 'Price history cleared.'
+    });
     router.refresh();
   }
 
@@ -348,14 +377,10 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
           </label>
           <label className="choice-row">
             <span>
-              <strong>Delivery frequency</strong>
-              <small>Target alerts are normally most useful immediately.</small>
+              <strong>Weekly alert</strong>
+              <small>Sent once after the first price check completed on or after Wednesday.</small>
             </span>
-            <select name="digestFrequency" defaultValue={initial.digestFrequency}>
-              <option value="instant">Immediately</option>
-              <option value="daily">Daily summary</option>
-              <option value="weekly">Weekly summary</option>
-            </select>
+            <span className="preference-value">Wednesday</span>
           </label>
         </section>
 
@@ -365,36 +390,46 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
         </button>
       </form>
 
+      <details className="account-other-options">
+        <summary><MoreHorizontal size={18} /> Other options</summary>
       <section className="settings-section" id="security">
         <span className="eyebrow"><ShieldCheck size={14} /> Security</span>
         <h2>Change password</h2>
         <form className="security-form" onSubmit={changePassword}>
           <label className="field">
-            <span>Current password</span>
-            <input name="currentPassword" type="password" autoComplete="current-password" required />
-          </label>
-          <label className="field">
             <span>New password</span>
-            <input
-              name="newPassword"
-              type="password"
-              autoComplete="new-password"
-              minLength={8}
-              maxLength={72}
-              required
-            />
+            <span className="input-with-icon password-input">
+              <input
+                name="newPassword"
+                type={showNewPassword ? 'text' : 'password'}
+                autoComplete="new-password"
+                minLength={8}
+                maxLength={72}
+                required
+              />
+              <button
+                type="button"
+                className="password-visibility"
+                onClick={() => setShowNewPassword((value) => !value)}
+                aria-label={showNewPassword ? 'Hide password' : 'Show password'}
+              >
+                {showNewPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+              </button>
+            </span>
             <small>8–72 characters.</small>
           </label>
           <label className="field">
             <span>Confirm new password</span>
-            <input
-              name="confirmPassword"
-              type="password"
-              autoComplete="new-password"
-              minLength={8}
-              maxLength={72}
-              required
-            />
+            <span className="input-with-icon password-input">
+              <input
+                name="confirmPassword"
+                type={showNewPassword ? 'text' : 'password'}
+                autoComplete="new-password"
+                minLength={8}
+                maxLength={72}
+                required
+              />
+            </span>
           </label>
           <Message value={securityMessage} />
           <button type="submit" className="button secondary">Change password</button>
@@ -403,8 +438,27 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
 
       <section className="settings-section danger-zone">
         <span className="eyebrow"><Trash2 size={14} /> Danger zone</span>
-        <h2>Delete account</h2>
-        <p>Deletes your profile, tracked products, alerts and saved account data.</p>
+        <h2>Data and account</h2>
+        <p>These actions are permanent.</p>
+        <div className="data-action-list">
+          <button
+            type="button"
+            className="button secondary"
+            onClick={() => clearData('price-history')}
+            disabled={clearing !== null}
+          >
+            {clearing === 'price-history' ? 'Clearing…' : 'Clear price history'}
+          </button>
+          <button
+            type="button"
+            className="button secondary"
+            onClick={() => clearData('watchlist')}
+            disabled={clearing !== null}
+          >
+            {clearing === 'watchlist' ? 'Clearing…' : 'Clear watchlist'}
+          </button>
+        </div>
+        <Message value={dataMessage} />
         <details>
           <summary className="button danger-button">Delete my account</summary>
           <form className="delete-account-form" onSubmit={deleteAccount}>
@@ -421,6 +475,7 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
           </form>
         </details>
       </section>
+      </details>
     </div>
   );
 }

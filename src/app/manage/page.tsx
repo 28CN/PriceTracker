@@ -1,6 +1,7 @@
 import { LayoutDashboard, PackagePlus } from 'lucide-react';
 
 import AddProductForm from '@/components/AddProductForm';
+import CategoryPrivacyControls from '@/components/CategoryPrivacyControls';
 import ManageProducts from '@/components/ManageProducts';
 import { requireViewer } from '@/lib/auth';
 import { fetchCategories, fetchProducts } from '@/lib/queries';
@@ -50,6 +51,8 @@ export default async function ManagePage() {
 
       <h2 className="section-title"><PackagePlus size={15} /> Add a product</h2>
       <AddProductForm categories={categories} />
+
+      <CategoryPrivacyControls categories={categories} />
 
       <h2 className="section-title"><LayoutDashboard size={15} /> Tracked products</h2>
       <ManageProducts products={products} />

@@ -34,25 +34,48 @@ function money(value: unknown): string {
 async function contentFor(row: OutboxRow) {
   const payload = row.payload || {};
   if (row.kind === 'target_price') {
-    const product = escapeHtml(payload.productName);
-    const retailer = escapeHtml(payload.retailer || 'a tracked retailer');
-    const currentPrice = money(payload.currentPrice);
-    const targetPrice = money(payload.targetPrice);
-    const shopUrl = String(payload.url || '');
-    const text =
-      `${payload.productName} is now ${currentPrice} at ${payload.retailer}. ` +
-      `Your target was ${targetPrice}. ${shopUrl}`;
+    const itemMap =
+      payload.itemsByProduct && typeof payload.itemsByProduct === 'object'
+        ? (payload.itemsByProduct as Record<string, unknown>)
+        : null;
+    const items = itemMap
+      ? Object.values(itemMap).filter(
+          (item): item is Record<string, unknown> =>
+            Boolean(item) && typeof item === 'object' && !Array.isArray(item)
+        )
+      : [payload];
+    const text = items
+      .map(
+        (item) =>
+          `${item.productName} is ${money(item.currentPrice)} at ${item.retailer}. ` +
+          `Target: ${money(item.targetPrice)}. ${item.url || ''}`
+      )
+      .join('\n');
+    const rows = items
+      .map((item) => {
+        const shopUrl = String(item.url || '');
+        return `
+          <div style="padding:14px 0;border-top:1px solid #e5e9e7">
+            <strong style="display:block;font-size:16px">${escapeHtml(item.productName)}</strong>
+            <span style="display:block;margin:5px 0;color:#52605a">
+              ${escapeHtml(money(item.currentPrice))} at ${escapeHtml(item.retailer || 'a tracked retailer')}
+              · target ${escapeHtml(money(item.targetPrice))}
+            </span>
+            ${shopUrl ? `<a href="${escapeHtml(shopUrl)}" style="color:#356b55;font-weight:700">View at retailer</a>` : ''}
+          </div>
+        `;
+      })
+      .join('');
     return {
-      subject: `${payload.productName} reached ${currentPrice}`,
+      subject:
+        items.length === 1
+          ? `${items[0].productName} reached your target`
+          : `${items.length} tracked products reached your targets`,
       text,
       body: `
-        <p style="margin:0 0 8px;color:#68736e;font-size:13px">Target price reached</p>
-        <h1 style="margin:0 0 12px;font-size:25px;line-height:1.25">${product}</h1>
-        <p style="margin:0 0 18px;font-size:16px;line-height:1.6">
-          Now <strong>${escapeHtml(currentPrice)}</strong> at ${retailer}.
-          Your target was ${escapeHtml(targetPrice)}.
-        </p>
-        ${shopUrl ? `<a href="${escapeHtml(shopUrl)}" style="display:inline-block;padding:11px 16px;border-radius:9px;background:#356b55;color:#ffffff;text-decoration:none;font-weight:700">View at retailer</a>` : ''}
+        <p style="margin:0 0 8px;color:#68736e;font-size:13px">Weekly target-price update</p>
+        <h1 style="margin:0 0 12px;font-size:25px;line-height:1.25">Prices worth checking this week</h1>
+        ${rows}
       `
     };
   }

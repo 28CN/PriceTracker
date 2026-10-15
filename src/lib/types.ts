@@ -29,6 +29,7 @@ export type ProductView = {
 export type CategoryView = {
   id: string;
   name: string;
+  isPublic: boolean;
 };
 
 export type CrawlEventView = {

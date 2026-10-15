@@ -32,6 +32,10 @@ const RETAILERS: RetailerEntry[] = [
   { match: /(^|\.)autobarn\.com\.au$/, name: 'Auto Barn', domain: 'autobarn.com.au' }
 ];
 
+export const SUPPORTED_RETAILERS = Array.from(
+  new Map(RETAILERS.map(({ name, domain }) => [domain, { name, domain }])).values()
+);
+
 /** Local files in /public/retailers, used when the live favicon is missing or tiny. */
 const LOCAL_LOGOS: Record<string, string> = {
   'therejectshop.com.au': '/retailers/reject-shop.png',

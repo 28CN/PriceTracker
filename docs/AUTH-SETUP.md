@@ -38,6 +38,10 @@ backup facilities, but CSV export is sufficient for the ownership columns change
 8. Confirm the result says success. If it reports an error, stop and copy only the error
    message (never a key) back into Cursor.
 
+For an existing installation, also run
+`supabase/migrations/202610150002_category_privacy_weekly_alerts.sql` in the same way.
+It adds category privacy and the Wednesday weekly target-price digest.
+
 The old products become temporarily hidden after the RLS policies change. The bootstrap step
 immediately assigns them to `melody2251`.
 

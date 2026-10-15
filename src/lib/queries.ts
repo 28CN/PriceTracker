@@ -288,16 +288,32 @@ export async function fetchCategories(
 ): Promise<CategoryView[]> {
   let query = supabase
     .from('categories')
-    .select('id, name')
+    .select('id, name, is_public')
     .order('name', { ascending: true });
   if (ownerId) {
     query = query.eq('owner_id', ownerId);
   }
   const { data, error } = await query;
 
-  if (error) {
+  if (!error) {
+    return (data || []).map((category) => ({
+      id: category.id,
+      name: category.name,
+      isPublic: category.is_public !== false
+    }));
+  }
+
+  if (!isMissingColumn(error.message)) {
     throw new Error(error.message);
   }
 
-  return (data || []) as CategoryView[];
+  let fallback = supabase.from('categories').select('id, name').order('name');
+  if (ownerId) fallback = fallback.eq('owner_id', ownerId);
+  const { data: fallbackData, error: fallbackError } = await fallback;
+  if (fallbackError) throw new Error(fallbackError.message);
+  return (fallbackData || []).map((category) => ({
+    id: category.id,
+    name: category.name,
+    isPublic: true
+  }));
 }
