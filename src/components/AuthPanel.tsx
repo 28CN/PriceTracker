@@ -40,26 +40,30 @@ export default function AuthPanel({ mode, nextPath }: AuthPanelProps) {
             password: form.get('password')
           };
 
-    const response = await fetch(`/api/auth/${mode}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    const result = (await response.json().catch(() => null)) as
-      | { error?: string; requiresSignIn?: boolean }
-      | null;
+    try {
+      const response = await fetch(`/api/auth/${mode}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const result = (await response.json().catch(() => null)) as
+        | { error?: string; requiresSignIn?: boolean; redirectTo?: string }
+        | null;
 
-    if (!response.ok) {
-      setError(result?.error || 'Something went wrong. Please try again.');
+      if (!response.ok) {
+        setError(result?.error || 'Something went wrong. Please try again.');
+        setPending(false);
+        return;
+      }
+
+      if (result?.requiresSignIn) {
+        router.replace('/login?created=1');
+      } else {
+        router.replace(safeNextPath(result?.redirectTo || nextPath));
+      }
+    } catch {
+      setError('Could not connect. Please try again.');
       setPending(false);
-      return;
-    }
-
-    if (result?.requiresSignIn) {
-      router.push('/login?created=1');
-    } else {
-      router.push(safeNextPath(nextPath));
-      router.refresh();
     }
   }
 
@@ -92,7 +96,7 @@ export default function AuthPanel({ mode, nextPath }: AuthPanelProps) {
               minLength={3}
               maxLength={30}
               pattern="[A-Za-z0-9](?:[A-Za-z0-9-]{1,28}[A-Za-z0-9])"
-              placeholder="melody2251"
+              placeholder="Enter username"
               required
             />
           </span>

@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     authEmail = account?.auth_email || null;
   }
 
-  if (!authEmail) {
+  if (!authEmail || !profile?.id) {
     return NextResponse.json({ error: INVALID_CREDENTIALS }, { status: 401 });
   }
 
@@ -62,8 +62,21 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: INVALID_CREDENTIALS }, { status: 401 });
   }
 
+  const { data: security } = await admin
+    .from('user_security')
+    .select('must_change_password')
+    .eq('user_id', profile.id)
+    .maybeSingle();
+
   return NextResponse.json(
-    { ok: true, username },
+    {
+      ok: true,
+      username,
+      redirectTo:
+        security?.must_change_password === true
+          ? '/account?security=required'
+          : '/manage'
+    },
     { headers: { 'Cache-Control': 'private, no-store' } }
   );
 }
