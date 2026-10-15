@@ -1,11 +1,15 @@
 import { NextResponse } from 'next/server';
 
-import { getWriteClient } from '@/lib/supabase';
+import { getApiAuth } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
   try {
+    const auth = await getApiAuth();
+    if (!auth) {
+      return NextResponse.json({ error: 'Sign in required.' }, { status: 401 });
+    }
     const body = (await request.json().catch(() => ({}))) as { name?: string };
     const name = (body.name || '').trim();
 
@@ -13,7 +17,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Category name is required.' }, { status: 400 });
     }
 
-    const supabase = getWriteClient();
+    const { supabase, userId } = auth;
 
     const { data: existing } = await supabase
       .from('categories')
@@ -27,7 +31,7 @@ export async function POST(request: Request) {
 
     const { data, error } = await supabase
       .from('categories')
-      .insert({ name })
+      .insert({ name, owner_id: userId })
       .select('id, name')
       .single();
 

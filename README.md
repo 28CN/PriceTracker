@@ -5,16 +5,18 @@ for each shop that stocks it, and a scheduled crawler fills in the prices. The s
 shows the cheapest shop up front and the full list when you tap a product.
 
 - **Supabase** stores products, links and price history
+- **Supabase Auth + RLS** keeps each account and private watchlist isolated
 - **GitHub Actions** runs the crawler twice a week, and on demand
+- **Resend** delivers verified target-price alerts from a transactional outbox
 - **Vercel** hosts the site
 
 ## Setup
 
 ### 1. Database
 
-Run [`supabase/schema.sql`](supabase/schema.sql) in the Supabase SQL editor. It adds
-the `categories` and `crawl_events` tables, links products to a category, and makes
-`target_price` optional. It is safe to run more than once.
+For an existing installation, follow [`docs/AUTH-SETUP.md`](docs/AUTH-SETUP.md).
+It covers the account/RLS migration, initial account bootstrap, Resend, deployment
+secrets and first-login verification.
 
 ### 2. GitHub repository secrets
 
@@ -159,8 +161,9 @@ schedule infrequent rather than retrying hard.
 
 ## Notes
 
-- The site has no login. Anyone with the address can add links and queue a refresh,
-  which is fine for family use but worth locking down before sharing widely.
+- Account sessions use rotating Supabase tokens in cookies. Product writes are
+  authorised again by database RLS rather than trusting the interface alone.
+- Public watchlists are read-only. New accounts default to private.
 - Prices are only read from structured data or price elements on the page. If a shop
   changes its layout the crawler reports it rather than guessing, so a wrong price
   never ends up in the history.

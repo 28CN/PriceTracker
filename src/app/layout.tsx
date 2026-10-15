@@ -34,7 +34,6 @@ const criticalFallbackCss = `
   @media(max-width:760px){
     :where(.dashboard-hero,.manage-hero){padding:22px}
     :where(.dashboard-overview){display:grid;padding:18px}
-    :where(.account-slot){display:none}
     :where(.hero-art){width:230px;opacity:.2}
     :where(.product-thumb){width:64px!important;height:64px!important}
   }

@@ -7,7 +7,6 @@ import {
   BellRing,
   CheckCircle2,
   ChevronRight,
-  Settings2,
   UserRound,
   X
 } from 'lucide-react';
@@ -19,7 +18,17 @@ import { formatMoney } from '@/lib/format';
 import { productThumb } from '@/lib/productImage';
 import type { ProductView } from '@/lib/types';
 
-export default function DashboardHero({ products }: { products: ProductView[] }) {
+export default function DashboardHero({
+  products,
+  accountHref,
+  title = 'Your tracked prices',
+  eyebrow = 'Price watchlist'
+}: {
+  products: ProductView[];
+  accountHref: string;
+  title?: string;
+  eyebrow?: string;
+}) {
   const stores = new Set(
     products.flatMap((product) =>
       product.links.filter((link) => link.isActive).map((link) => link.retailer)
@@ -48,9 +57,9 @@ export default function DashboardHero({ products }: { products: ProductView[] })
         <div className="overview-copy">
         <span className="eyebrow">
             <BellRing size={14} aria-hidden="true" />
-            Price watchlist
+            {eyebrow}
         </span>
-          <h1>Your tracked prices</h1>
+          <h1>{title}</h1>
           <p>{products.length} products across {stores} retailers</p>
       </div>
 
@@ -71,17 +80,12 @@ export default function DashboardHero({ products }: { products: ProductView[] })
             <ChevronRight size={18} aria-hidden="true" />
           </button>
 
-          <div className="account-slot" title="Account and notification settings are planned">
+          <Link className="account-slot" href={accountHref}>
             <span className="account-slot-icon"><UserRound size={18} aria-hidden="true" /></span>
             <span>
               <strong>Alerts & profile</strong>
-              <small>Email setup coming later</small>
+              <small>Privacy and notifications</small>
             </span>
-        </div>
-
-          <Link className="button overview-manage" href="/manage">
-            <Settings2 size={16} aria-hidden="true" />
-            Manage
           </Link>
         </div>
       </section>

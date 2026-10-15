@@ -185,15 +185,21 @@ async function fetchUnavailableEvents(
   return latest;
 }
 
-export async function fetchProducts(): Promise<ProductView[]> {
-  const supabase = getReadClient();
+export async function fetchProducts(
+  supabase: SupabaseClient = getReadClient(),
+  ownerId?: string
+): Promise<ProductView[]> {
 
   let products: RawProduct[] = [];
   for (const columns of PRODUCT_SELECTS) {
-    const { data, error } = await supabase
+    let query = supabase
       .from('products')
       .select(columns)
       .order('name', { ascending: true });
+    if (ownerId) {
+      query = query.eq('owner_id', ownerId);
+    }
+    const { data, error } = await query;
 
     if (!error) {
       products = (data || []) as unknown as RawProduct[];
@@ -276,13 +282,18 @@ export async function fetchProducts(): Promise<ProductView[]> {
   });
 }
 
-export async function fetchCategories(): Promise<CategoryView[]> {
-  const supabase = getReadClient();
-
-  const { data, error } = await supabase
+export async function fetchCategories(
+  supabase: SupabaseClient = getReadClient(),
+  ownerId?: string
+): Promise<CategoryView[]> {
+  let query = supabase
     .from('categories')
     .select('id, name')
     .order('name', { ascending: true });
+  if (ownerId) {
+    query = query.eq('owner_id', ownerId);
+  }
+  const { data, error } = await query;
 
   if (error) {
     throw new Error(error.message);

@@ -108,10 +108,12 @@ function toneClassFor(name: string): string {
 
 export default function CategoryList({
   groups,
-  savedLayout
+  savedLayout,
+  readOnly = false
 }: {
   groups: CategoryGroup[];
   savedLayout: CategoryLayout | null;
+  readOnly?: boolean;
 }) {
   const [pinned, setPinned] = useState<string[]>(savedLayout?.pinned ?? []);
   const [otherOrder, setOtherOrder] = useState<string[]>(savedLayout?.otherOrder ?? []);
@@ -143,6 +145,10 @@ export default function CategoryList({
   // only covers the gap before app_settings exists. Names of categories that
   // are missing from this load are kept, so a partial load never unpins them.
   useEffect(() => {
+    if (readOnly) {
+      layoutReadyRef.current = true;
+      return;
+    }
     if (layoutReadyRef.current) {
       return;
     }
@@ -157,10 +163,13 @@ export default function CategoryList({
     if (!savedLayout && (storedPinned.length > 0 || storedOther.length > 0)) {
       saveLayoutToServer({ pinned: storedPinned, otherOrder: storedOther });
     }
-  }, [savedLayout]);
+  }, [readOnly, savedLayout]);
 
   const didMountRef = useRef(false);
   useEffect(() => {
+    if (readOnly) {
+      return;
+    }
     if (!didMountRef.current) {
       didMountRef.current = true;
       return;
@@ -171,7 +180,7 @@ export default function CategoryList({
     writeStringList(PIN_STORAGE_KEY, pinned);
     writeStringList(OTHER_ORDER_KEY, otherOrder);
     saveLayoutToServer({ pinned, otherOrder });
-  }, [pinned, otherOrder]);
+  }, [pinned, otherOrder, readOnly]);
 
   const otherNames = useMemo(
     () => syncOrderList(otherOrder, groups.map((g) => g.category).filter((n) => !pinned.includes(n))),
@@ -373,6 +382,9 @@ export default function CategoryList({
   }, [useColumns]);
 
   function startPress(category: string, zone: Zone, event: ReactPointerEvent) {
+    if (readOnly) {
+      return;
+    }
     if (event.button !== 0) {
       return;
     }
@@ -456,10 +468,10 @@ export default function CategoryList({
         products={group.products}
         defaultOpen={!isReordering && (isPinned || hasDeal)}
         isPinned={isPinned}
-        onTogglePin={() => togglePin(group.category)}
+        onTogglePin={readOnly ? undefined : () => togglePin(group.category)}
         isReordering={isReordering}
         isDragging={dragging === group.category}
-        dragHandleProps={{
+        dragHandleProps={readOnly ? undefined : {
           onPointerDown: (event) => startPress(group.category, zone, event),
           onClickCapture: (event) => {
             if (suppressClickRef.current || isReordering) {

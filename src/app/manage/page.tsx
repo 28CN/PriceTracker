@@ -2,19 +2,26 @@ import { LayoutDashboard, PackagePlus } from 'lucide-react';
 
 import AddProductForm from '@/components/AddProductForm';
 import ManageProducts from '@/components/ManageProducts';
+import { requireViewer } from '@/lib/auth';
 import { fetchCategories, fetchProducts } from '@/lib/queries';
+import { createServerSupabaseClient } from '@/lib/supabase/server';
 import type { CategoryView, ProductView } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
 
 export default async function ManagePage() {
+  const viewer = await requireViewer('/manage');
+  const supabase = await createServerSupabaseClient();
   let categories: CategoryView[] = [];
   let products: ProductView[] = [];
   let loadError: string | null = null;
 
   try {
-    [categories, products] = await Promise.all([fetchCategories(), fetchProducts()]);
+    [categories, products] = await Promise.all([
+      fetchCategories(supabase, viewer.id),
+      fetchProducts(supabase, viewer.id)
+    ]);
   } catch (error) {
     loadError = error instanceof Error ? error.message : 'Failed to load data.';
   }

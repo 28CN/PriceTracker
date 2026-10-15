@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
+import { getApiAuth } from '@/lib/auth';
 import { detectRetailer, isValidHttpUrl } from '@/lib/retailer';
-import { getWriteClient } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,6 +9,10 @@ type IncomingLink = { url?: string; retailer?: string };
 
 export async function POST(request: Request) {
   try {
+    const auth = await getApiAuth();
+    if (!auth) {
+      return NextResponse.json({ error: 'Sign in required.' }, { status: 401 });
+    }
     const body = (await request.json().catch(() => ({}))) as {
       name?: string;
       categoryId?: string | null;
@@ -34,10 +38,22 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `Not a valid link: ${invalid.url}` }, { status: 400 });
     }
 
-    const supabase = getWriteClient();
+    const { supabase, userId } = auth;
 
     let categoryId = body.categoryId || null;
     const newCategoryName = (body.newCategoryName || '').trim();
+
+    if (categoryId) {
+      const { data: ownedCategory } = await supabase
+        .from('categories')
+        .select('id')
+        .eq('id', categoryId)
+        .eq('owner_id', userId)
+        .maybeSingle();
+      if (!ownedCategory) {
+        return NextResponse.json({ error: 'Category not found.' }, { status: 404 });
+      }
+    }
 
     if (!categoryId && newCategoryName) {
       const { data: existing } = await supabase
@@ -51,7 +67,7 @@ export async function POST(request: Request) {
       } else {
         const { data: created, error: categoryError } = await supabase
           .from('categories')
-          .insert({ name: newCategoryName })
+          .insert({ name: newCategoryName, owner_id: userId })
           .select('id')
           .single();
 
@@ -74,7 +90,7 @@ export async function POST(request: Request) {
 
     const { data: product, error: productError } = await supabase
       .from('products')
-      .insert({ name, category_id: categoryId, target_price: targetPrice })
+      .insert({ name, category_id: categoryId, target_price: targetPrice, owner_id: userId })
       .select('id')
       .single();
 

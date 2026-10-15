@@ -1,13 +1,18 @@
 import { NextResponse } from 'next/server';
 
-import { getWriteClient } from '@/lib/supabase';
+import { getApiAuth } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
-type RouteContext = { params: { id: string } };
+type RouteContext = { params: Promise<{ id: string }> };
 
 export async function PATCH(request: Request, { params }: RouteContext) {
   try {
+    const { id } = await params;
+    const auth = await getApiAuth();
+    if (!auth) {
+      return NextResponse.json({ error: 'Sign in required.' }, { status: 401 });
+    }
     const body = (await request.json().catch(() => ({}))) as {
       name?: string;
       targetPrice?: string | number | null;
@@ -58,8 +63,11 @@ export async function PATCH(request: Request, { params }: RouteContext) {
       return NextResponse.json({ error: 'Nothing to update.' }, { status: 400 });
     }
 
-    const supabase = getWriteClient();
-    const { error } = await supabase.from('products').update(patch).eq('id', params.id);
+    const { error } = await auth.supabase
+      .from('products')
+      .update(patch)
+      .eq('id', id)
+      .eq('owner_id', auth.userId);
 
     if (error) {
       if (/image_url/.test(error.message) && /does not exist|42703|schema cache/.test(error.message)) {

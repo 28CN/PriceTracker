@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 
+import { getApiAuth } from '@/lib/auth';
+
 function getRequiredEnv(name: string): string {
   const value = process.env[name];
   if (!value) {
@@ -10,10 +12,43 @@ function getRequiredEnv(name: string): string {
 
 export async function POST(request: Request) {
   try {
+    const auth = await getApiAuth();
+    if (!auth) {
+      return NextResponse.json({ error: 'Sign in required.' }, { status: 401 });
+    }
     const body = (await request.json().catch(() => ({}))) as {
       productId?: string;
       linkId?: string;
     };
+
+    let productId = body.productId || '';
+    const linkId = body.linkId || '';
+
+    if (linkId && !productId) {
+      const { data: link } = await auth.supabase
+        .from('tracked_links')
+        .select('product_id')
+        .eq('id', linkId)
+        .maybeSingle();
+      productId = link?.product_id || '';
+    }
+
+    if (productId) {
+      const { data: ownedProduct } = await auth.supabase
+        .from('products')
+        .select('id')
+        .eq('id', productId)
+        .eq('owner_id', auth.userId)
+        .maybeSingle();
+      if (!ownedProduct) {
+        return NextResponse.json({ error: 'Product not found.' }, { status: 404 });
+      }
+    } else if (!auth.isAdmin) {
+      return NextResponse.json(
+        { error: 'Only an administrator can refresh every account.' },
+        { status: 403 }
+      );
+    }
 
     const owner = getRequiredEnv('GITHUB_OWNER');
     const repo = getRequiredEnv('GITHUB_REPO');
@@ -34,8 +69,8 @@ export async function POST(request: Request) {
         body: JSON.stringify({
           ref,
           inputs: {
-            product_id: body.productId || '',
-            link_id: body.linkId || '',
+            product_id: productId,
+            link_id: linkId,
             force_refresh: 'true'
           }
         }),

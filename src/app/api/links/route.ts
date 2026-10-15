@@ -1,12 +1,16 @@
 import { NextResponse } from 'next/server';
 
+import { getApiAuth } from '@/lib/auth';
 import { detectRetailer, isValidHttpUrl } from '@/lib/retailer';
-import { getWriteClient } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
   try {
+    const auth = await getApiAuth();
+    if (!auth) {
+      return NextResponse.json({ error: 'Sign in required.' }, { status: 401 });
+    }
     const body = (await request.json().catch(() => ({}))) as {
       productId?: string;
       links?: Array<{ url?: string; retailer?: string }>;
@@ -33,7 +37,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `Not a valid link: ${invalid.url}` }, { status: 400 });
     }
 
-    const supabase = getWriteClient();
+    const { supabase, userId } = auth;
+    const { data: product } = await supabase
+      .from('products')
+      .select('id')
+      .eq('id', productId)
+      .eq('owner_id', userId)
+      .maybeSingle();
+    if (!product) {
+      return NextResponse.json({ error: 'Product not found.' }, { status: 404 });
+    }
 
     const rows = cleanedLinks.map((link) => ({
       product_id: productId,

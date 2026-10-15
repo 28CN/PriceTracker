@@ -1,14 +1,19 @@
 import { NextResponse } from 'next/server';
 
+import { getApiAuth } from '@/lib/auth';
 import { detectRetailer, isValidHttpUrl } from '@/lib/retailer';
-import { getWriteClient } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
-type RouteContext = { params: { id: string } };
+type RouteContext = { params: Promise<{ id: string }> };
 
 export async function PATCH(request: Request, { params }: RouteContext) {
   try {
+    const { id } = await params;
+    const auth = await getApiAuth();
+    if (!auth) {
+      return NextResponse.json({ error: 'Sign in required.' }, { status: 401 });
+    }
     const body = (await request.json().catch(() => ({}))) as {
       isActive?: boolean;
       url?: string;
@@ -41,14 +46,14 @@ export async function PATCH(request: Request, { params }: RouteContext) {
       return NextResponse.json({ error: 'Nothing to update.' }, { status: 400 });
     }
 
-    const supabase = getWriteClient();
+    const { supabase } = auth;
     const { data: before } = await supabase
       .from('tracked_links')
       .select('url, is_active')
-      .eq('id', params.id)
+      .eq('id', id)
       .maybeSingle();
 
-    const { error } = await supabase.from('tracked_links').update(patch).eq('id', params.id);
+    const { error } = await supabase.from('tracked_links').update(patch).eq('id', id);
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
@@ -61,7 +66,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
       const { error: noticeError } = await supabase
         .from('crawl_events')
         .update({ is_read: true })
-        .eq('link_id', params.id)
+        .eq('link_id', id)
         .eq('is_read', false);
       if (noticeError) {
         console.error('[links] could not clear notices:', noticeError.message);
@@ -77,8 +82,12 @@ export async function PATCH(request: Request, { params }: RouteContext) {
 
 export async function DELETE(_request: Request, { params }: RouteContext) {
   try {
-    const supabase = getWriteClient();
-    const { error } = await supabase.from('tracked_links').delete().eq('id', params.id);
+    const { id } = await params;
+    const auth = await getApiAuth();
+    if (!auth) {
+      return NextResponse.json({ error: 'Sign in required.' }, { status: 401 });
+    }
+    const { error } = await auth.supabase.from('tracked_links').delete().eq('id', id);
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });

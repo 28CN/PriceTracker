@@ -1,0 +1,30 @@
+name: Send queued emails
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pricetracker-email-worker
+  cancel-in-progress: false
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Drain email outbox
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          EMAIL_WORKER_SECRET: ${{ secrets.EMAIL_WORKER_SECRET }}
+        run: |
+          test -n "$APP_URL"
+          test -n "$EMAIL_WORKER_SECRET"
+          curl --fail-with-body --silent --show-error \
+            --request POST \
+            --header "Authorization: Bearer $EMAIL_WORKER_SECRET" \
+            "${APP_URL%/}/api/internal/email-worker"

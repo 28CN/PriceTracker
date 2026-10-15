@@ -1,11 +1,16 @@
 import { ChartNoAxesCombined, Settings2 } from 'lucide-react';
 import Link from 'next/link';
 
+import { getViewer } from '@/lib/auth';
+
+import AccountMenu from './AccountMenu';
 import NotificationsBell from './NotificationsBell';
 import RefreshButton from './RefreshButton';
 import ThemeToggle from './ThemeToggle';
 
-export default function TopBar() {
+export default async function TopBar() {
+  const viewer = await getViewer();
+
   return (
     <header className="topbar">
       <div className="topbar-inner">
@@ -18,13 +23,22 @@ export default function TopBar() {
           </p>
         </Link>
         <div className="topbar-actions">
-          <Link className="button topbar-manage" href="/manage">
-            <Settings2 size={16} aria-hidden="true" />
-            Manage
-          </Link>
+          {viewer ? (
+            <Link className="button topbar-manage" href="/manage">
+              <Settings2 size={16} aria-hidden="true" />
+              Manage
+            </Link>
+          ) : (
+            <Link className="button topbar-manage" href="/login">
+              Sign in
+            </Link>
+          )}
           <ThemeToggle />
-          <NotificationsBell />
-          <RefreshButton />
+          {viewer ? <NotificationsBell /> : null}
+          {viewer?.isAdmin ? <RefreshButton /> : null}
+          {viewer ? (
+            <AccountMenu username={viewer.username} displayName={viewer.displayName} />
+          ) : null}
         </div>
       </div>
     </header>

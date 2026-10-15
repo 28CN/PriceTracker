@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import sharp from 'sharp';
 
-import { getReadClient } from '@/lib/supabase';
+import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -10,7 +10,7 @@ const MAX_BYTES = 8 * 1024 * 1024;
 const UUID = /^[0-9a-f-]{36}$/i;
 
 // The `v` query param changes whenever the stored URL does, so long caching is safe.
-const CACHE_HEADER = 'public, max-age=604800, s-maxage=2592000, stale-while-revalidate=2592000';
+const CACHE_HEADER = 'private, max-age=604800, stale-while-revalidate=86400';
 
 // These CDNs refuse datacentre IPs. Sending the browser straight there avoids
 // a multi-second server timeout on every uncached request.
@@ -44,7 +44,7 @@ function redirectToSource(url: string): NextResponse {
 async function storedImageUrl(request: NextRequest): Promise<string | null | 'bad'> {
   const productId = request.nextUrl.searchParams.get('product') || '';
   const linkId = request.nextUrl.searchParams.get('link') || '';
-  const supabase = getReadClient();
+  const supabase = await createServerSupabaseClient();
 
   if (productId) {
     if (!UUID.test(productId)) return 'bad';

@@ -19,16 +19,20 @@ export function parseCategoryLayout(value: unknown): CategoryLayout | null {
   return { pinned: stringList(record.pinned), otherOrder: stringList(record.otherOrder) };
 }
 
-/** Null when the table is missing or nothing has been saved yet. */
-export async function fetchCategoryLayout(supabase: SupabaseClient): Promise<CategoryLayout | null> {
+/** Null when nothing has been saved for this account yet. */
+export async function fetchCategoryLayout(
+  supabase: SupabaseClient,
+  userId: string
+): Promise<CategoryLayout | null> {
   const { data, error } = await supabase
-    .from('app_settings')
+    .from('user_preferences')
     .select('value')
+    .eq('user_id', userId)
     .eq('key', CATEGORY_LAYOUT_KEY)
     .maybeSingle();
 
   if (error) {
-    console.error('[categoryLayout] could not read app_settings:', error.message);
+    console.error('[categoryLayout] could not read user preferences:', error.message);
     return null;
   }
   return parseCategoryLayout(data?.value);

@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
+import { getApiAuth } from '@/lib/auth';
+
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
 
@@ -26,6 +28,14 @@ async function countsFor(url: string, key: string) {
 }
 
 export async function GET() {
+  const auth = await getApiAuth();
+  if (!auth) {
+    return NextResponse.json({ error: 'Sign in required.' }, { status: 401 });
+  }
+  if (!auth.isAdmin) {
+    return NextResponse.json({ error: 'Administrator access required.' }, { status: 403 });
+  }
+
   const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '';
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';

@@ -1,9 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 
+import { getApiAuth } from '@/lib/auth';
 import { latestTimestamp } from '@/lib/format';
 import { isResolved, isStaleNoise, needsAction, type LinkHealth } from '@/lib/notices';
-import { getReadClient, getWriteClient } from '@/lib/supabase';
 import type { CrawlEventView } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -86,7 +86,11 @@ async function fetchLinkHealth(
 
 export async function GET() {
   try {
-    const supabase = getReadClient();
+    const auth = await getApiAuth();
+    if (!auth) {
+      return NextResponse.json({ error: 'Sign in required.' }, { status: 401 });
+    }
+    const { supabase } = auth;
     const { data, error } = await supabase
       .from('crawl_events')
       .select('id, link_id, level, message, is_read, created_at')
@@ -122,7 +126,7 @@ export async function GET() {
     }
 
     if (autoRead.length > 0) {
-      const { error: markError } = await getWriteClient()
+      const { error: markError } = await supabase
         .from('crawl_events')
         .update({ is_read: true })
         .in('id', autoRead);
@@ -143,7 +147,11 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const supabase = getWriteClient();
+    const auth = await getApiAuth();
+    if (!auth) {
+      return NextResponse.json({ error: 'Sign in required.' }, { status: 401 });
+    }
+    const { supabase } = auth;
     let body: { id?: string; ids?: string[] } = {};
     try {
       body = (await request.json()) as { id?: string; ids?: string[] };
