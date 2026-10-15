@@ -753,7 +753,6 @@ KNOWN_HOST_FRAGMENTS = (
     "ebay.com.au",
     "myer.com.au",
     "davidjones.com",
-    "catch.com.au",
     "toysrus.com.au",
     "toymate.com.au",
     "toyworld.com.au",

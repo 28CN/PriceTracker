@@ -136,16 +136,19 @@ export function hasCrawlerSupport(retailerOrUrl: string): boolean {
   try {
     if (/^https?:\/\//i.test(raw)) {
       const hostname = new URL(raw).hostname.toLowerCase();
-      if (findRetailer(hostname)) {
-        return true;
-      }
+      const retailer = findRetailer(hostname);
+      return retailer ? DEDICATED_RETAILER_DOMAINS.has(retailer.domain) : false;
     }
   } catch {
     // Fall through to a name match.
   }
 
   const needle = normalisedName(raw);
-  return RETAILERS.some((entry) => normalisedName(entry.name) === needle);
+  return RETAILERS.some(
+    (entry) =>
+      normalisedName(entry.name) === needle &&
+      DEDICATED_RETAILER_DOMAINS.has(entry.domain)
+  );
 }
 
 export type RetailerLogoSource = {
