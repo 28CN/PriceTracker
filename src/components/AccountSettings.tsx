@@ -1,6 +1,6 @@
 'use client';
 
-import { Camera, CheckCircle2, Eye, EyeOff, MoreHorizontal, ShieldCheck, Trash2 } from 'lucide-react';
+import { Camera, CheckCircle2, Eye, EyeOff, LoaderCircle, MoreHorizontal, ShieldCheck, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { FormEvent, useMemo, useState } from 'react';
 
@@ -45,6 +45,7 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
     useState<{ type: 'ok' | 'error'; text: string } | null>(null);
   const [deleteMessage, setDeleteMessage] = useState<string | null>(null);
   const [showNewPassword, setShowNewPassword] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
   const [dataMessage, setDataMessage] =
     useState<{ type: 'ok' | 'error'; text: string } | null>(null);
   const [clearing, setClearing] = useState<'watchlist' | 'price-history' | null>(null);
@@ -149,21 +150,26 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
       setSecurityMessage({ type: 'error', text: 'The new passwords do not match.' });
       return;
     }
-    const response = await fetch('/api/account/password', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        newPassword
-      })
-    });
-    const result = (await response.json().catch(() => null)) as { error?: string } | null;
-    if (!response.ok) {
-      setSecurityMessage({ type: 'error', text: result?.error || 'Could not change password.' });
-      return;
+    setChangingPassword(true);
+    try {
+      const response = await fetch('/api/account/password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newPassword })
+      });
+      const result = (await response.json().catch(() => null)) as { error?: string } | null;
+      if (!response.ok) {
+        setSecurityMessage({ type: 'error', text: result?.error || 'Could not change password.' });
+        return;
+      }
+      formElement.reset();
+      setSecurityMessage({ type: 'ok', text: 'Password changed.' });
+      router.refresh();
+    } catch {
+      setSecurityMessage({ type: 'error', text: 'Could not connect. Please try again.' });
+    } finally {
+      setChangingPassword(false);
     }
-    formElement.reset();
-    setSecurityMessage({ type: 'ok', text: 'Password changed.' });
-    router.refresh();
   }
 
   async function deleteAccount(event: FormEvent<HTMLFormElement>) {
@@ -405,6 +411,7 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
                 autoComplete="new-password"
                 minLength={8}
                 maxLength={72}
+                disabled={changingPassword}
                 required
               />
               <button
@@ -427,12 +434,29 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
                 autoComplete="new-password"
                 minLength={8}
                 maxLength={72}
+                disabled={changingPassword}
                 required
               />
+              <button
+                type="button"
+                className="password-visibility"
+                onClick={() => setShowNewPassword((value) => !value)}
+                aria-label={showNewPassword ? 'Hide password' : 'Show password'}
+              >
+                {showNewPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+              </button>
             </span>
           </label>
-          <Message value={securityMessage} />
-          <button type="submit" className="button secondary">Change password</button>
+          <div className="security-feedback">
+            <Message value={securityMessage} />
+            <button type="submit" className="button secondary" disabled={changingPassword}>
+              {changingPassword ? (
+                <><LoaderCircle className="spin" size={16} /> Updating password…</>
+              ) : (
+                'Change password'
+              )}
+            </button>
+          </div>
         </form>
       </section>
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { LoaderCircle, RefreshCw } from 'lucide-react';
+import { LoaderCircle, Radar, RefreshCw } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 type RefreshButtonProps = {
@@ -21,8 +21,10 @@ export default function RefreshButton({ productId, linkId }: RefreshButtonProps)
   }, [message]);
 
   async function handleRefresh() {
+    const startedAt = performance.now();
     setIsLoading(true);
     setMessage(null);
+    let nextMessage = 'Refresh queued.';
 
     try {
       const response = await fetch('/api/refresh', {
@@ -37,11 +39,16 @@ export default function RefreshButton({ productId, linkId }: RefreshButtonProps)
         throw new Error(data.error || 'Could not start the refresh.');
       }
 
-      setMessage(data.message || 'Refresh queued.');
+      nextMessage = data.message || 'Refresh queued.';
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Unknown error');
+      nextMessage = error instanceof Error ? error.message : 'Unknown error';
     } finally {
+      const remaining = 900 - (performance.now() - startedAt);
+      if (remaining > 0) {
+        await new Promise((resolve) => window.setTimeout(resolve, remaining));
+      }
       setIsLoading(false);
+      setMessage(nextMessage);
     }
   }
 
@@ -61,9 +68,22 @@ export default function RefreshButton({ productId, linkId }: RefreshButtonProps)
           <RefreshCw size={18} aria-hidden="true" />
         )}
       </button>
-      {message ? (
-        <div className="panel" role="status">
-          <p className="hint">{message}</p>
+      {isLoading || message ? (
+        <div className="panel refresh-panel" role="status" aria-live="polite">
+          {isLoading ? (
+            <div className="refresh-activity">
+              <span className="refresh-radar" aria-hidden="true">
+                <Radar size={23} />
+                <i />
+              </span>
+              <span>
+                <strong>Checking retailer pages…</strong>
+                <small>Preparing a fresh price scan</small>
+              </span>
+            </div>
+          ) : (
+            <p className="hint">{message}</p>
+          )}
         </div>
       ) : null}
     </div>

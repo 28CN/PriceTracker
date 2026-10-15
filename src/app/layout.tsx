@@ -38,8 +38,8 @@ const criticalFallbackCss = `
     :where(.product-thumb){width:64px!important;height:64px!important}
   }
   @media(prefers-color-scheme:dark){
-    :where(html,body){background:#10131a;color:#edf0f7}
-    :where(.dashboard-hero,.dashboard-overview,.manage-hero,.category-section,.card){background:#1a1f2a;border-color:#303746}
+    :where(html,body){background:#111713;color:#f1f3ec}
+    :where(.dashboard-hero,.dashboard-overview,.manage-hero,.category-section,.card){background:#19221d;border-color:#344139}
   }
 `;
 

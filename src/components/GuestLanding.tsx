@@ -2,6 +2,7 @@ import { BellRing, LineChart, ListPlus, Store } from 'lucide-react';
 import Link from 'next/link';
 
 import CategoryList from '@/components/CategoryList';
+import KangarooPriceAnimation from '@/components/KangarooPriceAnimation';
 import RetailerLogo from '@/components/RetailerLogo';
 import { SUPPORTED_RETAILERS } from '@/lib/retailer';
 import type { ProductView } from '@/lib/types';
@@ -14,16 +15,22 @@ export default function GuestLanding({ featured }: { featured: ProductView[] }) 
   return (
     <main className="guest-home">
       <section className="guest-hero">
-        <span className="eyebrow">Australian price tracking</span>
-        <h1>Watch the price. Buy when it is right.</h1>
-        <p>
-          Save products from supported retailers, set your target price and keep
-          the latest offers together in one watchlist.
-        </p>
-        <div className="guest-hero-actions">
-          <Link className="button" href="/register">Create a free account</Link>
-          <Link className="button secondary" href="/login">Sign in</Link>
+        <div className="guest-hero-copy">
+          <span className="eyebrow">Australian price tracking</span>
+          <h1>
+            <span>Watch the <em>price.</em></span>
+            <span>Buy when it’s right.</span>
+          </h1>
+          <p>
+            Save products from supported retailers, set your target price and keep
+            the latest offers together in one watchlist.
+          </p>
+          <div className="guest-hero-actions">
+            <Link className="button" href="/register">Create a free account</Link>
+            <Link className="button secondary" href="/login">Sign in</Link>
+          </div>
         </div>
+        <KangarooPriceAnimation />
       </section>
 
       <section className="guest-steps" aria-label="How PriceTracker works">
