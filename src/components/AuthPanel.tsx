@@ -2,7 +2,6 @@
 
 import { Eye, EyeOff, LockKeyhole, UserRound } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { FormEvent, useState } from 'react';
 
 type AuthPanelProps = {
@@ -15,7 +14,6 @@ function safeNextPath(value: string | undefined): string {
 }
 
 export default function AuthPanel({ mode, nextPath }: AuthPanelProps) {
-  const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -57,9 +55,9 @@ export default function AuthPanel({ mode, nextPath }: AuthPanelProps) {
       }
 
       if (result?.requiresSignIn) {
-        router.replace('/login?created=1');
+        window.location.assign('/login?created=1');
       } else {
-        router.replace(safeNextPath(result?.redirectTo || nextPath));
+        window.location.assign(safeNextPath(result?.redirectTo || nextPath));
       }
     } catch {
       setError('Could not connect. Please try again.');
@@ -91,6 +89,7 @@ export default function AuthPanel({ mode, nextPath }: AuthPanelProps) {
             <UserRound size={17} aria-hidden="true" />
             <input
               name="username"
+              type="text"
               autoComplete="username"
               inputMode="text"
               minLength={3}

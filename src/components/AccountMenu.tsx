@@ -2,7 +2,6 @@
 
 import { LogOut, Settings, UserRound } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 export default function AccountMenu({
@@ -12,14 +11,12 @@ export default function AccountMenu({
   username: string;
   displayName: string | null;
 }) {
-  const router = useRouter();
   const [pending, setPending] = useState(false);
 
   async function logout() {
     setPending(true);
     await fetch('/api/auth/logout', { method: 'POST' });
-    router.push('/login');
-    router.refresh();
+    window.location.assign('/login');
   }
 
   return (
