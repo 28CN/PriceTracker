@@ -26,6 +26,8 @@ export default function ProductThumb({ source }: { source: ThumbSource }) {
       className={`product-thumb${status === 'ready' ? ' is-ready' : ' is-loading'}`}
       src={src}
       alt=""
+      width={76}
+      height={76}
       decoding="async"
       referrerPolicy="no-referrer"
       onLoad={() => {

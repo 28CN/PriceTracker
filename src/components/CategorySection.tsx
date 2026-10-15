@@ -1,5 +1,6 @@
 'use client';
 
+import { ChevronDown, Pin, Sparkles } from 'lucide-react';
 import { useEffect, useRef, useState, type HTMLAttributes } from 'react';
 
 import ProductList from '@/components/ProductList';
@@ -83,15 +84,18 @@ export default function CategorySection({
           aria-expanded={showBody}
         >
           <span className="category-toggle-main">
-            <span className="category-chevron" aria-hidden>
-              {showBody ? '▾' : '▸'}
-            </span>
+            <ChevronDown
+              className={`category-chevron${showBody ? ' is-open' : ''}`}
+              size={17}
+              aria-hidden="true"
+            />
             <span className="category-name">{category}</span>
             <span className="category-count">
               {products.length} product{products.length === 1 ? '' : 's'}
             </span>
             {dealCount > 0 && !isReordering ? (
               <span className="category-deals">
+                <Sparkles size={12} aria-hidden="true" />
                 {dealCount} under target
               </span>
             ) : null}
@@ -107,12 +111,7 @@ export default function CategorySection({
             aria-label={isPinned ? 'Unpin category' : 'Pin category'}
             title={isPinned ? 'Unpin' : 'Pin to top'}
           >
-            <svg className="pin-icon" viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                fill="currentColor"
-                d="M16 9V4h1c.55 0 1-.45 1-1s-.45-1-1-1H7c-.55 0-1 .45-1 1s.45 1 1 1h1v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3z"
-              />
-            </svg>
+            <Pin className="pin-icon" size={16} aria-hidden="true" />
           </button>
         ) : null}
       </div>

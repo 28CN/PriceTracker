@@ -1,5 +1,6 @@
 'use client';
 
+import { LoaderCircle, RefreshCw } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 type RefreshButtonProps = {
@@ -54,7 +55,11 @@ export default function RefreshButton({ productId, linkId }: RefreshButtonProps)
         aria-label="Refresh prices now"
         title="Refresh prices now"
       >
-        {isLoading ? '...' : '\u21bb'}
+        {isLoading ? (
+          <LoaderCircle className="spin" size={18} aria-hidden="true" />
+        ) : (
+          <RefreshCw size={18} aria-hidden="true" />
+        )}
       </button>
       {message ? (
         <div className="panel" role="status">

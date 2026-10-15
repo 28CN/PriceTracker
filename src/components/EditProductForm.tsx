@@ -1,5 +1,6 @@
 'use client';
 
+import { Pause, Play, Save, Trash2, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
@@ -329,6 +330,7 @@ export default function EditProductForm({ product, onClose }: Props) {
                 )
               }
             >
+              {link.isActive ? <Pause size={15} /> : <Play size={15} />}
               {link.isActive ? 'Pause' : 'Resume'}
             </button>
             <button
@@ -337,6 +339,7 @@ export default function EditProductForm({ product, onClose }: Props) {
               disabled={busy}
               onClick={() => removeLink(link.id)}
             >
+              <Trash2 size={15} />
               Delete
             </button>
           </div>
@@ -369,9 +372,11 @@ export default function EditProductForm({ product, onClose }: Props) {
 
       <div className="form-actions" style={{ marginTop: 12 }}>
         <button type="button" className="button" onClick={onClose} disabled={busy}>
+          <X size={15} />
           Cancel
         </button>
         <button type="submit" className="button primary" disabled={busy}>
+          <Save size={15} />
           {busy ? 'Saving...' : 'Save changes'}
         </button>
       </div>

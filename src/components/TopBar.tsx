@@ -1,7 +1,9 @@
+import { ChartNoAxesCombined, Settings2 } from 'lucide-react';
 import Link from 'next/link';
 
 import NotificationsBell from './NotificationsBell';
 import RefreshButton from './RefreshButton';
+import ThemeToggle from './ThemeToggle';
 
 export default function TopBar() {
   return (
@@ -9,18 +11,7 @@ export default function TopBar() {
       <div className="topbar-inner">
         <Link href="/" className="brand-link" aria-label="PriceTracker home">
           <span className="brand-mark" aria-hidden="true">
-            <svg viewBox="0 0 32 32" width="22" height="22">
-              <rect x="2" y="2" width="28" height="28" rx="8" fill="currentColor" opacity="0.12" />
-              <path
-                d="M8 21 L13 14 L17 17 L24 9"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <circle cx="24" cy="9" r="2.2" fill="currentColor" />
-            </svg>
+            <ChartNoAxesCombined size={21} />
           </span>
           <p className="brand">
             Price<span>Tracker</span>
@@ -28,8 +19,10 @@ export default function TopBar() {
         </Link>
         <div className="topbar-actions">
           <Link className="button topbar-manage" href="/manage">
+            <Settings2 size={16} aria-hidden="true" />
             Manage
           </Link>
+          <ThemeToggle />
           <NotificationsBell />
           <RefreshButton />
         </div>

@@ -1,5 +1,6 @@
 'use client';
 
+import { LoaderCircle, Plus, Save, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
@@ -190,7 +191,7 @@ export default function AddProductForm({ categories }: { categories: CategoryVie
               onClick={() => removeLinkRow(index)}
               aria-label={`Remove link row ${index + 1}`}
             >
-              ×
+              <Trash2 size={15} aria-hidden="true" />
             </button>
           ) : null}
         </div>
@@ -203,9 +204,11 @@ export default function AddProductForm({ categories }: { categories: CategoryVie
           onClick={addLinkRow}
           disabled={!canAddMore}
         >
-          + Add another shop link
+          <Plus size={16} aria-hidden="true" />
+          Add another shop link
         </button>
         <button type="submit" className="button primary" disabled={isSaving}>
+          {isSaving ? <LoaderCircle className="spin" size={16} /> : <Save size={16} />}
           {isSaving ? 'Saving...' : 'Save product'}
         </button>
       </div>

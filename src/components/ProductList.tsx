@@ -1,9 +1,11 @@
 'use client';
 
+import { AnimatePresence, motion } from 'framer-motion';
+import { CheckCircle2, ChevronDown, ExternalLink, Pencil, Target } from 'lucide-react';
 import { useState } from 'react';
 
 import EditProductForm from '@/components/EditProductForm';
-import ProductThumb from '@/components/ProductThumb';
+import ProductVisual from '@/components/ProductVisual';
 import RetailerLogo from '@/components/RetailerLogo';
 import { formatCheckedAt, formatMoney, latestTimestamp } from '@/lib/format';
 import { productThumb } from '@/lib/productImage';
@@ -57,7 +59,14 @@ function ProductCard({ product }: { product: ProductView }) {
   }
 
   return (
-    <article className={`card ${isEditing ? 'is-editing' : ''}`}>
+    <motion.article
+      className={`card product-card ${isEditing ? 'is-editing' : ''}`}
+      initial={{ opacity: 0, y: 14 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '-24px' }}
+      whileHover={isEditing ? undefined : { y: -3, scale: 1.004 }}
+      transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+    >
       <div className="card-head-row">
         <button
           type="button"
@@ -71,15 +80,30 @@ function ProductCard({ product }: { product: ProductView }) {
           aria-expanded={isOpen}
         >
           <div className="card-title-row">
-            {thumb ? <ProductThumb key={thumb.proxied} source={thumb} /> : null}
-            <h2 className="product-name">{product.name}</h2>
+            <ProductVisual
+              key={thumb?.proxied || product.id}
+              source={thumb}
+              name={product.name}
+              category={product.categoryName}
+            />
+            <div className="product-title-copy">
+              <h2 className="product-name">{product.name}</h2>
+              {product.categoryName ? <span className="chip">{product.categoryName}</span> : null}
+            </div>
+            <ChevronDown
+              className={`card-chevron${isOpen ? ' is-open' : ''}`}
+              size={17}
+              aria-hidden="true"
+            />
           </div>
 
           <div className="card-meta-row">
             <div className="card-meta-left">
-              {hitsTarget ? <span className="hit">Under target</span> : null}
+              {hitsTarget ? (
+                <span className="hit"><CheckCircle2 size={13} /> Under target</span>
+              ) : null}
               {product.targetPrice !== null ? (
-                <span className="price-note">Target {formatMoney(product.targetPrice)}</span>
+                <span className="price-note"><Target size={13} /> Target {formatMoney(product.targetPrice)}</span>
               ) : (
                 <span className="price-note muted-empty">No target</span>
               )}
@@ -109,6 +133,7 @@ function ProductCard({ product }: { product: ProductView }) {
           </div>
         </button>
         <button type="button" className="card-edit-btn" onClick={openEditor}>
+          <Pencil size={13} aria-hidden="true" />
           Edit
         </button>
       </div>
@@ -117,8 +142,15 @@ function ProductCard({ product }: { product: ProductView }) {
         <EditProductForm product={product} onClose={() => setIsEditing(false)} />
       ) : null}
 
+      <AnimatePresence initial={false}>
       {!isEditing && isOpen ? (
-        <div className="rows">
+        <motion.div
+          className="rows"
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          exit={{ opacity: 0, height: 0 }}
+          transition={{ duration: 0.22 }}
+        >
           {product.links.length === 0 ? (
             <p className="hint">No links yet. Use Edit to add shop URLs.</p>
           ) : null}
@@ -162,15 +194,16 @@ function ProductCard({ product }: { product: ProductView }) {
                 </span>
                 {link.url ? (
                   <a className="open-link" href={link.url} target="_blank" rel="noreferrer">
-                    Open
+                    Open <ExternalLink size={13} aria-hidden="true" />
                   </a>
                 ) : null}
               </div>
             </div>
           ))}
-        </div>
+        </motion.div>
       ) : null}
-    </article>
+      </AnimatePresence>
+    </motion.article>
   );
 }
 

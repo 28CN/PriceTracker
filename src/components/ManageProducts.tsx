@@ -1,5 +1,7 @@
 'use client';
 
+import { motion } from 'framer-motion';
+import { Pencil, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
@@ -23,7 +25,14 @@ export default function ManageProducts({ products }: { products: ProductView[] }
   return (
     <div className="stack">
       {products.map((product) => (
-        <article className="card tight" key={product.id}>
+        <motion.article
+          className="card tight"
+          key={product.id}
+          initial={{ opacity: 0, y: 12 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          whileHover={{ y: -2 }}
+        >
           <div className="card-head-row">
             <div className="row" style={{ flex: 1, minWidth: 0 }}>
               <div className="row-main">
@@ -45,6 +54,7 @@ export default function ManageProducts({ products }: { products: ProductView[] }
                 setEditingId((current) => (current === product.id ? null : product.id))
               }
             >
+              {editingId === product.id ? <X size={13} /> : <Pencil size={13} />}
               {editingId === product.id ? 'Close' : 'Edit'}
             </button>
           </div>
@@ -79,7 +89,7 @@ export default function ManageProducts({ products }: { products: ProductView[] }
               ))}
             </div>
           )}
-        </article>
+        </motion.article>
       ))}
     </div>
   );

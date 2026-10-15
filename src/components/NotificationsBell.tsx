@@ -1,5 +1,6 @@
 'use client';
 
+import { Bell, CheckCheck, ChevronDown } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { formatWhen } from '@/lib/format';
@@ -217,9 +218,11 @@ export default function NotificationsBell() {
           <span className="notice-group-meta">
             {group.unread > 0 ? <span className="notice-group-unread">{group.unread}</span> : null}
             <span className="notice-group-count">{group.events.length}</span>
-            <span className="notice-group-chevron" aria-hidden>
-              {open ? '▾' : '▸'}
-            </span>
+            <ChevronDown
+              className={`notice-group-chevron${open ? ' is-open' : ''}`}
+              size={14}
+              aria-hidden="true"
+            />
           </span>
         </button>
 
@@ -265,7 +268,7 @@ export default function NotificationsBell() {
         title="Crawler notifications"
         aria-expanded={isOpen}
       >
-        {'\u2691'}
+        <Bell size={18} aria-hidden="true" />
         {unread > 0 ? <span className="badge">{unread > 99 ? '99+' : unread}</span> : null}
       </button>
 
@@ -275,6 +278,7 @@ export default function NotificationsBell() {
             <h2>Crawler notices</h2>
             {events.some((event) => !event.isRead) ? (
               <button type="button" className="button subtle" onClick={markAllRead}>
+                <CheckCheck size={15} aria-hidden="true" />
                 Mark read
               </button>
             ) : null}
@@ -304,9 +308,11 @@ export default function NotificationsBell() {
                     <span className="notice-group-unread">{earlierUnread}</span>
                   ) : null}
                   <span className="notice-group-count">{earlierGroups.length}</span>
-                  <span className="notice-group-chevron" aria-hidden>
-                    {earlierOpen ? '▾' : '▸'}
-                  </span>
+                  <ChevronDown
+                    className={`notice-group-chevron${earlierOpen ? ' is-open' : ''}`}
+                    size={14}
+                    aria-hidden="true"
+                  />
                 </span>
               </button>
               {earlierOpen ? earlierGroups.map(renderGroup) : null}
