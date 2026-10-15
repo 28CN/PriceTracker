@@ -33,6 +33,15 @@
   --shadow-hover: 0 18px 45px rgba(15, 23, 42, 0.12);
   --page-max: 780px;
   --page-max-wide: 1180px;
+  --glass-border: color-mix(in srgb, #fff 46%, var(--line));
+  --glass-inset: rgba(255, 255, 255, 0.42);
+  --glass-spot: rgba(255, 255, 255, 0.22);
+  --ticket-bg: #fff;
+  --ticket-price: #1d2433;
+  --ticket-off-bg: #fff6f4;
+  --ticket-off-price: #c4473a;
+  --ticket-half-bg: #fff8ea;
+  --ticket-half-price: #9a5b12;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -68,6 +77,15 @@
     --topbar-bg: rgba(17, 23, 19, 0.78);
     --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.2), 0 14px 38px rgba(0, 0, 0, 0.28);
     --shadow-hover: 0 20px 50px rgba(0, 0, 0, 0.4);
+    --glass-border: color-mix(in srgb, #fff 12%, var(--line));
+    --glass-inset: rgba(255, 255, 255, 0.08);
+    --glass-spot: color-mix(in srgb, var(--brand) 22%, transparent);
+    --ticket-bg: #1c241e;
+    --ticket-price: #f1f3ec;
+    --ticket-off-bg: #3b211d;
+    --ticket-off-price: #ef9a8d;
+    --ticket-half-bg: #34291d;
+    --ticket-half-price: #efbd78;
   }
 }
 
@@ -1334,6 +1352,15 @@ html[data-theme='light'] {
   --topbar-bg: rgba(247, 248, 251, 0.72);
   --shadow-soft: 0 1px 2px rgba(15, 23, 42, 0.04), 0 12px 35px rgba(15, 23, 42, 0.07);
   --shadow-hover: 0 18px 45px rgba(15, 23, 42, 0.12);
+  --glass-border: color-mix(in srgb, #fff 46%, var(--line));
+  --glass-inset: rgba(255, 255, 255, 0.42);
+  --glass-spot: rgba(255, 255, 255, 0.22);
+  --ticket-bg: #fff;
+  --ticket-price: #1d2433;
+  --ticket-off-bg: #fff6f4;
+  --ticket-off-price: #c4473a;
+  --ticket-half-bg: #fff8ea;
+  --ticket-half-price: #9a5b12;
 }
 
 html[data-theme='dark'] {
@@ -1369,6 +1396,15 @@ html[data-theme='dark'] {
   --topbar-bg: rgba(17, 23, 19, 0.78);
   --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.2), 0 14px 38px rgba(0, 0, 0, 0.28);
   --shadow-hover: 0 20px 50px rgba(0, 0, 0, 0.4);
+  --glass-border: color-mix(in srgb, #fff 12%, var(--line));
+  --glass-inset: rgba(255, 255, 255, 0.08);
+  --glass-spot: color-mix(in srgb, var(--brand) 22%, transparent);
+  --ticket-bg: #1c241e;
+  --ticket-price: #f1f3ec;
+  --ticket-off-bg: #3b211d;
+  --ticket-off-price: #ef9a8d;
+  --ticket-half-bg: #34291d;
+  --ticket-half-price: #efbd78;
 }
 
 body {
@@ -1503,8 +1539,15 @@ button:active,
 }
 
 html[data-theme='dark'] .button.primary {
-  color: #121621;
-  background: linear-gradient(135deg, #bac4e5, #94b9c4);
+  color: #1a1610;
+  background: linear-gradient(135deg, #efbd78, #cf8f4f);
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme='light']) .button.primary {
+    color: #1a1610;
+    background: linear-gradient(135deg, #efbd78, #cf8f4f);
+  }
 }
 
 .panel {
@@ -3050,9 +3093,7 @@ select:focus {
 .guest-retailers,
 .guest-featured {
   padding: clamp(24px, 5vw, 48px);
-  border: 1px solid var(--line);
   border-radius: 24px;
-  background: color-mix(in srgb, var(--surface) 96%, transparent);
 }
 
 .guest-hero {
@@ -3060,9 +3101,57 @@ select:focus {
   grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
   align-items: center;
   gap: clamp(18px, 4vw, 48px);
-  background:
-    radial-gradient(circle at 88% 20%, var(--brand-soft), transparent 34%),
-    color-mix(in srgb, var(--surface) 96%, transparent);
+}
+
+.glass-surface {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  border: 1px solid var(--glass-border);
+  background: color-mix(in srgb, var(--surface) 78%, transparent);
+  box-shadow:
+    inset 0 1px 0 var(--glass-inset),
+    var(--shadow-soft);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  transition:
+    border-color 180ms ease,
+    transform 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.glass-surface::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    280px circle at var(--spot-x, 18%) var(--spot-y, 0%),
+    var(--glass-spot),
+    transparent 58%
+  );
+  opacity: 0.35;
+  transition: opacity 180ms ease;
+}
+
+.glass-surface > * {
+  position: relative;
+  z-index: 1;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .glass-surface:hover {
+    border-color: color-mix(in srgb, var(--brand) 28%, var(--line));
+    transform: translateY(-2px);
+    box-shadow:
+      inset 0 1px 0 var(--glass-inset),
+      var(--shadow-hover);
+  }
+
+  .glass-surface:hover::before {
+    opacity: 0.85;
+  }
 }
 
 .guest-hero h1 {
@@ -3101,135 +3190,120 @@ select:focus {
   text-align: center;
 }
 
-.kangaroo-scene svg {
-  display: block;
+.kangaroo-stage {
+  position: relative;
   width: 100%;
-  overflow: visible;
+  min-height: 250px;
 }
 
 .kangaroo-scene > span {
   display: inline-block;
-  margin-top: -5px;
+  margin-top: 4px;
   color: var(--muted);
   font-size: 12px;
   letter-spacing: 0.02em;
 }
 
-.kangaroo-route {
-  stroke: color-mix(in srgb, var(--brand) 32%, transparent);
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-dasharray: 3 9;
+.price-ticket {
+  position: absolute;
+  display: grid;
+  min-width: 108px;
+  gap: 2px;
+  padding: 10px 12px 9px;
+  border: 1px dashed color-mix(in srgb, var(--muted) 28%, var(--line));
+  border-radius: 4px 10px 4px 10px;
+  background: var(--ticket-bg);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+  text-align: left;
 }
 
-.price-site rect {
-  fill: color-mix(in srgb, var(--surface-strong) 86%, transparent);
-  stroke: var(--line);
-  stroke-width: 2;
+.price-ticket span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
-.price-site circle {
-  fill: var(--brand);
-  opacity: 0.65;
+.price-ticket del {
+  color: color-mix(in srgb, var(--muted) 80%, transparent);
+  font-size: 11px;
+  font-weight: 450;
 }
 
-.price-site path {
-  fill: none;
-  stroke: color-mix(in srgb, var(--muted) 48%, transparent);
-  stroke-width: 4;
-  stroke-linecap: round;
+.price-ticket strong {
+  color: var(--ticket-price);
+  font-size: 24px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
 }
 
-.price-site text {
-  fill: var(--text);
-  font: 750 17px var(--font-sans), sans-serif;
+.ticket-regular {
+  top: 12%;
+  left: 2%;
 }
 
-.site-one,
-.site-two,
-.site-three {
-  animation: price-card-pulse 8s ease-in-out infinite;
-  transform-box: fill-box;
-  transform-origin: center;
+.ticket-off {
+  top: 58%;
+  left: 32%;
+  background: var(--ticket-off-bg);
+  border-color: color-mix(in srgb, var(--ticket-off-price) 28%, var(--line));
 }
 
-.site-two {
-  animation-delay: -5.35s;
+.ticket-off strong {
+  color: var(--ticket-off-price);
 }
 
-.site-three {
-  animation-delay: -2.7s;
+.ticket-half {
+  top: 8%;
+  left: 64%;
+  background: var(--ticket-half-bg);
+  border-color: color-mix(in srgb, var(--ticket-half-price) 32%, var(--line));
+}
+
+.ticket-half strong {
+  color: var(--ticket-half-price);
 }
 
 .kangaroo-runner {
+  position: absolute;
+  left: 8%;
+  top: 62%;
+  width: 58px;
+  height: 58px;
   animation: kangaroo-price-hop 8s cubic-bezier(0.45, 0, 0.2, 1) infinite;
-  transform-box: fill-box;
-  transform-origin: center;
-}
-
-.kangaroo-tail,
-.kangaroo-chest,
-.kangaroo-ear,
-.kangaroo-arm,
-.kangaroo-leg {
-  fill: none;
-  stroke: var(--brand);
-  stroke-width: 5;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.kangaroo-body,
-.kangaroo-head {
-  fill: var(--brand-soft);
-  stroke: var(--brand);
-  stroke-width: 4;
-}
-
-.kangaroo-eye {
-  fill: var(--text);
-}
-
-.price-found {
-  animation: price-found-pop 8s ease-in-out infinite;
-  opacity: 0;
-  transform-box: fill-box;
-  transform-origin: center;
-}
-
-.price-found circle {
-  fill: var(--success-soft);
-  stroke: var(--success);
-  stroke-width: 3;
-}
-
-.price-found path {
-  fill: none;
-  stroke: var(--success);
-  stroke-width: 4;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+  filter: drop-shadow(0 10px 12px rgba(15, 23, 42, 0.16));
+  pointer-events: none;
 }
 
 @keyframes kangaroo-price-hop {
-  0%, 8% { transform: translate(22px, 190px) scale(0.68) rotate(-3deg); }
-  19% { transform: translate(82px, 110px) scale(0.72) rotate(4deg); }
-  33% { transform: translate(150px, 150px) scale(0.7) rotate(-2deg); }
-  45% { transform: translate(205px, 82px) scale(0.73) rotate(4deg); }
-  61% { transform: translate(274px, 125px) scale(0.7) rotate(-3deg); }
-  74% { transform: translate(330px, 58px) scale(0.74) rotate(3deg); }
-  88%, 100% { transform: translate(350px, 96px) scale(0.7) rotate(0); }
+  0%, 7% { left: 8%; top: 62%; transform: rotate(-8deg) scale(1); }
+  16% { left: 22%; top: 18%; transform: rotate(10deg) scale(1.04); }
+  28%, 36% { left: 4%; top: 22%; transform: rotate(-4deg) scale(1); }
+  46% { left: 28%; top: 34%; transform: rotate(8deg) scale(1.05); }
+  58%, 66% { left: 36%; top: 68%; transform: rotate(-6deg) scale(1); }
+  76% { left: 58%; top: 18%; transform: rotate(10deg) scale(1.05); }
+  88%, 100% { left: 68%; top: 24%; transform: rotate(0deg) scale(1); }
 }
 
-@keyframes price-card-pulse {
-  0%, 17%, 100% { transform: translateY(0); }
-  8% { transform: translateY(-5px); }
-}
+@media (prefers-reduced-motion: reduce) {
+  .kangaroo-runner,
+  .glass-surface {
+    animation: none;
+    transition: none;
+  }
 
-@keyframes price-found-pop {
-  0%, 75% { opacity: 0; transform: scale(0.7); }
-  82%, 94% { opacity: 1; transform: scale(1); }
-  100% { opacity: 0; transform: scale(0.85); }
+  .kangaroo-runner {
+    left: 68%;
+    top: 24%;
+    transform: none;
+  }
+
+  .glass-surface:hover {
+    transform: none;
+  }
 }
 
 .guest-steps {
@@ -3242,9 +3316,7 @@ select:focus {
   display: grid;
   gap: 7px;
   padding: 20px;
-  border: 1px solid var(--line);
   border-radius: 18px;
-  background: var(--surface);
 }
 
 .guest-steps article > svg {

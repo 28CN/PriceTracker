@@ -2,6 +2,7 @@ import { BellRing, LineChart, ListPlus, Store } from 'lucide-react';
 import Link from 'next/link';
 
 import CategoryList from '@/components/CategoryList';
+import GlassSurface from '@/components/GlassSurface';
 import KangarooPriceAnimation from '@/components/KangarooPriceAnimation';
 import RetailerLogo from '@/components/RetailerLogo';
 import { SUPPORTED_RETAILERS } from '@/lib/retailer';
@@ -14,12 +15,12 @@ export default function GuestLanding({ featured }: { featured: ProductView[] }) 
 
   return (
     <main className="guest-home">
-      <section className="guest-hero">
+      <GlassSurface className="guest-hero">
         <div className="guest-hero-copy">
           <span className="eyebrow">Australian price tracking</span>
           <h1>
             <span>Watch the <em>price.</em></span>
-            <span>Buy when it’s right.</span>
+            <span>Jump on the <em>deal.</em></span>
           </h1>
           <p>
             Save products from supported retailers, set your target price and keep
@@ -31,15 +32,27 @@ export default function GuestLanding({ featured }: { featured: ProductView[] }) 
           </div>
         </div>
         <KangarooPriceAnimation />
-      </section>
+      </GlassSurface>
 
       <section className="guest-steps" aria-label="How PriceTracker works">
-        <article><ListPlus size={21} /><strong>Add a product</strong><span>Paste links from one or more shops.</span></article>
-        <article><LineChart size={21} /><strong>Compare prices</strong><span>See the latest price from every tracked retailer.</span></article>
-        <article><BellRing size={21} /><strong>Get one useful alert</strong><span>Receive a weekly email when products reach your target.</span></article>
+        <GlassSurface as="article">
+          <ListPlus size={21} />
+          <strong>Add a product</strong>
+          <span>Paste links from one or more shops.</span>
+        </GlassSurface>
+        <GlassSurface as="article">
+          <LineChart size={21} />
+          <strong>Compare prices</strong>
+          <span>See the latest price from every tracked retailer.</span>
+        </GlassSurface>
+        <GlassSurface as="article">
+          <BellRing size={21} />
+          <strong>Get one useful alert</strong>
+          <span>Receive a weekly email when products reach your target.</span>
+        </GlassSurface>
       </section>
 
-      <section className="guest-retailers">
+      <GlassSurface className="guest-retailers">
         <div className="guest-section-heading">
           <div>
             <span className="eyebrow"><Store size={14} /> Supported retailers</span>
@@ -55,9 +68,9 @@ export default function GuestLanding({ featured }: { featured: ProductView[] }) 
             </span>
           ))}
         </div>
-      </section>
+      </GlassSurface>
 
-      <section className="guest-featured">
+      <GlassSurface className="guest-featured">
         <div className="guest-section-heading">
           <div>
             <span className="eyebrow">Ideas to get started</span>
@@ -71,7 +84,7 @@ export default function GuestLanding({ featured }: { featured: ProductView[] }) 
             <p className="hint">Featured products are being prepared.</p>
           </div>
         )}
-      </section>
+      </GlassSurface>
     </main>
   );
 }
