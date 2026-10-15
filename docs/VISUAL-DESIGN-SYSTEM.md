@@ -1,7 +1,7 @@
 # PriceTracker visual design system
 
 Status: active source of truth  
-Last updated: 2026-10-14
+Last updated: 2026-10-15
 
 ## 1. Product character
 
@@ -116,7 +116,13 @@ simple hover, focus and press feedback.
 
 - Top bar: sticky glass surface, logo, labelled navigation, theme toggle,
   notifications and refresh.
-- Page hero: compact summary, one primary action and subdued inline SVG ambience.
+- Home overview: compact status bar rather than a marketing hero. Product and
+  retailer totals are supporting metadata, never standalone statistic cards.
+- Target-price matches are the only highlighted home metric and must be
+  interactive, opening a concise ready-to-buy list with current price, target,
+  retailer and shop link.
+- Reserve a compact account/notification slot for future profile, email and push
+  preferences without allowing an unavailable feature to dominate the page.
 - Category panel: tinted glass, category icon, count and deal status, clear expand
   affordance.
 - Product card: image, name, target state, strongest current price and shop, with

@@ -1643,6 +1643,281 @@ html[data-theme='dark'] .button.primary {
   flex-shrink: 0;
 }
 
+.dashboard-overview {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  min-height: 116px;
+  padding: 20px 22px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--surface) 92%, var(--brand-soft));
+  backdrop-filter: blur(20px) saturate(135%);
+  box-shadow: var(--shadow-soft);
+}
+
+.dashboard-overview::after {
+  position: absolute;
+  right: 24%;
+  bottom: -72px;
+  width: 230px;
+  height: 120px;
+  content: '';
+  border-radius: 50%;
+  background: var(--brand);
+  opacity: 0.045;
+  filter: blur(8px);
+  pointer-events: none;
+}
+
+.overview-copy {
+  min-width: 190px;
+}
+
+.overview-copy h1 {
+  margin: 5px 0 2px;
+  font-size: clamp(22px, 2.5vw, 29px);
+  line-height: 1.12;
+  letter-spacing: -0.035em;
+}
+
+.overview-copy p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.overview-actions {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-end;
+  gap: 9px;
+}
+
+.target-summary,
+.account-slot {
+  min-height: 72px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--surface-strong) 76%, transparent);
+}
+
+.target-summary {
+  min-width: 228px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 10px 13px;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.target-summary:hover {
+  border-color: color-mix(in srgb, var(--success) 38%, var(--line));
+  background: color-mix(in srgb, var(--success-soft) 60%, var(--surface-strong));
+  transform: translateY(-2px);
+  box-shadow: 0 10px 26px color-mix(in srgb, var(--success) 12%, transparent);
+}
+
+.target-summary-icon,
+.account-slot-icon {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+}
+
+.target-summary-icon {
+  color: var(--success);
+  background: var(--success-soft);
+}
+
+.target-summary-copy,
+.account-slot > span:last-child {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.target-summary-copy {
+  flex: 1;
+}
+
+.target-summary-copy strong,
+.account-slot strong {
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.target-summary-copy span,
+.account-slot small {
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.account-slot {
+  min-width: 190px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 13px;
+}
+
+.account-slot-icon {
+  color: var(--brand);
+  background: var(--brand-soft);
+}
+
+.overview-manage {
+  align-self: center;
+  white-space: nowrap;
+}
+
+.deal-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(11, 15, 24, 0.44);
+  backdrop-filter: blur(8px);
+}
+
+.deal-dialog {
+  width: min(610px, 100%);
+  max-height: min(720px, calc(100vh - 36px));
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--surface-strong) 94%, transparent);
+  box-shadow: 0 28px 80px rgba(10, 15, 28, 0.28);
+}
+
+.deal-dialog-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 20px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.deal-dialog-head h2 {
+  margin: 6px 0 3px;
+  font-size: 21px;
+  letter-spacing: -0.025em;
+}
+
+.deal-dialog-head p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.deal-list {
+  max-height: min(570px, calc(100vh - 170px));
+  overflow-y: auto;
+  padding: 10px;
+}
+
+.deal-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px;
+  border-radius: 15px;
+}
+
+.deal-row + .deal-row {
+  border-top: 1px solid var(--line);
+}
+
+.deal-row:hover {
+  background: var(--bg-accent);
+}
+
+.deal-row .product-thumb.is-ready {
+  width: 58px;
+  height: 58px;
+  border-radius: 12px;
+}
+
+.deal-row-main {
+  min-width: 0;
+  flex: 1;
+  display: grid;
+  gap: 2px;
+}
+
+.deal-row-main strong {
+  overflow: hidden;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.deal-row-main span,
+.deal-row-main small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.deal-row-price {
+  flex-shrink: 0;
+  display: grid;
+  justify-items: end;
+  gap: 5px;
+}
+
+.deal-row-price > strong {
+  color: var(--success);
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+}
+
+.deal-row-price a {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--brand);
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.deal-empty {
+  display: grid;
+  justify-items: center;
+  gap: 7px;
+  padding: 38px 20px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.deal-empty strong {
+  color: var(--text);
+}
+
+.deal-empty p {
+  max-width: 360px;
+  margin: 0;
+  font-size: 13px;
+}
+
 .category-board,
 .category-stack {
   gap: 16px;
@@ -1920,6 +2195,12 @@ select:focus {
   to { transform: translateX(100%); }
 }
 
+@media (max-width: 940px) {
+  .account-slot {
+    display: none;
+  }
+}
+
 @media (max-width: 760px) {
   .page {
     padding: 16px 12px 48px;
@@ -1966,6 +2247,56 @@ select:focus {
     padding: 12px 9px;
   }
 
+  .dashboard-overview {
+    display: grid;
+    gap: 16px;
+    min-height: 0;
+    padding: 18px;
+    border-radius: 19px;
+  }
+
+  .overview-copy h1 {
+    font-size: 24px;
+  }
+
+  .overview-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    width: 100%;
+  }
+
+  .target-summary {
+    min-width: 0;
+    min-height: 66px;
+  }
+
+  .overview-manage {
+    width: 46px;
+    min-height: 66px;
+    padding: 0;
+    font-size: 0;
+  }
+
+  .overview-manage svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .deal-dialog-backdrop {
+    align-items: end;
+    padding: 0;
+  }
+
+  .deal-dialog {
+    width: 100%;
+    max-height: 82vh;
+    border-radius: 22px 22px 0 0;
+  }
+
+  .deal-list {
+    max-height: calc(82vh - 112px);
+  }
+
   .manage-hero {
     padding: 23px 21px;
   }
@@ -2004,6 +2335,19 @@ select:focus {
 
   .stat-card > span:last-child {
     font-size: 10px;
+  }
+
+  .target-summary-copy span {
+    white-space: normal;
+  }
+
+  .deal-row {
+    align-items: flex-start;
+  }
+
+  .deal-row .product-thumb.is-ready {
+    width: 50px;
+    height: 50px;
   }
 }
 

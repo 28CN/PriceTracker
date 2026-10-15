@@ -18,8 +18,11 @@ const criticalFallbackCss = `
   :where(.topbar-inner){justify-content:space-between;padding:12px 16px}
   :where(.topbar-actions,.brand-link){gap:8px}
   :where(.page){padding:20px 16px 56px}
-  :where(.dashboard-hero,.manage-hero,.category-section,.card){overflow:hidden;border:1px solid #dfe3eb;border-radius:18px;background:#fff}
+  :where(.dashboard-hero,.dashboard-overview,.manage-hero,.category-section,.card){overflow:hidden;border:1px solid #dfe3eb;border-radius:18px;background:#fff}
   :where(.dashboard-hero,.manage-hero){position:relative;padding:28px;margin-bottom:18px}
+  :where(.dashboard-overview){display:flex;align-items:center;justify-content:space-between;gap:18px;padding:18px 22px;margin-bottom:18px}
+  :where(.overview-actions,.target-summary,.account-slot){display:flex;align-items:center;gap:10px}
+  :where(.target-summary,.account-slot){padding:10px;border:1px solid #e3e6ed}
   :where(.hero-art){position:absolute;right:0;top:0;width:40%;max-width:420px;height:auto;opacity:.35}
   :where(.hero-copy,.hero-stats){position:relative;z-index:1}
   :where(.hero-stats){display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}
@@ -30,12 +33,14 @@ const criticalFallbackCss = `
   :where(.empty-illustration){width:150px;height:auto}
   @media(max-width:760px){
     :where(.dashboard-hero,.manage-hero){padding:22px}
+    :where(.dashboard-overview){display:grid;padding:18px}
+    :where(.account-slot){display:none}
     :where(.hero-art){width:230px;opacity:.2}
     :where(.product-thumb){width:64px!important;height:64px!important}
   }
   @media(prefers-color-scheme:dark){
     :where(html,body){background:#10131a;color:#edf0f7}
-    :where(.dashboard-hero,.manage-hero,.category-section,.card){background:#1a1f2a;border-color:#303746}
+    :where(.dashboard-hero,.dashboard-overview,.manage-hero,.category-section,.card){background:#1a1f2a;border-color:#303746}
   }
 `;
 
