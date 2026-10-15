@@ -109,7 +109,7 @@ export default function AuthPanel({ mode, nextPath }: AuthPanelProps) {
               name="password"
               type={showPassword ? 'text' : 'password'}
               autoComplete={registering ? 'new-password' : 'current-password'}
-              minLength={registering ? 15 : undefined}
+              minLength={registering ? 8 : undefined}
               maxLength={72}
               placeholder={registering ? 'Use a memorable phrase' : 'Your password'}
               required
@@ -125,7 +125,7 @@ export default function AuthPanel({ mode, nextPath }: AuthPanelProps) {
             </button>
           </span>
           {registering ? (
-            <small>At least 15 characters. No symbol or capital-letter rules.</small>
+            <small>8–72 characters.</small>
           ) : null}
         </label>
 

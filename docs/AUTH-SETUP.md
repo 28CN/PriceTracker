@@ -105,7 +105,7 @@ In **Authentication → Providers → Email**:
 - keep email/password authentication enabled;
 - disable direct public signups if the dashboard offers a separate **Allow new users to sign
   up** switch. PriceTracker registration uses its rate-limited username adapter;
-- set the minimum password length to 15 if the dashboard exposes the setting.
+- set the minimum password length to 8 if the dashboard exposes the setting.
 
 Do not create `admin` or `melody2251` by inserting rows into `auth.users` in SQL.
 

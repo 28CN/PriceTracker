@@ -62,7 +62,7 @@ export default function RecoveryPanel({
             ? 'Your password has been changed. You can sign in now.'
             : 'If the account has a verified email, a reset link is on its way.'
           : resetting
-            ? 'Use at least 15 characters. There are no symbol or capital-letter rules.'
+            ? 'Choose a new password with 8–72 characters.'
             : 'Enter your username. For privacy, we will not reveal whether the account exists.'}
       </p>
 
@@ -74,14 +74,14 @@ export default function RecoveryPanel({
             <>
               <label className="field">
                 <span>New password</span>
-                <input name="password" type="password" minLength={15} maxLength={72} required />
+                <input name="password" type="password" minLength={8} maxLength={72} required />
               </label>
               <label className="field">
                 <span>Confirm new password</span>
                 <input
                   name="confirmPassword"
                   type="password"
-                  minLength={15}
+                  minLength={8}
                   maxLength={72}
                   required
                 />

@@ -57,8 +57,8 @@ export function validateUsername(username: string, allowAdmin = false): string |
 }
 
 export function validatePassword(password: unknown): string | null {
-  if (typeof password !== 'string' || password.length < 15) {
-    return 'Use at least 15 characters. A short phrase is easiest to remember.';
+  if (typeof password !== 'string' || password.length < 8) {
+    return 'Use at least 8 characters.';
   }
   if (password.length > 72) {
     return 'Use no more than 72 characters.';

@@ -138,7 +138,8 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
   async function changePassword(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSecurityMessage(null);
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const newPassword = String(form.get('newPassword') || '');
     if (newPassword !== String(form.get('confirmPassword') || '')) {
       setSecurityMessage({ type: 'error', text: 'The new passwords do not match.' });
@@ -157,7 +158,7 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
       setSecurityMessage({ type: 'error', text: result?.error || 'Could not change password.' });
       return;
     }
-    event.currentTarget.reset();
+    formElement.reset();
     setSecurityMessage({ type: 'ok', text: 'Password changed.' });
     router.refresh();
   }
@@ -378,11 +379,11 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
               name="newPassword"
               type="password"
               autoComplete="new-password"
-              minLength={15}
+              minLength={8}
               maxLength={72}
               required
             />
-            <small>At least 15 characters; no symbol or capital-letter rules.</small>
+            <small>8–72 characters.</small>
           </label>
           <label className="field">
             <span>Confirm new password</span>
@@ -390,7 +391,7 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
               name="confirmPassword"
               type="password"
               autoComplete="new-password"
-              minLength={15}
+              minLength={8}
               maxLength={72}
               required
             />
