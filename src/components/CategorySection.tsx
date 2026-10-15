@@ -33,6 +33,7 @@ export default function CategorySection({
   onTogglePin,
   isReordering = false,
   isDragging = false,
+  readOnly = false,
   dragHandleProps
 }: {
   category: string;
@@ -42,6 +43,7 @@ export default function CategorySection({
   onTogglePin?: () => void;
   isReordering?: boolean;
   isDragging?: boolean;
+  readOnly?: boolean;
   dragHandleProps?: HTMLAttributes<HTMLElement>;
 }) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
@@ -118,7 +120,7 @@ export default function CategorySection({
 
       {hasOpened ? (
         <div className="category-body" hidden={!showBody}>
-          <ProductList products={products} />
+          <ProductList products={products} readOnly={readOnly} />
         </div>
       ) : null}
     </section>

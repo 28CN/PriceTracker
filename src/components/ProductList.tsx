@@ -12,7 +12,7 @@ import { productThumb } from '@/lib/productImage';
 import { hasCrawlerSupport } from '@/lib/retailer';
 import type { ProductView } from '@/lib/types';
 
-function ProductCard({ product }: { product: ProductView }) {
+function ProductCard({ product, readOnly }: { product: ProductView; readOnly: boolean }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const activeLinks = product.links.filter((link) => link.isActive);
@@ -132,10 +132,12 @@ function ProductCard({ product }: { product: ProductView }) {
             </div>
           </div>
         </button>
-        <button type="button" className="card-edit-btn" onClick={openEditor}>
-          <Pencil size={13} aria-hidden="true" />
-          Edit
-        </button>
+        {!readOnly ? (
+          <button type="button" className="card-edit-btn" onClick={openEditor}>
+            <Pencil size={13} aria-hidden="true" />
+            Edit
+          </button>
+        ) : null}
       </div>
 
       {isEditing ? (
@@ -152,7 +154,9 @@ function ProductCard({ product }: { product: ProductView }) {
           transition={{ duration: 0.22 }}
         >
           {product.links.length === 0 ? (
-            <p className="hint">No links yet. Use Edit to add shop URLs.</p>
+            <p className="hint">
+              {readOnly ? 'No shop links are available.' : 'No links yet. Use Edit to add shop URLs.'}
+            </p>
           ) : null}
 
           {product.links.map((link) => (
@@ -207,7 +211,13 @@ function ProductCard({ product }: { product: ProductView }) {
   );
 }
 
-export default function ProductList({ products }: { products: ProductView[] }) {
+export default function ProductList({
+  products,
+  readOnly = false
+}: {
+  products: ProductView[];
+  readOnly?: boolean;
+}) {
   if (products.length === 0) {
     return (
       <div className="card empty">
@@ -219,7 +229,7 @@ export default function ProductList({ products }: { products: ProductView[] }) {
   return (
     <div className="stack">
       {products.map((product) => (
-        <ProductCard key={product.id} product={product} />
+        <ProductCard key={product.id} product={product} readOnly={readOnly} />
       ))}
     </div>
   );

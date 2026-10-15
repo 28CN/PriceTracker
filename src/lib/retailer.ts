@@ -32,9 +32,29 @@ const RETAILERS: RetailerEntry[] = [
   { match: /(^|\.)autobarn\.com\.au$/, name: 'Auto Barn', domain: 'autobarn.com.au' }
 ];
 
+const DEDICATED_RETAILER_DOMAINS = new Set([
+  'kmart.com.au',
+  'target.com.au',
+  'bigw.com.au',
+  'coles.com.au',
+  'woolworths.com.au',
+  'therejectshop.com.au',
+  'toysrus.com.au',
+  'toymate.com.au',
+  'toyworld.com.au',
+  'bunnings.com.au',
+  'bestandless.com.au',
+  'chemistwarehouse.com.au',
+  'priceline.com.au',
+  'terrywhitechemmart.com.au',
+  'repco.com.au',
+  'supercheapauto.com.au',
+  'autobarn.com.au'
+]);
+
 export const SUPPORTED_RETAILERS = Array.from(
   new Map(RETAILERS.map(({ name, domain }) => [domain, { name, domain }])).values()
-);
+).filter(({ domain }) => DEDICATED_RETAILER_DOMAINS.has(domain));
 
 /** Local files in /public/retailers, used when the live favicon is missing or tiny. */
 const LOCAL_LOGOS: Record<string, string> = {

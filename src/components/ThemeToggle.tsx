@@ -4,7 +4,14 @@ import { Laptop, Moon, Sun } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 type Theme = 'system' | 'light' | 'dark';
-const themes: Theme[] = ['system', 'light', 'dark'];
+
+function nextTheme(theme: Theme): Theme {
+  const systemIsDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const cycle: Theme[] = systemIsDark
+    ? ['system', 'light', 'dark']
+    : ['system', 'dark', 'light'];
+  return cycle[(cycle.indexOf(theme) + 1) % cycle.length];
+}
 
 function applyTheme(theme: Theme) {
   const root = document.documentElement;
@@ -47,7 +54,7 @@ export default function ThemeToggle() {
       aria-label={label}
       title={label}
       onClick={() => {
-        const next = themes[(themes.indexOf(theme) + 1) % themes.length];
+        const next = nextTheme(theme);
         setTheme(next);
         applyTheme(next);
       }}

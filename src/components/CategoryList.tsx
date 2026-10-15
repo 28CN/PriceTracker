@@ -471,6 +471,7 @@ export default function CategoryList({
         onTogglePin={readOnly ? undefined : () => togglePin(group.category)}
         isReordering={isReordering}
         isDragging={dragging === group.category}
+        readOnly={readOnly}
         dragHandleProps={readOnly ? undefined : {
           onPointerDown: (event) => startPress(group.category, zone, event),
           onClickCapture: (event) => {
