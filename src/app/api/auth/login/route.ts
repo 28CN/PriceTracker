@@ -62,26 +62,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: INVALID_CREDENTIALS }, { status: 401 });
   }
 
-  const [{ data: security }, { data: roles }] = await Promise.all([
-    admin
-      .from('user_security')
-      .select('must_change_password')
-      .eq('user_id', profile.id)
-      .maybeSingle(),
-    admin.from('user_roles').select('role').eq('user_id', profile.id)
-  ]);
-  const isAdmin = (roles || []).some((row) => row.role === 'admin');
+  const { data: security } = await admin
+    .from('user_security')
+    .select('must_change_password')
+    .eq('user_id', profile.id)
+    .maybeSingle();
 
   return NextResponse.json(
     {
       ok: true,
       username,
       redirectTo:
-        security?.must_change_password === true
-          ? '/account?security=required'
-          : isAdmin
-            ? '/account'
-            : '/manage'
+        security?.must_change_password === true ? '/account?security=required' : '/'
     },
     { headers: { 'Cache-Control': 'private, no-store' } }
   );

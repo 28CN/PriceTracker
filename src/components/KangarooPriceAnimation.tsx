@@ -202,14 +202,6 @@ export default function KangarooPriceAnimation() {
         </div>
       </div>
       <span>Checking prices across Australian retailers</span>
-      <a
-        className="roo-credit"
-        href="https://github.com/googlefonts/noto-emoji"
-        target="_blank"
-        rel="noreferrer"
-      >
-        Kangaroo animation by Google, CC BY 4.0
-      </a>
     </div>
   );
 }

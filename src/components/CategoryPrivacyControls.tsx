@@ -35,34 +35,35 @@ export default function CategoryPrivacyControls({
   }
 
   return (
-    <section className="category-privacy card">
-      <div>
-        <span className="eyebrow">Public profile</span>
-        <h2>Category visibility</h2>
-        <p>
-          When your watchlist is public, categories are shown unless you hide them.
-          Products without a category stay visible.
-        </p>
-      </div>
+    <div className="category-privacy-compact">
+      <p className="hint">
+        When your watchlist is public, categories are shown unless you hide them.
+        Products without a category stay visible.
+      </p>
       <div className="category-privacy-list">
         {categories.map((category) => (
-          <label key={category.id}>
+          <label key={category.id} className="category-privacy-row">
             <span>
               {category.isPublic ? <Eye size={15} /> : <EyeOff size={15} />}
               {category.name}
             </span>
-            <select
-              value={category.isPublic ? 'public' : 'private'}
+            <button
+              type="button"
+              role="switch"
+              className={`toggle-switch${category.isPublic ? ' is-on' : ''}`}
+              aria-checked={category.isPublic}
               disabled={pending === category.id}
-              onChange={(event) => update(category, event.target.value === 'public')}
+              onClick={() => update(category, !category.isPublic)}
             >
-              <option value="public">Shown</option>
-              <option value="private">Hidden</option>
-            </select>
+              <span className="toggle-knob" />
+              <span className="sr-only">
+                {category.isPublic ? 'Shown on public profile' : 'Hidden on public profile'}
+              </span>
+            </button>
           </label>
         ))}
       </div>
       {error ? <div className="form-error">{error}</div> : null}
-    </section>
+    </div>
   );
 }

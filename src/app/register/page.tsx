@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function RegisterPage() {
   const viewer = await getViewer();
-  if (viewer) redirect('/manage');
+  if (viewer) redirect('/');
 
   return (
     <main className="auth-page">

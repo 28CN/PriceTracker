@@ -39,7 +39,7 @@ export async function PATCH(request: NextRequest) {
   if (requestedSlug && requestedSlug !== publicSlug) {
     const slugError = validatePublicSlug(requestedSlug);
     if (slugError) {
-      return NextResponse.json({ error: slugError }, { status: 400 });
+      return NextResponse.json({ error: slugError, field: 'publicSlug' }, { status: 400 });
     }
     const [{ data: slugTaken }, { data: usernameTaken }] = await Promise.all([
       admin
@@ -56,21 +56,33 @@ export async function PATCH(request: NextRequest) {
         .maybeSingle()
     ]);
     if (slugTaken || usernameTaken) {
-      return NextResponse.json({ error: 'That public name is already in use.' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'That public name is already in use.', field: 'publicSlug' },
+        { status: 400 }
+      );
     }
     publicSlug = requestedSlug;
   }
   if (visibility === 'public' && !publicSlug) {
     return NextResponse.json(
-      { error: 'Choose a public name before making your watchlist public.' },
+      {
+        error: 'Choose a public name before making your watchlist public.',
+        field: 'publicSlug'
+      },
       { status: 400 }
     );
   }
   if (displayName && displayName.length > 60) {
-    return NextResponse.json({ error: 'Display name must be 60 characters or less.' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Display name must be 60 characters or less.', field: 'displayName' },
+      { status: 400 }
+    );
   }
   if (bio && bio.length > 280) {
-    return NextResponse.json({ error: 'Bio must be 280 characters or less.' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Bio must be 280 characters or less.', field: 'bio' },
+      { status: 400 }
+    );
   }
 
   const contactEmail =
@@ -78,7 +90,10 @@ export async function PATCH(request: NextRequest) {
       ? body.contactEmail.trim().toLowerCase()
       : null;
   if (contactEmail && !EMAIL_PATTERN.test(contactEmail)) {
-    return NextResponse.json({ error: 'Enter a valid email address.' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Enter a valid email address.', field: 'contactEmail' },
+      { status: 400 }
+    );
   }
 
   const rawPhone = typeof body.phone === 'string' ? body.phone.trim() : '';
@@ -89,7 +104,10 @@ export async function PATCH(request: NextRequest) {
   if (rawPhone) {
     const parsed = parsePhoneNumberFromString(rawPhone, country);
     if (!parsed?.isValid()) {
-      return NextResponse.json({ error: 'Enter a valid mobile number.' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Enter a valid mobile number.', field: 'phone' },
+        { status: 400 }
+      );
     }
     phoneE164 = parsed.number;
   }
@@ -117,11 +135,17 @@ export async function PATCH(request: NextRequest) {
       .upsert({ user_id: auth.userId, ...preferences })
   ]);
   if (profileError?.code === '23505') {
-    return NextResponse.json({ error: 'That public name is already in use.' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'That public name is already in use.', field: 'publicSlug' },
+      { status: 400 }
+    );
   }
   if (profileError?.code === '23514') {
     return NextResponse.json(
-      { error: 'Choose a public name before making your watchlist public.' },
+      {
+        error: 'Choose a public name before making your watchlist public.',
+        field: 'publicSlug'
+      },
       { status: 400 }
     );
   }

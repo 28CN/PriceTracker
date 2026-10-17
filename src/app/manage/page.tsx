@@ -1,9 +1,6 @@
-import { LayoutDashboard, PackagePlus } from 'lucide-react';
+import { LayoutDashboard } from 'lucide-react';
 
-import AddProductForm from '@/components/AddProductForm';
-import CategoryPrivacyControls from '@/components/CategoryPrivacyControls';
-import ManageProducts from '@/components/ManageProducts';
-import ProductSearch from '@/components/ProductSearch';
+import ManageWorkspace from '@/components/ManageWorkspace';
 import { requireViewer } from '@/lib/auth';
 import { fetchCategories, fetchProducts } from '@/lib/queries';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
@@ -32,16 +29,12 @@ export default async function ManagePage() {
     <main>
       <section className="manage-hero">
         <div>
-          <span className="eyebrow"><LayoutDashboard size={14} /> Collection workspace</span>
-          <h1>Shape your price watchlist.</h1>
-          <p>Add products, choose targets and keep every retailer link organised.</p>
+          <span className="eyebrow">
+            <LayoutDashboard size={14} /> Watchlist tools
+          </span>
+          <h1>Add and edit tracked products.</h1>
+          <p>Search a shop, paste links, or fix products that need attention.</p>
         </div>
-        <svg viewBox="0 0 240 120" aria-hidden="true">
-          <rect x="34" y="22" width="166" height="78" rx="22" fill="var(--brand-soft)" stroke="var(--line)" />
-          <path d="M72 48h92M72 64h68M72 80h82" stroke="var(--brand)" strokeWidth="7" strokeLinecap="round" opacity=".3" />
-          <circle cx="48" cy="32" r="16" fill="var(--surface-strong)" stroke="var(--line)" />
-          <path d="M48 25v14M41 32h14" stroke="var(--brand)" strokeWidth="3" strokeLinecap="round" />
-        </svg>
       </section>
 
       {loadError ? (
@@ -50,15 +43,7 @@ export default async function ManagePage() {
         </div>
       ) : null}
 
-      <ProductSearch trackedUrls={products.flatMap((product) => product.links.map((link) => link.url))} />
-
-      <h2 className="section-title"><PackagePlus size={15} /> Add a product</h2>
-      <AddProductForm categories={categories} />
-
-      <CategoryPrivacyControls categories={categories} />
-
-      <h2 className="section-title"><LayoutDashboard size={15} /> Tracked products</h2>
-      <ManageProducts products={products} />
+      <ManageWorkspace categories={categories} products={products} />
     </main>
   );
 }

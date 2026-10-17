@@ -10,7 +10,7 @@ type AuthPanelProps = {
 };
 
 function safeNextPath(value: string | undefined): string {
-  return value?.startsWith('/') && !value.startsWith('//') ? value : '/manage';
+  return value?.startsWith('/') && !value.startsWith('//') ? value : '/';
 }
 
 export default function AuthPanel({ mode, nextPath }: AuthPanelProps) {

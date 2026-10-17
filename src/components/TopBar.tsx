@@ -24,12 +24,9 @@ export default async function TopBar() {
         </Link>
         <div className="topbar-actions">
           {viewer ? (
-            <Link
-              className="button topbar-manage"
-              href={viewer.isAdmin ? '/account' : '/manage'}
-            >
+            <Link className="button topbar-manage" href="/manage">
               <Settings2 size={16} aria-hidden="true" />
-              {viewer.isAdmin ? 'Account' : 'Manage'}
+              Manage
             </Link>
           ) : (
             <Link className="button topbar-manage" href="/login">

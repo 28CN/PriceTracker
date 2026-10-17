@@ -1,6 +1,8 @@
 import AccountSettings, { type AccountSettingsData } from '@/components/AccountSettings';
 import AdminMfaPanel from '@/components/AdminMfaPanel';
+import CategoryPrivacyControls from '@/components/CategoryPrivacyControls';
 import { requireViewer } from '@/lib/auth';
+import { fetchCategories } from '@/lib/queries';
 import { createAdminSupabaseClient } from '@/lib/supabase/admin';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import Link from 'next/link';
@@ -31,7 +33,7 @@ export const fetchCache = 'force-no-store';
 export default async function AccountPage() {
   const viewer = await requireViewer('/account');
   const supabase = await createServerSupabaseClient();
-  const [{ data: profile }, { data: privateAccount }, { data: preferences }] =
+  const [{ data: profile }, { data: privateAccount }, { data: preferences }, categories] =
     await Promise.all([
       supabase
         .from('profiles')
@@ -51,7 +53,8 @@ export default async function AccountPage() {
           'target_price_email, popular_deals_email, personalised_recommendations_email, digest_frequency, timezone'
         )
         .eq('user_id', viewer.id)
-        .single()
+        .single(),
+      fetchCategories(supabase, viewer.id).catch(() => [])
     ]);
 
   if (!profile || !privateAccount || !preferences) {
@@ -137,6 +140,15 @@ export default async function AccountPage() {
         </section>
       </div>
       <AccountSettings initial={initial} />
+      {categories.length > 0 ? (
+        <div className="account-settings">
+          <section className="settings-section">
+            <span className="eyebrow">Public profile</span>
+            <h2>Category visibility</h2>
+            <CategoryPrivacyControls categories={categories} />
+          </section>
+        </div>
+      ) : null}
       {viewer.isAdmin ? <div className="account-settings admin-security-wrap"><AdminMfaPanel /></div> : null}
     </main>
   );

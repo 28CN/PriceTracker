@@ -1,4 +1,4 @@
-import { validateUsername } from '@/lib/auth';
+import { validateUsername } from '@/lib/username';
 
 const SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]{1,28}[a-z0-9])$/;
 

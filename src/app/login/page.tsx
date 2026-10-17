@@ -11,7 +11,7 @@ export default async function LoginPage({
   searchParams: Promise<{ next?: string }>;
 }) {
   const viewer = await getViewer();
-  if (viewer) redirect('/manage');
+  if (viewer) redirect('/');
   const { next } = await searchParams;
 
   return (

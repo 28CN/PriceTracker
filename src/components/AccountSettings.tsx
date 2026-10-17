@@ -2,9 +2,18 @@
 
 import { Camera, CheckCircle2, Eye, EyeOff, LoaderCircle, MoreHorizontal, ShieldCheck, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useMemo, useRef, useState } from 'react';
 
+import { validatePublicSlug } from '@/lib/publicSlug';
 import { createBrowserSupabaseClient } from '@/lib/supabase/browser';
+
+type FieldName =
+  | 'displayName'
+  | 'bio'
+  | 'publicSlug'
+  | 'contactEmail'
+  | 'phone'
+  | 'form';
 
 export type AccountSettingsData = {
   userId: string;
@@ -42,6 +51,29 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState<{ type: 'ok' | 'error'; text: string } | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<FieldName, string>>>({});
+  const fieldRefs = useRef<Partial<Record<FieldName, HTMLElement | null>>>({});
+
+  function setFieldRef(name: FieldName) {
+    return (node: HTMLElement | null) => {
+      fieldRefs.current[name] = node;
+    };
+  }
+
+  function showFieldError(field: FieldName, text: string) {
+    setFieldErrors({ [field]: text });
+    setMessage(null);
+    window.requestAnimationFrame(() => {
+      const node = fieldRefs.current[field];
+      node?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      if (node instanceof HTMLInputElement || node instanceof HTMLTextAreaElement) {
+        node.focus();
+      } else {
+        const control = node?.querySelector('input, textarea, select');
+        if (control instanceof HTMLElement) control.focus();
+      }
+    });
+  }
   const [securityMessage, setSecurityMessage] =
     useState<{ type: 'ok' | 'error'; text: string } | null>(null);
   const [deleteMessage, setDeleteMessage] = useState<string | null>(null);
@@ -59,15 +91,31 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
     event.preventDefault();
     setSaving(true);
     setMessage(null);
+    setFieldErrors({});
     const form = new FormData(event.currentTarget);
+    const visibility = form.get('watchlistVisibility') === 'public' ? 'public' : 'private';
+    const publicSlug = String(form.get('publicSlug') || '').trim().toLowerCase();
+    if (publicSlug) {
+      const slugError = validatePublicSlug(publicSlug);
+      if (slugError) {
+        showFieldError('publicSlug', slugError);
+        setSaving(false);
+        return;
+      }
+    } else if (visibility === 'public') {
+      showFieldError('publicSlug', 'Choose a public name before making your watchlist public.');
+      setSaving(false);
+      return;
+    }
+
     const response = await fetch('/api/account', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         displayName: form.get('displayName'),
         bio: form.get('bio'),
-        watchlistVisibility: form.get('watchlistVisibility'),
-        publicSlug: form.get('publicSlug'),
+        watchlistVisibility: visibility,
+        publicSlug,
         contactEmail: form.get('contactEmail'),
         phone: form.get('phone'),
         phoneCountry: form.get('phoneCountry'),
@@ -81,10 +129,16 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
       })
     });
     const result = (await response.json().catch(() => null)) as
-      | { error?: string; emailNeedsVerification?: boolean }
+      | { error?: string; field?: FieldName; emailNeedsVerification?: boolean }
       | null;
     if (!response.ok) {
-      setMessage({ type: 'error', text: result?.error || 'Could not save your settings.' });
+      const field = result?.field;
+      const text = result?.error || 'Could not save your settings.';
+      if (field && field !== 'form') {
+        showFieldError(field, text);
+      } else {
+        setMessage({ type: 'error', text });
+      }
     } else {
       setMessage({
         type: 'ok',
@@ -255,7 +309,7 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
               <input value={initial.username} disabled readOnly />
               <small>Used to sign in. It is not shown on your public page.</small>
             </label>
-            <label className="field">
+            <label className="field" ref={setFieldRef('displayName')}>
               <span>Display name</span>
               <input
                 name="displayName"
@@ -263,10 +317,14 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
                 defaultValue={initial.displayName}
                 maxLength={60}
                 placeholder="Name shown on your public profile"
+                aria-invalid={Boolean(fieldErrors.displayName)}
               />
+              {fieldErrors.displayName ? (
+                <small className="field-error">{fieldErrors.displayName}</small>
+              ) : null}
             </label>
           </div>
-          <label className="field">
+          <label className="field" ref={setFieldRef('bio')}>
             <span>Bio</span>
             <textarea
               name="bio"
@@ -274,7 +332,9 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
               maxLength={280}
               rows={3}
               placeholder="A short optional introduction"
+              aria-invalid={Boolean(fieldErrors.bio)}
             />
+            {fieldErrors.bio ? <small className="field-error">{fieldErrors.bio}</small> : null}
           </label>
         </section>
 
@@ -289,21 +349,26 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
             ) : null}
           </div>
           <div className="settings-grid">
-            <label className="field">
+            <label className="field" ref={setFieldRef('contactEmail')}>
               <span>Email</span>
               <input
                 name="contactEmail"
                 type="email"
                 defaultValue={initial.contactEmail}
                 placeholder="you@example.com"
+                aria-invalid={Boolean(fieldErrors.contactEmail)}
               />
-              <small>
-                {initial.contactEmailVerified
-                  ? 'Verified for recovery and alerts.'
-                  : 'Verification is required before email can be sent.'}
-              </small>
+              {fieldErrors.contactEmail ? (
+                <small className="field-error">{fieldErrors.contactEmail}</small>
+              ) : (
+                <small>
+                  {initial.contactEmailVerified
+                    ? 'Verified for recovery and alerts.'
+                    : 'Verification is required before email can be sent.'}
+                </small>
+              )}
             </label>
-            <label className="field">
+            <label className="field" ref={setFieldRef('phone')}>
               <span>Mobile number</span>
               <span className="phone-field">
                 <select name="phoneCountry" defaultValue={initial.phoneCountry || 'AU'}>
@@ -314,9 +379,18 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
                   <option value="CA">CA +1</option>
                   <option value="CN">CN +86</option>
                 </select>
-                <input name="phone" type="tel" defaultValue={initial.phone} />
+                <input
+                  name="phone"
+                  type="tel"
+                  defaultValue={initial.phone}
+                  aria-invalid={Boolean(fieldErrors.phone)}
+                />
               </span>
-              <small>SMS alerts are not enabled yet.</small>
+              {fieldErrors.phone ? (
+                <small className="field-error">{fieldErrors.phone}</small>
+              ) : (
+                <small>SMS alerts are not enabled yet.</small>
+              )}
             </label>
           </div>
         </section>
@@ -334,7 +408,7 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
               <option value="public">Public</option>
             </select>
           </label>
-          <label className="field">
+          <label className="field" ref={setFieldRef('publicSlug')}>
             <span>Public name</span>
             <input
               name="publicSlug"
@@ -345,12 +419,17 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
               autoCorrect="off"
               spellCheck={false}
               placeholder="hiahiahia"
+              aria-invalid={Boolean(fieldErrors.publicSlug)}
             />
-            <small>
-              {initial.watchlistVisibility === 'public' && initial.publicSlug
-                ? `Visitors open /${initial.publicSlug}. Your login name stays private.`
-                : 'Required before the watchlist can be public. Visitors open /this-name, which is separate from your login name.'}
-            </small>
+            {fieldErrors.publicSlug ? (
+              <small className="field-error">{fieldErrors.publicSlug}</small>
+            ) : (
+              <small>
+                {initial.watchlistVisibility === 'public' && initial.publicSlug
+                  ? `Visitors open /${initial.publicSlug}. Your login name stays private.`
+                  : 'Required before the watchlist can be public. Visitors open /this-name, which is separate from your login name.'}
+              </small>
+            )}
           </label>
           <label className="choice-row">
             <span>
