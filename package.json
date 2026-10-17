@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "bootstrap:accounts": "node --env-file=.env.local scripts/bootstrap-accounts.mjs"
+    "bootstrap:accounts": "node --env-file=.env.local scripts/bootstrap-accounts.mjs",
+    "db": "node --env-file=.env.local scripts/db.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
@@ -28,6 +29,7 @@
     "@types/react-dom": "^18.3.0",
     "eslint": "^8.57.0",
     "eslint-config-next": "^15.5.27",
+    "pg": "^8.23.1",
     "typescript": "^5.5.4"
   },
   "overrides": {

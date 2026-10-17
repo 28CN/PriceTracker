@@ -13,6 +13,7 @@ export type AccountSettingsData = {
   bio: string;
   avatarPath: string | null;
   watchlistVisibility: 'private' | 'public';
+  publicSlug: string;
   contactEmail: string;
   contactEmailVerified: boolean;
   phone: string;
@@ -66,6 +67,7 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
         displayName: form.get('displayName'),
         bio: form.get('bio'),
         watchlistVisibility: form.get('watchlistVisibility'),
+        publicSlug: form.get('publicSlug'),
         contactEmail: form.get('contactEmail'),
         phone: form.get('phone'),
         phoneCountry: form.get('phoneCountry'),
@@ -251,7 +253,7 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
             <label className="field">
               <span>Username</span>
               <input value={initial.username} disabled readOnly />
-              <small>Your profile URL is /{initial.username}.</small>
+              <small>Used to sign in. It is not shown on your public page.</small>
             </label>
             <label className="field">
               <span>Display name</span>
@@ -331,6 +333,24 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
               <option value="private">Private</option>
               <option value="public">Public</option>
             </select>
+          </label>
+          <label className="field">
+            <span>Public name</span>
+            <input
+              name="publicSlug"
+              type="text"
+              defaultValue={initial.publicSlug}
+              maxLength={30}
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              placeholder="hiahiahia"
+            />
+            <small>
+              {initial.watchlistVisibility === 'public' && initial.publicSlug
+                ? `Visitors open /${initial.publicSlug}. Your login name stays private.`
+                : 'Required before the watchlist can be public. Visitors open /this-name, which is separate from your login name.'}
+            </small>
           </label>
           <label className="choice-row">
             <span>

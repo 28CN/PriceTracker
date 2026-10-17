@@ -6,10 +6,12 @@ import { useState } from 'react';
 
 export default function AccountMenu({
   username,
-  displayName
+  displayName,
+  publicSlug
 }: {
   username: string;
   displayName: string | null;
+  publicSlug: string | null;
 }) {
   const [pending, setPending] = useState(false);
 
@@ -37,10 +39,12 @@ export default function AccountMenu({
           <Settings size={15} aria-hidden="true" />
           Account settings
         </Link>
-        <Link href={`/${username}`}>
-          <UserRound size={15} aria-hidden="true" />
-          Public profile
-        </Link>
+        {publicSlug ? (
+          <Link href={`/${publicSlug}`}>
+            <UserRound size={15} aria-hidden="true" />
+            Public profile
+          </Link>
+        ) : null}
         <button type="button" onClick={logout} disabled={pending}>
           <LogOut size={15} aria-hidden="true" />
           {pending ? 'Signing out…' : 'Sign out'}

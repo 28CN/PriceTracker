@@ -3,6 +3,7 @@ import { LayoutDashboard, PackagePlus } from 'lucide-react';
 import AddProductForm from '@/components/AddProductForm';
 import CategoryPrivacyControls from '@/components/CategoryPrivacyControls';
 import ManageProducts from '@/components/ManageProducts';
+import ProductSearch from '@/components/ProductSearch';
 import { requireViewer } from '@/lib/auth';
 import { fetchCategories, fetchProducts } from '@/lib/queries';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
@@ -48,6 +49,8 @@ export default async function ManagePage() {
           {loadError}
         </div>
       ) : null}
+
+      <ProductSearch trackedUrls={products.flatMap((product) => product.links.map((link) => link.url))} />
 
       <h2 className="section-title"><PackagePlus size={15} /> Add a product</h2>
       <AddProductForm categories={categories} />

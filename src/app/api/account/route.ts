@@ -2,8 +2,9 @@ import { createHash, randomBytes } from 'node:crypto';
 import { parsePhoneNumberFromString, type CountryCode } from 'libphonenumber-js';
 import { NextRequest, NextResponse } from 'next/server';
 
-import { assertSameOrigin, getApiAuth } from '@/lib/auth';
+import { assertSameOrigin, getApiAuth, normalizeUsername } from '@/lib/auth';
 import { appUrl } from '@/lib/email';
+import { validatePublicSlug } from '@/lib/publicSlug';
 import { createAdminSupabaseClient } from '@/lib/supabase/admin';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -26,6 +27,45 @@ export async function PATCH(request: NextRequest) {
   const displayName = typeof body.displayName === 'string' ? body.displayName.trim() : null;
   const bio = typeof body.bio === 'string' ? body.bio.trim() : null;
   const visibility = body.watchlistVisibility === 'public' ? 'public' : 'private';
+  const admin = createAdminSupabaseClient();
+  const { data: currentProfile } = await auth.supabase
+    .from('profiles')
+    .select('public_slug')
+    .eq('id', auth.userId)
+    .maybeSingle();
+  let publicSlug = currentProfile?.public_slug || null;
+  const requestedSlug =
+    typeof body.publicSlug === 'string' ? normalizeUsername(body.publicSlug) : '';
+  if (requestedSlug && requestedSlug !== publicSlug) {
+    const slugError = validatePublicSlug(requestedSlug);
+    if (slugError) {
+      return NextResponse.json({ error: slugError }, { status: 400 });
+    }
+    const [{ data: slugTaken }, { data: usernameTaken }] = await Promise.all([
+      admin
+        .from('profiles')
+        .select('id')
+        .eq('public_slug', requestedSlug)
+        .neq('id', auth.userId)
+        .maybeSingle(),
+      admin
+        .from('profiles')
+        .select('id')
+        .eq('username', requestedSlug)
+        .neq('id', auth.userId)
+        .maybeSingle()
+    ]);
+    if (slugTaken || usernameTaken) {
+      return NextResponse.json({ error: 'That public name is already in use.' }, { status: 400 });
+    }
+    publicSlug = requestedSlug;
+  }
+  if (visibility === 'public' && !publicSlug) {
+    return NextResponse.json(
+      { error: 'Choose a public name before making your watchlist public.' },
+      { status: 400 }
+    );
+  }
   if (displayName && displayName.length > 60) {
     return NextResponse.json({ error: 'Display name must be 60 characters or less.' }, { status: 400 });
   }
@@ -68,13 +108,23 @@ export async function PATCH(request: NextRequest) {
       .update({
         display_name: displayName || null,
         bio: bio || null,
-        watchlist_visibility: visibility
+        watchlist_visibility: visibility,
+        public_slug: publicSlug
       })
       .eq('id', auth.userId),
     auth.supabase
       .from('notification_preferences')
       .upsert({ user_id: auth.userId, ...preferences })
   ]);
+  if (profileError?.code === '23505') {
+    return NextResponse.json({ error: 'That public name is already in use.' }, { status: 400 });
+  }
+  if (profileError?.code === '23514') {
+    return NextResponse.json(
+      { error: 'Choose a public name before making your watchlist public.' },
+      { status: 400 }
+    );
+  }
   if (profileError || preferenceError) {
     return NextResponse.json(
       { error: profileError?.message || preferenceError?.message },
@@ -82,7 +132,6 @@ export async function PATCH(request: NextRequest) {
     );
   }
 
-  const admin = createAdminSupabaseClient();
   const { data: previous } = await admin
     .from('account_private')
     .select(

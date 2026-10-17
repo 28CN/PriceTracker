@@ -3,6 +3,7 @@ import Link from 'next/link';
 import CategoryList from '@/components/CategoryList';
 import DashboardHero from '@/components/DashboardHero';
 import GuestLanding from '@/components/GuestLanding';
+import ProductSearch from '@/components/ProductSearch';
 import { getViewer } from '@/lib/auth';
 import { fetchCategoryLayout, type CategoryLayout } from '@/lib/categoryLayout';
 import { sortProducts } from '@/lib/productSort';
@@ -28,7 +29,7 @@ export default async function HomePage() {
       .limit(1)
       .maybeSingle();
     const featured = adminRole?.user_id
-      ? (await fetchProducts(admin, adminRole.user_id)).slice(0, 6)
+      ? await fetchProducts(admin, adminRole.user_id)
       : [];
     return <GuestLanding featured={featured} />;
   }
@@ -66,6 +67,7 @@ export default async function HomePage() {
   return (
     <main>
       <DashboardHero products={products} accountHref="/account" />
+      <ProductSearch trackedUrls={products.flatMap((product) => product.links.map((link) => link.url))} />
 
       {loadError ? (
         <div className="alert">

@@ -1,7 +1,7 @@
 import { BellRing, LineChart, ListPlus, Store } from 'lucide-react';
 import Link from 'next/link';
 
-import CategoryList from '@/components/CategoryList';
+import FeaturedShowcase from '@/components/FeaturedShowcase';
 import GlassSurface from '@/components/GlassSurface';
 import KangarooPriceAnimation from '@/components/KangarooPriceAnimation';
 import RetailerLogo from '@/components/RetailerLogo';
@@ -9,10 +9,6 @@ import { SUPPORTED_RETAILERS } from '@/lib/retailer';
 import type { ProductView } from '@/lib/types';
 
 export default function GuestLanding({ featured }: { featured: ProductView[] }) {
-  const groups = featured.length
-    ? [{ category: 'Featured price watches', products: featured }]
-    : [];
-
   return (
     <main className="guest-home">
       <GlassSurface className="guest-hero">
@@ -71,19 +67,8 @@ export default function GuestLanding({ featured }: { featured: ProductView[] }) 
       </GlassSurface>
 
       <GlassSurface className="guest-featured">
-        <div className="guest-section-heading">
-          <div>
-            <span className="eyebrow">Ideas to get started</span>
-            <h2>Featured price watches</h2>
-          </div>
-        </div>
-        {groups.length ? (
-          <CategoryList groups={groups} savedLayout={null} readOnly />
-        ) : (
-          <div className="card empty">
-            <p className="hint">Featured products are being prepared.</p>
-          </div>
-        )}
+        <span className="eyebrow">Ideas to get started</span>
+        <FeaturedShowcase products={featured} />
       </GlassSurface>
     </main>
   );

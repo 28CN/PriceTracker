@@ -9,6 +9,10 @@ Filter it with environment variables:
 
 Unknown shops are still attempted: JSON-LD, Shopify /products/*.json, then
 generic price CSS. Hosts that still fail are listed in pending-retailers.json.
+
+Manual refreshes are rows in crawl_jobs. This process claims pending rows,
+crawls them, and marks them done. A later runner can claim the same table
+without losing a request that the previous runner could not start.
 """
 
 import json
@@ -886,6 +890,102 @@ def get_active_tracked_links(
     return response_data(query.execute())
 
 
+def claim_crawl_jobs(supabase) -> list:
+    """Take every pending refresh. Safe to overlap with another runner."""
+
+    runner = "github-actions" if os.getenv("CI") else "local"
+    try:
+        response = supabase.rpc(
+            "claim_crawl_jobs", {"candidate_runner": runner}
+        ).execute()
+    except Exception as error:
+        print(f"[WARN] Could not claim crawl jobs: {error}")
+        return []
+    return response_data(response)
+
+
+def finish_crawl_jobs(supabase, job_ids: list, status: str, error_text: str = "") -> None:
+    if not job_ids:
+        return
+    try:
+        supabase.rpc(
+            "finish_crawl_jobs",
+            {
+                "job_ids": job_ids,
+                "final_status": status,
+                "error_text": error_text[:500],
+            },
+        ).execute()
+    except Exception as error:
+        print(f"[WARN] Could not finish crawl jobs ({status}): {error}")
+
+
+def select_links_for_run(supabase, jobs: list) -> list:
+    product_filter = os.getenv("CRAWL_PRODUCT_ID", "").strip()
+    link_filter = os.getenv("CRAWL_LINK_ID", "").strip()
+    product_ids = {product_filter} if product_filter else set()
+    link_ids = {link_filter} if link_filter else set()
+    crawl_everything = not product_filter and not link_filter
+
+    for job in jobs:
+        product_id = str(job.get("product_id") or "").strip()
+        link_id = str(job.get("link_id") or "").strip()
+        if not product_id and not link_id:
+            crawl_everything = True
+        if product_id:
+            product_ids.add(product_id)
+        if link_id:
+            link_ids.add(link_id)
+
+    if crawl_everything:
+        return get_active_tracked_links(supabase)
+
+    seen = set()
+    links = []
+    for product_id in product_ids:
+        for row in get_active_tracked_links(supabase, product_id=product_id):
+            if row.get("id") not in seen:
+                seen.add(row.get("id"))
+                links.append(row)
+    for link_id in link_ids:
+        for row in get_active_tracked_links(supabase, link_id=link_id):
+            if row.get("id") not in seen:
+                seen.add(row.get("id"))
+                links.append(row)
+    return links
+
+
+def split_finished_jobs(jobs: list, raw_links: list, crawled_links: list) -> tuple:
+    """Jobs whose shops this runner skipped go back to pending for the next one."""
+
+    raw_products = {str(row.get("product_id") or "") for row in raw_links}
+    raw_ids = {str(row.get("id") or "") for row in raw_links}
+    crawled_products = {str(row.get("product_id") or "") for row in crawled_links}
+    crawled_ids = {str(row.get("id") or "") for row in crawled_links}
+    done = []
+    requeue = []
+    for job in jobs:
+        job_id = str(job.get("id") or "")
+        if not job_id:
+            continue
+        product_id = str(job.get("product_id") or "")
+        link_id = str(job.get("link_id") or "")
+        if not product_id and not link_id:
+            done.append(job_id)
+            continue
+        attempted = (product_id and product_id in crawled_products) or (
+            link_id and link_id in crawled_ids
+        )
+        existed = (product_id and product_id in raw_products) or (
+            link_id and link_id in raw_ids
+        )
+        if attempted or not existed:
+            done.append(job_id)
+        else:
+            requeue.append(job_id)
+    return done, requeue
+
+
 def _retailer_needles(variable: str) -> set:
     raw = os.getenv(variable, "")
     return {part.strip().lower() for part in raw.split(",") if part.strip()}
@@ -1521,217 +1621,232 @@ def run() -> None:
         return
 
     supabase = create_supabase()
-
-    product_filter = os.getenv("CRAWL_PRODUCT_ID", "").strip() or None
-    link_filter = os.getenv("CRAWL_LINK_ID", "").strip() or None
+    jobs = claim_crawl_jobs(supabase)
+    job_ids = [str(job.get("id")) for job in jobs if job.get("id")]
+    done_ids = list(job_ids)
+    requeue_ids: list = []
+    outcome = "done"
+    error_text = ""
 
     try:
-        links = get_active_tracked_links(
-            supabase, product_id=product_filter, link_id=link_filter
-        )
-    except Exception as error:
-        print(f"[ERROR] Could not read tracked_links: {error}")
-        return
+        raw_links = select_links_for_run(supabase, jobs)
+        links = filter_links_by_retailer(raw_links)
+        done_ids, requeue_ids = split_finished_jobs(jobs, raw_links, links)
 
-    links = filter_links_by_retailer(links)
+        if not links:
+            print("[INFO] No active tracked links matched the current filter.")
+            return
 
-    if not links:
-        print("[INFO] No active tracked links matched the current filter.")
-        return
-
-    origin = "GitHub Actions" if os.getenv("CI") else "this PC"
-    log_event(
-        supabase,
-        level="info",
-        message=f"Crawl started ({origin}): {len(links)} link(s).",
-    )
-
-    stats = {"ok": 0, "failed": 0}
-    pending_entries: list = []
-
-    def handler(page) -> None:
-        for row in links:
-            link_id = str(row.get("id"))
-            url = str(row.get("url") or "")
-            hostname = urlparse(url).hostname or ""
-            retailer = str(row.get("retailer") or "") or infer_retailer_from_hostname(
-                hostname
-            )
-            product = row.get("products") or {}
-            product_name = str(product.get("name") or "this product")
-            target_price = parse_price_decimal(product.get("target_price"))
-
-            if not url:
-                log_event(
-                    supabase,
-                    level="warning",
-                    message=f"{product_name}: a tracked link has no URL saved.",
-                    link_id=link_id,
-                )
-                continue
-
-            status, nav_error, block = goto_with_retry(page, url)
-
-            if nav_error is not None:
-                stats["failed"] += 1
-                log_event(
-                    supabase,
-                    level="error",
-                    message=f"{product_name} at {retailer}: page would not load ({nav_error}).",
-                    link_id=link_id,
-                )
-                time.sleep(random.uniform(2, 4))
-                continue
-
-            blocked = bool(block) or (bool(status) and status in BLOCKED_STATUSES)
-
-            if status and status >= 400 and not blocked:
-                stats["failed"] += 1
-                log_event(
-                    supabase,
-                    level="error",
-                    message=(
-                        f"{product_name} at {retailer}: link looks dead (HTTP {status}). "
-                        "It may need replacing."
-                    ),
-                    link_id=link_id,
-                )
-                time.sleep(random.uniform(2, 4))
-                continue
-
-            # A blocked response still gets one parse attempt: some bot walls
-            # answer 403 while serving the real page underneath. Only trust
-            # structured product data in that case — CSS on an error page
-            # would write a fake price and bump the "checked" date.
-            try:
-                image_url, image_candidates = extract_product_images(page, url)
-            except Exception as error:
-                image_url, image_candidates = None, []
-                print(f"[WARN] image extract failed for {url}: {error}")
-            if image_url:
-                set_link_image(
-                    supabase, link_id=link_id, image_url=image_url, candidates=image_candidates
-                )
-
-            try:
-                price, source, stock = scrape_price(page, url=url, retailer=retailer)
-            except Exception as error:
-                price, source, stock = None, "ERROR", "unknown"
-                print(f"[WARN] scrape failed for {url}: {error}")
-
-            if blocked and source not in {"JSON_LD", "SHOPIFY_JSON"}:
-                price = None
-                if stock != "unavailable":
-                    stock = "unknown"
-
-            if stock == "unavailable":
-                set_link_stock_status(supabase, link_id=link_id, status="unavailable")
-                stats["ok"] += 1
-                log_event(
-                    supabase,
-                    level="info",
-                    message=f"{product_name} at {retailer}: currently unavailable.",
-                    link_id=link_id,
-                )
-                print(f"[UNAVAILABLE] {product_name} at {retailer}")
-                time.sleep(random.uniform(2, 4))
-                continue
-
-            if price is None:
-                stats["failed"] += 1
-                known = host_is_known(hostname)
-                if not known:
-                    pending_entries.append(
-                        {
-                            "host": normalised_host(hostname),
-                            "retailer": retailer,
-                            "reason": "blocked" if blocked else "no_price",
-                            "sampleUrl": url,
-                        }
-                    )
-                ci_hint = (
-                    " (GitHub Actions IPs are blocked by Akamai at the network level —"
-                    " set CRAWL_SKIP_RETAILERS=kmart,target,bigw,toymate and run those from a"
-                    " local machine or configure CRAWL_PROXY)"
-                    if (blocked and os.getenv("CI") and any(
-                        k in hostname.lower()
-                        for k in ("bigw", "kmart", "target", "toymate")
-                    ))
-                    else ""
-                )
-                if blocked:
-                    message = (
-                        f"{product_name} at {retailer}: the shop blocked our price check "
-                        f"({block or f'HTTP {status}'}). The link is probably fine; "
-                        f"we will try again next run.{ci_hint}"
-                    )
-                elif not known:
-                    message = (
-                        f"{product_name} at {retailer}: pending crawler support for "
-                        f"{normalised_host(hostname)}. Generic parsers found no price."
-                    )
-                else:
-                    message = (
-                        f"{product_name} at {retailer}: could not find a price on the page. "
-                        "The shop may have changed its layout or the item is out of stock."
-                    )
-                log_event(supabase, level="warning", message=message, link_id=link_id)
-                save_page_snapshot(page, label=f"{retailer}-{link_id}")
-                time.sleep(random.uniform(2, 4))
-                continue
-
-            try:
-                insert_price_history(supabase, link_id=link_id, price=price)
-                set_link_stock_status(supabase, link_id=link_id, status="in_stock")
-                stats["ok"] += 1
-                print(f"[OK] {product_name} at {retailer}: ${price} (via {source})")
-            except Exception as error:
-                stats["failed"] += 1
-                log_event(
-                    supabase,
-                    level="error",
-                    message=f"{product_name} at {retailer}: could not save price ({error}).",
-                    link_id=link_id,
-                )
-
-            if target_price is not None and price <= target_price:
-                print(f"[TARGET_HIT] {product_name} at {retailer}: ${price} <= ${target_price}")
-
-            time.sleep(random.uniform(2, 4))
-
-    run_with_page(handler)
-
-    pending_hosts = record_pending_retailers(pending_entries)
-    if pending_entries:
-        unique = sorted({row["host"] for row in pending_entries if row.get("host")})
+        origin = "GitHub Actions" if os.getenv("CI") else "this PC"
         log_event(
             supabase,
             level="info",
-            message=(
-                "Needs crawler support: "
-                + ", ".join(unique)
-                + ". Listed in crawler/pending-retailers.json for the next code update."
-            ),
-        )
-    print(f"[PENDING] {len(pending_hosts)} unknown host(s) in {PENDING_RETAILERS_PATH.name}")
-
-    if stats["failed"]:
-        log_event(
-            supabase,
-            level="warning",
-            message=(
-                f"Crawl finished: {stats['ok']} price(s) updated, "
-                f"{stats['failed']} link(s) had trouble."
-            ),
-        )
-    else:
-        log_event(
-            supabase,
-            level="success",
-            message=f"Crawl finished: {stats['ok']} price(s) updated, no failures.",
+            message=f"Crawl started ({origin}): {len(links)} link(s).",
         )
 
-    print(f"[DONE] updated={stats['ok']} failed={stats['failed']}")
+        stats = {"ok": 0, "failed": 0}
+        pending_entries: list = []
+
+        def handler(page) -> None:
+            for row in links:
+                link_id = str(row.get("id"))
+                url = str(row.get("url") or "")
+                hostname = urlparse(url).hostname or ""
+                retailer = str(row.get("retailer") or "") or infer_retailer_from_hostname(
+                    hostname
+                )
+                product = row.get("products") or {}
+                product_name = str(product.get("name") or "this product")
+                target_price = parse_price_decimal(product.get("target_price"))
+
+                if not url:
+                    log_event(
+                        supabase,
+                        level="warning",
+                        message=f"{product_name}: a tracked link has no URL saved.",
+                        link_id=link_id,
+                    )
+                    continue
+
+                status, nav_error, block = goto_with_retry(page, url)
+
+                if nav_error is not None:
+                    stats["failed"] += 1
+                    log_event(
+                        supabase,
+                        level="error",
+                        message=f"{product_name} at {retailer}: page would not load ({nav_error}).",
+                        link_id=link_id,
+                    )
+                    time.sleep(random.uniform(2, 4))
+                    continue
+
+                blocked = bool(block) or (bool(status) and status in BLOCKED_STATUSES)
+
+                if status and status >= 400 and not blocked:
+                    stats["failed"] += 1
+                    log_event(
+                        supabase,
+                        level="error",
+                        message=(
+                            f"{product_name} at {retailer}: link looks dead (HTTP {status}). "
+                            "It may need replacing."
+                        ),
+                        link_id=link_id,
+                    )
+                    time.sleep(random.uniform(2, 4))
+                    continue
+
+                # A blocked response still gets one parse attempt: some bot walls
+                # answer 403 while serving the real page underneath. Only trust
+                # structured product data in that case — CSS on an error page
+                # would write a fake price and bump the "checked" date.
+                try:
+                    image_url, image_candidates = extract_product_images(page, url)
+                except Exception as error:
+                    image_url, image_candidates = None, []
+                    print(f"[WARN] image extract failed for {url}: {error}")
+                if image_url:
+                    set_link_image(
+                        supabase, link_id=link_id, image_url=image_url, candidates=image_candidates
+                    )
+
+                try:
+                    price, source, stock = scrape_price(page, url=url, retailer=retailer)
+                except Exception as error:
+                    price, source, stock = None, "ERROR", "unknown"
+                    print(f"[WARN] scrape failed for {url}: {error}")
+
+                if blocked and source not in {"JSON_LD", "SHOPIFY_JSON"}:
+                    price = None
+                    if stock != "unavailable":
+                        stock = "unknown"
+
+                if stock == "unavailable":
+                    set_link_stock_status(supabase, link_id=link_id, status="unavailable")
+                    stats["ok"] += 1
+                    log_event(
+                        supabase,
+                        level="info",
+                        message=f"{product_name} at {retailer}: currently unavailable.",
+                        link_id=link_id,
+                    )
+                    print(f"[UNAVAILABLE] {product_name} at {retailer}")
+                    time.sleep(random.uniform(2, 4))
+                    continue
+
+                if price is None:
+                    stats["failed"] += 1
+                    known = host_is_known(hostname)
+                    if not known:
+                        pending_entries.append(
+                            {
+                                "host": normalised_host(hostname),
+                                "retailer": retailer,
+                                "reason": "blocked" if blocked else "no_price",
+                                "sampleUrl": url,
+                            }
+                        )
+                    ci_hint = (
+                        " (GitHub Actions IPs are blocked by Akamai at the network level —"
+                        " set CRAWL_SKIP_RETAILERS=kmart,target,bigw,toymate and run those from a"
+                        " local machine or configure CRAWL_PROXY)"
+                        if (blocked and os.getenv("CI") and any(
+                            k in hostname.lower()
+                            for k in ("bigw", "kmart", "target", "toymate")
+                        ))
+                        else ""
+                    )
+                    if blocked:
+                        message = (
+                            f"{product_name} at {retailer}: the shop blocked our price check "
+                            f"({block or f'HTTP {status}'}). The link is probably fine; "
+                            f"we will try again next run.{ci_hint}"
+                        )
+                    elif not known:
+                        message = (
+                            f"{product_name} at {retailer}: pending crawler support for "
+                            f"{normalised_host(hostname)}. Generic parsers found no price."
+                        )
+                    else:
+                        message = (
+                            f"{product_name} at {retailer}: could not find a price on the page. "
+                            "The shop may have changed its layout or the item is out of stock."
+                        )
+                    log_event(supabase, level="warning", message=message, link_id=link_id)
+                    save_page_snapshot(page, label=f"{retailer}-{link_id}")
+                    time.sleep(random.uniform(2, 4))
+                    continue
+
+                try:
+                    insert_price_history(supabase, link_id=link_id, price=price)
+                    set_link_stock_status(supabase, link_id=link_id, status="in_stock")
+                    stats["ok"] += 1
+                    print(f"[OK] {product_name} at {retailer}: ${price} (via {source})")
+                except Exception as error:
+                    stats["failed"] += 1
+                    log_event(
+                        supabase,
+                        level="error",
+                        message=f"{product_name} at {retailer}: could not save price ({error}).",
+                        link_id=link_id,
+                    )
+
+                if target_price is not None and price <= target_price:
+                    print(f"[TARGET_HIT] {product_name} at {retailer}: ${price} <= ${target_price}")
+
+                time.sleep(random.uniform(2, 4))
+
+        run_with_page(handler)
+
+        pending_hosts = record_pending_retailers(pending_entries)
+        if pending_entries:
+            unique = sorted({row["host"] for row in pending_entries if row.get("host")})
+            log_event(
+                supabase,
+                level="info",
+                message=(
+                    "Needs crawler support: "
+                    + ", ".join(unique)
+                    + ". Listed in crawler/pending-retailers.json for the next code update."
+                ),
+            )
+        print(f"[PENDING] {len(pending_hosts)} unknown host(s) in {PENDING_RETAILERS_PATH.name}")
+
+        if stats["failed"]:
+            log_event(
+                supabase,
+                level="warning",
+                message=(
+                    f"Crawl finished: {stats['ok']} price(s) updated, "
+                    f"{stats['failed']} link(s) had trouble."
+                ),
+            )
+        else:
+            log_event(
+                supabase,
+                level="success",
+                message=f"Crawl finished: {stats['ok']} price(s) updated, no failures.",
+            )
+
+        print(f"[DONE] updated={stats['ok']} failed={stats['failed']}")
+    except Exception as error:
+        outcome = "failed"
+        error_text = str(error)
+        done_ids = job_ids
+        requeue_ids = []
+        print(f"[ERROR] Crawl stopped: {error}")
+    finally:
+        if outcome == "failed":
+            finish_crawl_jobs(supabase, job_ids, "failed", error_text)
+        else:
+            finish_crawl_jobs(supabase, done_ids, "done")
+            finish_crawl_jobs(
+                supabase,
+                requeue_ids,
+                "pending",
+                "Waiting for a runner that can reach this shop.",
+            )
 
 
 if __name__ == "__main__":

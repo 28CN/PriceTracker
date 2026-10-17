@@ -39,7 +39,10 @@ export default function CategoryPrivacyControls({
       <div>
         <span className="eyebrow">Public profile</span>
         <h2>Category visibility</h2>
-        <p>Private categories stay hidden even when your watchlist is public.</p>
+        <p>
+          When your watchlist is public, categories are shown unless you hide them.
+          Products without a category stay visible.
+        </p>
       </div>
       <div className="category-privacy-list">
         {categories.map((category) => (
@@ -53,8 +56,8 @@ export default function CategoryPrivacyControls({
               disabled={pending === category.id}
               onChange={(event) => update(category, event.target.value === 'public')}
             >
-              <option value="public">Public</option>
-              <option value="private">Private</option>
+              <option value="public">Shown</option>
+              <option value="private">Hidden</option>
             </select>
           </label>
         ))}

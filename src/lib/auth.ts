@@ -32,6 +32,8 @@ export type Viewer = {
   username: string;
   displayName: string | null;
   avatarPath: string | null;
+  publicSlug: string | null;
+  watchlistPublic: boolean;
   isAdmin: boolean;
   mustChangePassword: boolean;
 };
@@ -114,12 +116,21 @@ export async function getViewer(): Promise<Viewer | null> {
   const userId = data?.claims?.sub;
   if (error || typeof userId !== 'string') return null;
 
-  const [{ data: profile }, { data: roles }, { data: security }] = await Promise.all([
-    supabase
-      .from('profiles')
-      .select('username, display_name, avatar_path')
-      .eq('id', userId)
-      .maybeSingle(),
+  const profileResult = await supabase
+    .from('profiles')
+    .select('username, display_name, avatar_path, public_slug, watchlist_visibility')
+    .eq('id', userId)
+    .maybeSingle();
+  const profileQuery =
+    profileResult.error && /public_slug/.test(profileResult.error.message)
+      ? await supabase
+          .from('profiles')
+          .select('username, display_name, avatar_path, watchlist_visibility')
+          .eq('id', userId)
+          .maybeSingle()
+      : profileResult;
+
+  const [{ data: roles }, { data: security }] = await Promise.all([
     supabase.from('user_roles').select('role').eq('user_id', userId),
     supabase
       .from('user_security')
@@ -128,12 +139,21 @@ export async function getViewer(): Promise<Viewer | null> {
       .maybeSingle()
   ]);
 
-  if (!profile) return null;
+  const profile = profileQuery.data as {
+    username: string;
+    display_name: string | null;
+    avatar_path: string | null;
+    watchlist_visibility?: string | null;
+    public_slug?: string | null;
+  } | null;
+  if (profileQuery.error || !profile) return null;
   return {
     id: userId,
     username: profile.username,
     displayName: profile.display_name,
     avatarPath: profile.avatar_path,
+    publicSlug: typeof profile.public_slug === 'string' ? profile.public_slug : null,
+    watchlistPublic: profile.watchlist_visibility === 'public',
     isAdmin: (roles || []).some((row) => row.role === 'admin'),
     mustChangePassword: security?.must_change_password === true
   };

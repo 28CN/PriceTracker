@@ -5,6 +5,7 @@ import CategoryList from '@/components/CategoryList';
 import DashboardHero from '@/components/DashboardHero';
 import { getViewer, normalizeUsername } from '@/lib/auth';
 import { sortProducts } from '@/lib/productSort';
+import { isPublicSlugShape } from '@/lib/publicSlug';
 import { fetchProducts } from '@/lib/queries';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import type { ProductView } from '@/lib/types';
@@ -14,21 +15,33 @@ export const fetchCache = 'force-no-store';
 
 type PageProps = { params: Promise<{ username: string }> };
 
-async function findProfile(username: string) {
+type PublicProfile = {
+  id: string;
+  public_slug: string;
+  display_name: string | null;
+  bio: string | null;
+};
+
+// The path segment is the public name, not the login username.
+async function findPublicProfile(slug: string) {
   const supabase = await createServerSupabaseClient();
-  const { data } = await supabase
-    .from('profiles')
-    .select('id, username, display_name, bio, watchlist_visibility')
-    .eq('username', normalizeUsername(username))
-    .maybeSingle();
-  return { supabase, profile: data };
+  if (!isPublicSlugShape(slug)) {
+    return { supabase, profile: null };
+  }
+  const { data, error } = await supabase.rpc('public_profile_by_slug', { candidate: slug });
+  if (error) {
+    console.error('[public watchlist] could not load profile:', error.message);
+    return { supabase, profile: null };
+  }
+  const row = (Array.isArray(data) ? data[0] : data) as PublicProfile | undefined;
+  return { supabase, profile: row?.id ? row : null };
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { username } = await params;
-  const { profile } = await findProfile(username);
+  const { profile } = await findPublicProfile(normalizeUsername(username));
   if (!profile) return { title: 'Watchlist not found · PriceTracker' };
-  const name = profile.display_name || `@${profile.username}`;
+  const name = profile.display_name || profile.public_slug;
   return {
     title: `${name}'s watchlist · PriceTracker`,
     description: `See the products and target prices ${name} tracks.`
@@ -37,15 +50,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function PublicWatchlistPage({ params }: PageProps) {
   const { username } = await params;
+  const slug = normalizeUsername(username);
   const [{ supabase, profile }, viewer] = await Promise.all([
-    findProfile(username),
+    findPublicProfile(slug),
     getViewer()
   ]);
   if (!profile) notFound();
 
   const isOwner = viewer?.id === profile.id;
-  if (profile.watchlist_visibility !== 'public' && !isOwner) notFound();
-
   let products: ProductView[] = [];
   try {
     products = await fetchProducts(supabase, profile.id);
@@ -62,7 +74,7 @@ export default async function PublicWatchlistPage({ params }: PageProps) {
     category,
     products: sortProducts(items)
   }));
-  const name = profile.display_name || `@${profile.username}`;
+  const name = profile.display_name || profile.public_slug;
 
   return (
     <main>

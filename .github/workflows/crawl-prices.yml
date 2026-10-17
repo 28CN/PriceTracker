@@ -98,6 +98,8 @@ jobs:
       # A browser Playwright starts is refused by several shops even headful, so
       # the crawler starts one itself and drives it over the debugging port. That
       # needs a display, hence xvfb. If it cannot get one it falls back on its own.
+      # The crawler claims pending crawl_jobs before it fetches links, so a
+      # refresh saved in the database still runs if this dispatch was missed.
       - name: Run crawler
         run: xvfb-run -a python crawler/main.py
         env:

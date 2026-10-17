@@ -40,7 +40,11 @@ export default async function TopBar() {
           {viewer ? <NotificationsBell /> : null}
           {viewer?.isAdmin ? <RefreshButton /> : null}
           {viewer ? (
-            <AccountMenu username={viewer.username} displayName={viewer.displayName} />
+            <AccountMenu
+              username={viewer.username}
+              displayName={viewer.displayName}
+              publicSlug={viewer.watchlistPublic ? viewer.publicSlug : null}
+            />
           ) : null}
         </div>
       </div>
