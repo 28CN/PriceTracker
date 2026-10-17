@@ -164,7 +164,7 @@ export default function KangarooPriceAnimation() {
           onAnimationEnd={finishHop}
         >
           <img className="roo roo-gif" src="/illustrations/kangaroo.gif" alt="" />
-          <svg className="roo roo-drawn" viewBox="0 0 150 160" hidden>
+          <svg className="roo roo-drawn" viewBox="0 0 150 160">
             <g className="roo-tail">
               <path d="M62 108C24 104 6 74 16 52c12 18 28 34 48 44" />
             </g>
