@@ -30,6 +30,7 @@ export function showcaseItems(products: ProductView[]): ShowcaseItem[] {
         (link) =>
           link.isActive &&
           link.latestPrice !== null &&
+          !link.priceStale &&
           link.stockStatus !== 'unavailable' &&
           hasCrawlerSupport(link.url || link.retailer)
       )

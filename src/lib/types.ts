@@ -7,6 +7,8 @@ export type LinkView = {
   isActive: boolean;
   stockStatus: StockStatus;
   latestPrice: number | null;
+  /** True when the saved price is older than a week and must not be shown as current. */
+  priceStale: boolean;
   latestAt: string | null;
   imageUrl: string | null;
   imageCandidates: string[];

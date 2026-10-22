@@ -5,9 +5,11 @@ import { CheckCircle2, ChevronDown, ExternalLink, Pencil, Target } from 'lucide-
 import { useState } from 'react';
 
 import EditProductForm from '@/components/EditProductForm';
+import ExpiredPrice from '@/components/ExpiredPrice';
 import ProductVisual from '@/components/ProductVisual';
 import RetailerLogo from '@/components/RetailerLogo';
 import { formatCheckedAt, formatMoney, latestTimestamp } from '@/lib/format';
+import { cheapestStaleLink } from '@/lib/priceAge';
 import { productThumb } from '@/lib/productImage';
 import { hasCrawlerSupport } from '@/lib/retailer';
 import type { ProductView } from '@/lib/types';
@@ -24,32 +26,41 @@ function ProductCard({ product, readOnly }: { product: ProductView; readOnly: bo
     product.lowestPrice <= product.targetPrice;
   const bestLink = product.links.find(
     (link) =>
-      link.retailer === product.lowestRetailer ||
-      (link.latestPrice !== null && link.latestPrice === product.lowestPrice)
+      link.isActive &&
+      !link.priceStale &&
+      link.latestPrice !== null &&
+      (link.retailer === product.lowestRetailer || link.latestPrice === product.lowestPrice)
   );
+  const staleLink = cheapestStaleLink(product.links);
+  const headlineStale = !allUnavailable && !bestLink && staleLink !== null;
+  const headlineLink = allUnavailable
+    ? activeLinks.length === 1
+      ? activeLinks[0]
+      : null
+    : bestLink ?? staleLink;
   // Date belongs to the price on screen, not the most recently crawled shop.
   const checkedAt = allUnavailable
     ? latestTimestamp(activeLinks.map((link) => link.latestAt))
-    : bestLink?.latestAt ?? null;
+    : headlineLink?.latestAt ?? null;
 
   const shopRetailer = allUnavailable
     ? activeLinks.length === 1
       ? activeLinks[0].retailer
       : null
-    : product.lowestRetailer;
+    : headlineLink?.retailer ?? null;
   const shopUrl = allUnavailable
     ? activeLinks.length === 1
       ? activeLinks[0].url
       : undefined
-    : bestLink?.url;
-  const thumb = productThumb(product, bestLink?.id);
+    : headlineLink?.url;
+  const thumb = productThumb(product, headlineLink?.id);
 
   const shopLabel = allUnavailable
     ? activeLinks.length === 1
       ? activeLinks[0].retailer
       : `${activeLinks.length} shops`
-    : product.lowestRetailer
-      ? product.lowestRetailer
+    : headlineLink?.retailer
+      ? headlineLink.retailer
       : `${product.links.length} link${product.links.length === 1 ? '' : 's'}`;
 
   function openEditor(event: React.MouseEvent) {
@@ -71,8 +82,11 @@ function ProductCard({ product, readOnly }: { product: ProductView; readOnly: bo
         <button
           type="button"
           className="card-head"
-          onClick={() => {
+          onClick={(event) => {
             if (isEditing) {
+              return;
+            }
+            if ((event.target as HTMLElement).closest('[data-reveal-price]')) {
               return;
             }
             setIsOpen((current) => !current);
@@ -112,6 +126,8 @@ function ProductCard({ product, readOnly }: { product: ProductView; readOnly: bo
             <div className="price-block">
               {allUnavailable ? (
                 <span className="price muted">Unavailable</span>
+              ) : headlineStale && staleLink && staleLink.latestPrice !== null ? (
+                <ExpiredPrice price={staleLink.latestPrice} revealedClassName="price" nested />
               ) : product.lowestPrice === null ? (
                 <span className="price muted">No price yet</span>
               ) : (
@@ -179,23 +195,27 @@ function ProductCard({ product, readOnly }: { product: ProductView; readOnly: bo
                 </div>
               </div>
               <div className="row-side">
-                <span
-                  className={`row-price ${
-                    link.stockStatus === 'unavailable'
-                      ? 'unavailable'
+                {link.priceStale && link.latestPrice !== null ? (
+                  <ExpiredPrice price={link.latestPrice} revealedClassName="row-price" />
+                ) : (
+                  <span
+                    className={`row-price ${
+                      link.stockStatus === 'unavailable'
+                        ? 'unavailable'
+                        : link.latestPrice === null
+                          ? 'none'
+                          : link.latestPrice === product.lowestPrice
+                            ? 'best'
+                            : ''
+                    }`}
+                  >
+                    {link.stockStatus === 'unavailable'
+                      ? 'Unavailable'
                       : link.latestPrice === null
-                        ? 'none'
-                        : link.latestPrice === product.lowestPrice
-                          ? 'best'
-                          : ''
-                  }`}
-                >
-                  {link.stockStatus === 'unavailable'
-                    ? 'Unavailable'
-                    : link.latestPrice === null
-                      ? '--'
-                      : formatMoney(link.latestPrice)}
-                </span>
+                        ? '--'
+                        : formatMoney(link.latestPrice)}
+                  </span>
+                )}
                 {link.url ? (
                   <a className="open-link" href={link.url} target="_blank" rel="noreferrer">
                     Open <ExternalLink size={13} aria-hidden="true" />

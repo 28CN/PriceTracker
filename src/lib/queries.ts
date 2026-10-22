@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { toNumber } from './format';
+import { isStaleCheckedAt } from './priceAge';
 import { getReadClient } from './supabase';
 import type { CategoryView, LinkView, ProductView } from './types';
 
@@ -141,6 +142,12 @@ async function fetchLatestPrices(
   return latest;
 }
 
+function offerRank(link: LinkView): number {
+  if (link.latestPrice === null) return 2;
+  if (link.priceStale) return 1;
+  return 0;
+}
+
 function parseStockStatus(value: string | null | undefined): LinkView['stockStatus'] {
   if (value === 'unavailable' || value === 'in_stock') {
     return value;
@@ -241,16 +248,19 @@ export async function fetchProducts(
         stockStatus = 'unavailable';
       }
       const unavailable = stockStatus === 'unavailable';
+      const amount = unavailable ? null : latest ? toNumber(latest.price) : null;
+      const latestAt = unavailable
+        ? link.stock_checked_at || unavailableEvent?.created_at || latest?.created_at || null
+        : latest?.created_at ?? null;
       return {
         id: link.id,
         retailer: link.retailer || 'Unknown shop',
         url: link.url || '',
         isActive: link.is_active !== false,
         stockStatus,
-        latestPrice: unavailable ? null : latest ? toNumber(latest.price) : null,
-        latestAt: unavailable
-          ? link.stock_checked_at || unavailableEvent?.created_at || latest?.created_at || null
-          : latest?.created_at ?? null,
+        latestPrice: amount,
+        priceStale: amount !== null && isStaleCheckedAt(latestAt),
+        latestAt,
         imageUrl: link.image_url || null,
         imageCandidates: stringList(link.image_candidates),
         createdAt: link.created_at || null
@@ -258,15 +268,16 @@ export async function fetchProducts(
     });
 
     links.sort((a, b) => {
-      if (a.latestPrice === null && b.latestPrice === null) {
+      const rank = offerRank(a) - offerRank(b);
+      if (rank !== 0) return rank;
+      if (a.latestPrice === null || b.latestPrice === null) {
         return a.retailer.localeCompare(b.retailer);
       }
-      if (a.latestPrice === null) return 1;
-      if (b.latestPrice === null) return -1;
       return a.latestPrice - b.latestPrice;
     });
 
-    const cheapest = links.find((link) => link.isActive && link.latestPrice !== null) ?? null;
+    const cheapest =
+      links.find((link) => link.isActive && link.latestPrice !== null && !link.priceStale) ?? null;
 
     return {
       id: product.id,

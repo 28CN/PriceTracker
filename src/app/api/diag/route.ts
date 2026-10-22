@@ -77,6 +77,7 @@ export async function GET() {
           id: l.id,
           retailer: l.retailer,
           latestPrice: l.latestPrice,
+          priceStale: l.priceStale,
           latestAt: l.latestAt,
           isActive: l.isActive,
           imageUrl: l.imageUrl ? 'yes' : null

@@ -9,7 +9,8 @@
     "start": "next start",
     "lint": "next lint",
     "bootstrap:accounts": "node --env-file=.env.local scripts/bootstrap-accounts.mjs",
-    "db": "node --env-file=.env.local scripts/db.mjs"
+    "db": "node --env-file=.env.local scripts/db.mjs",
+    "logs": "node --env-file=.env.local scripts/read-crawl-logs.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

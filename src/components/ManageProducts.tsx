@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 
 import EditProductForm from '@/components/EditProductForm';
+import ExpiredPrice from '@/components/ExpiredPrice';
 import RetailerLogo from '@/components/RetailerLogo';
 import { formatMoney } from '@/lib/format';
 import { hasCrawlerSupport } from '@/lib/retailer';
@@ -148,11 +149,15 @@ export default function ManageProducts({ products }: { products: ProductView[] }
                                 <span>{link.retailer}</span>
                               </div>
                               <div className="row-meta">
-                                {link.stockStatus === 'unavailable'
-                                  ? 'Unavailable'
-                                  : link.latestPrice === null
-                                    ? 'No price yet'
-                                    : formatMoney(link.latestPrice)}
+                                {link.stockStatus === 'unavailable' ? (
+                                  'Unavailable'
+                                ) : link.latestPrice === null ? (
+                                  'No price yet'
+                                ) : link.priceStale ? (
+                                  <ExpiredPrice price={link.latestPrice} />
+                                ) : (
+                                  formatMoney(link.latestPrice)
+                                )}
                                 {link.isActive ? '' : ' - paused'}
                               </div>
                             </div>

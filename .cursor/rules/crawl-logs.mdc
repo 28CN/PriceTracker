@@ -1,0 +1,18 @@
+---
+description: Read crawler notices from the database instead of asking for a screenshot
+alwaysApply: true
+---
+
+# Crawl logs
+
+Price-check notices are rows in `public.crawl_events` (the bell in the app).
+
+When a crawl failure needs diagnosis, run:
+
+```
+npm run logs
+```
+
+That prints the latest notices with the service role in `.env.local`. Do not ask the user to paste the bell. `npm run logs -- 200` prints a longer list.
+
+A signed-in administrator can also open `/api/logs`.
