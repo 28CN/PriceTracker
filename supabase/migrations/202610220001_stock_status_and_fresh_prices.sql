@@ -1,5 +1,5 @@
 -- Price inserts were rolling back: the alert triggers read l.stock_status, but that
--- column lived only in schema.sql and was never applied here.
+-- column lived only in the old schema.sql (now removed) and was never applied here.
 -- A saved price older than 7 days is also left out of target alerts. Supermarket
 -- specials turn over weekly, so an old reading must not count as the current deal.
 

@@ -27,3 +27,29 @@ jobs:
       - run: npm ci
       - run: npx tsc --noEmit
       - run: npm run build
+
+  schema-drift:
+    # Builds a throwaway local Postgres from supabase/migrations/ only and
+    # compares it with supabase/snapshot/columns.csv. No production secrets.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Start local database (applies all migrations)
+        run: supabase db start
+      - name: Check migrations are idempotent and match the live snapshot
+        run: ./scripts/check-schema-drift.sh
+      - name: Lint database functions
+        run: supabase db lint --level error
+      - name: Dump schema for review
+        if: always()
+        run: supabase db dump --local --schema public -f schema-dump.sql || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: schema-dump
+          path: schema-dump.sql
+          if-no-files-found: ignore

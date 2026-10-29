@@ -1048,7 +1048,7 @@ def set_link_stock_status(supabase, *, link_id: str, status: str) -> None:
     except Exception as error:
         message = str(error)
         if "stock_status" in message or "stock_checked_at" in message:
-            print("[WARN] stock_status column missing; run supabase/schema.sql")
+            print("[WARN] stock_status column missing; apply supabase/migrations")
             return
         print(f"[WARN] could not update stock_status for {link_id}: {error}")
 
@@ -1064,11 +1064,11 @@ def set_link_image(supabase, *, link_id: str, image_url: str, candidates: list) 
         message = str(error)
         if "image_candidates" not in message:
             if "image_url" in message:
-                print("[WARN] image_url column missing; run supabase/schema.sql")
+                print("[WARN] image_url column missing; apply supabase/migrations")
             else:
                 print(f"[WARN] could not save image for {link_id}: {error}")
             return
-        print("[WARN] image_candidates column missing; run supabase/schema.sql")
+        print("[WARN] image_candidates column missing; apply supabase/migrations")
 
     try:
         table.update({"image_url": image_url}).eq("id", link_id).execute()
