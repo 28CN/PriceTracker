@@ -1,5 +1,5 @@
-// Run with: npm test
-import { test } from 'node:test';
+// Run with: npm test (Vitest)
+import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import {
   EMAIL_DISABLED_MESSAGE,
