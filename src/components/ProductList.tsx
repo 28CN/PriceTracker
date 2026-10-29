@@ -6,6 +6,7 @@ import { useState } from 'react';
 
 import EditProductForm from '@/components/EditProductForm';
 import ExpiredPrice from '@/components/ExpiredPrice';
+import PriceChart from '@/components/PriceChart';
 import ProductVisual from '@/components/ProductVisual';
 import RetailerLogo from '@/components/RetailerLogo';
 import { formatCheckedAt, formatMoney, latestTimestamp } from '@/lib/format';
@@ -174,6 +175,8 @@ function ProductCard({ product, readOnly }: { product: ProductView; readOnly: bo
               {readOnly ? 'No shop links are available.' : 'No links yet. Use Edit to add shop URLs.'}
             </p>
           ) : null}
+
+          {product.links.length > 0 ? <PriceChart productId={product.id} /> : null}
 
           {product.links.map((link) => (
             <div key={link.id} className={`row ${link.isActive ? '' : 'inactive'}`}>

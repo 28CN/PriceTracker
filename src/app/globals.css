@@ -4261,3 +4261,27 @@ textarea:disabled {
 
 .demo-form { display: inline; margin: 0; }
 .demo-notice { margin: 0 auto 1rem; max-width: 28rem; text-align: center; }
+
+/* Price chart */
+.price-chart { margin: 4px 0 12px; padding: 12px 14px; border-radius: 12px; background: var(--bg-accent); }
+.price-chart.is-loading { height: 190px; animation: pc-pulse 1.4s ease-in-out infinite; }
+@keyframes pc-pulse { 50% { opacity: 0.55; } }
+.price-chart-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-bottom: 6px; font-size: 13px; }
+.price-chart-meta { color: var(--muted); font-variant-numeric: tabular-nums; }
+.verdict-pill { padding: 2px 9px; border-radius: 999px; font-weight: 600; font-size: 12px; }
+.verdict-pill.tone-good { background: var(--success-soft); color: var(--success); }
+.verdict-pill.tone-warn { background: var(--warn-soft); color: var(--warn); }
+.verdict-pill.tone-neutral { background: var(--surface-strong); color: var(--text); }
+.price-chart-svg { display: block; width: 100%; height: auto; overflow: visible; }
+.pc-axis { stroke: var(--muted); stroke-opacity: 0.25; }
+.pc-line { fill: none; stroke: var(--brand); stroke-width: 2; stroke-linejoin: round; stroke-dasharray: 2000; stroke-dashoffset: 2000; animation: pc-draw 1.1s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+@keyframes pc-draw { to { stroke-dashoffset: 0; } }
+.pc-target line { stroke: var(--accent-cyan); stroke-dasharray: 4 4; }
+.pc-target text, .pc-date { fill: var(--muted); font-size: 10px; }
+.pc-atl circle { fill: var(--success); stroke: var(--surface-strong); stroke-width: 2; }
+.pc-now { fill: var(--brand); }
+.pc-dot { fill: var(--brand); opacity: 0.55; }
+.pc-line.pc-gap { stroke-dasharray: 3 5; stroke-dashoffset: 0; animation: none; stroke-opacity: 0.6; }
+.pc-gap-key::before { content: ''; display: inline-block; width: 16px; margin-right: 5px; vertical-align: middle; border-top: 2px dashed var(--brand); opacity: 0.6; }
+.price-chart-empty { margin: 4px 0 12px; color: var(--muted); font-size: 13px; }
+@media (prefers-reduced-motion: reduce) { .pc-line { animation: none; stroke-dashoffset: 0; } .price-chart.is-loading { animation: none; } }

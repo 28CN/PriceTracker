@@ -37,7 +37,7 @@ test('server flag reads EMAIL_ENABLED, not NEXT_PUBLIC_EMAIL_ENABLED', () => {
 });
 
 test('disabled message is the agreed text', () => {
-  assert.equal(EMAIL_DISABLED_MESSAGE, '邮件功能开发中，暂不可用');
+  assert.equal(EMAIL_DISABLED_MESSAGE, 'Email features are under development and temporarily unavailable.');
 });
 
 const off = { target_price_email: false, popular_deals_email: false, personalised_recommendations_email: false };
