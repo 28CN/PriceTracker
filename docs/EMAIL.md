@@ -29,6 +29,8 @@ While off: registration and sign-in work normally (registration just skips the v
    - `/forgot-password` with that username → reset email arrives.
    - `curl -I -X POST https://<site>/api/auth/recover` no longer returns 503.
 
+> **Revisit when enabling:** the remote branch `email-send-immediately` (commit `54045d3`) holds the "send immediately after insert via `after()`" work, so emails go out right away instead of waiting for the scheduled worker (GitHub cron runs only every few hours). It was shelved, not merged; review and rebase it onto main as part of enabling email.
+
 ## Disable again
 
 Set `EMAIL_ENABLED` and `NEXT_PUBLIC_EMAIL_ENABLED` to anything other than `true` (or remove them), set the DB row back to `'false'::jsonb`, and redeploy.
