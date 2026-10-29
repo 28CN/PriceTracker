@@ -1,4 +1,4 @@
-import { ChartNoAxesCombined, Settings2 } from 'lucide-react';
+import { ChartNoAxesCombined, LogIn, Settings2 } from 'lucide-react';
 import Link from 'next/link';
 
 import { getViewer } from '@/lib/auth';
@@ -41,7 +41,8 @@ export default async function TopBar() {
               Manage
             </Link>
           ) : (
-            <Link className="button topbar-manage" href="/login">
+            <Link className="button topbar-manage" href="/login" aria-label="Sign in">
+              <LogIn size={16} aria-hidden="true" />
               Sign in
             </Link>
           )}
