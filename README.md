@@ -89,10 +89,12 @@ flowchart LR
   a `BEFORE INSERT` trigger on `email_outbox`. With it off, alert state still
   advances but no mail is queued. The app routes return a clear 503 for flows that
   need email. See [`docs/EMAIL.md`](docs/EMAIL.md).
-- **Price insight** (in review, PR #12). A `security_invoker` stats view gives
-  30/90-day low/avg/high per link. A pure TypeScript verdict reports
-  `real_discount`, `fake_discount` (raised shortly before the "sale") or
-  `insufficient_data`. It compares against daily-sampled medians.
+- **Price insight** (shipped, [`docs/PRICE_INSIGHT.md`](docs/PRICE_INSIGHT.md)).
+  Two read-only `security_invoker` views: per-link 30/90-day low/avg/high and
+  all-time low, and a daily-min series per link that the API pages through
+  (never truncated). A pure TypeScript verdict reports `real_discount`,
+  `fake_discount` (raised shortly before the "sale"), `no_discount` or
+  `insufficient_data`, comparing against daily medians.
 - **Layered CI** ([`ci.yml`](.github/workflows/ci.yml)):
   1. TypeScript `tsc`, ESLint, Vitest unit and route tests, `next build` (Node 22)
   2. pytest for the crawler's parsing helpers (Python 3.11)
