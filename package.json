@@ -7,12 +7,13 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "bootstrap:accounts": "node --env-file=.env.local scripts/bootstrap-accounts.mjs",
     "db": "node --env-file=.env.local scripts/db.mjs",
     "logs": "node --env-file=.env.local scripts/read-crawl-logs.mjs",
-    "test": "node --test 'src/lib/**/*.test.ts'",
-    "test:demo": "node scripts/test-demo-readonly.mjs"
+    "test": "vitest run",
+    "test:demo": "node scripts/test-demo-readonly.mjs",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
@@ -34,12 +35,16 @@
     "eslint": "^8.57.0",
     "eslint-config-next": "^15.5.27",
     "pg": "^8.23.1",
-    "typescript": "^5.5.4"
+    "typescript": "^5.5.4",
+    "vitest": "^3.2.7"
   },
   "overrides": {
     "next": {
       "postcss": "8.5.23"
     },
     "source-map-js": "1.2.2"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

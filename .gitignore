@@ -16,3 +16,7 @@ __pycache__
 *.tsbuildinfo
 
 crawler-diagnostics/
+
+# Python
+__pycache__/
+.pytest_cache/

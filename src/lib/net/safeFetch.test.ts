@@ -1,5 +1,5 @@
-// Run with: npm test  (Node >= 22.18 strips TypeScript natively)
-import { test } from 'node:test';
+// Run with: npm test (Vitest)
+import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { assertSafeUrl, isBlockedAddress, safeFetch, SafeFetchError, type LookupFn } from './safeFetch.ts';
 
@@ -151,14 +151,15 @@ test('DNS rebinding: pre-check sees public IP, connect-time resolve gets 127.0.0
 
 test('pinned connection reaches the validated IP (sanity)', async () => {
   const { createValidatingLookup } = await import('./safeFetch.ts');
+  type LookupFn = (host: string, opts: object, cb: (e: unknown, a: unknown) => void) => void;
   const lk = createValidatingLookup(async () => [{ address: '93.184.216.34', family: 4 }]);
   const addr = await new Promise((res, rej) =>
-    (lk as any)('cdn.test', {}, (e: unknown, a: string) => (e ? rej(e) : res(a)))
+    (lk as unknown as LookupFn)('cdn.test', {}, (e: unknown, a: unknown) => (e ? rej(e) : res(a)))
   );
   assert.equal(addr, '93.184.216.34');
   await assert.rejects(
     new Promise((res, rej) =>
-      (createValidatingLookup(async () => [{ address: '10.0.0.1', family: 4 }]) as any)('x', { all: true }, (e: unknown, a: unknown) => (e ? rej(e) : res(a)))
+      (createValidatingLookup(async () => [{ address: '10.0.0.1', family: 4 }]) as unknown as LookupFn)('x', { all: true }, (e: unknown, a: unknown) => (e ? rej(e) : res(a)))
     ),
     code('BLOCKED_ADDRESS')
   );
