@@ -48,7 +48,7 @@ export default function GuestLanding({ featured }: { featured: ProductView[] }) 
         <GlassSurface as="article">
           <BellRing size={21} />
           <strong>Get one useful alert</strong>
-          <span>Receive a weekly email when products reach your target.</span>
+          <span>Get alerted when products reach your target (email coming soon).</span>
         </GlassSurface>
       </section>
 

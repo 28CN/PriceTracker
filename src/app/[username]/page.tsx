@@ -88,7 +88,7 @@ export default async function PublicWatchlistPage({ params }: PageProps) {
       />
       {profile.bio ? <p className="public-profile-bio">{profile.bio}</p> : null}
       {products.length > 0 ? (
-        <CategoryList groups={groups} savedLayout={null} readOnly={!isOwner} />
+        <CategoryList groups={groups} savedLayout={null} readOnly={!isOwner || Boolean(viewer?.isDemo)} />
       ) : (
         <div className="card empty">
           <h2>No tracked products yet</h2>

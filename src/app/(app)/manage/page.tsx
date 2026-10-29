@@ -1,4 +1,5 @@
 import { LayoutDashboard } from 'lucide-react';
+import { redirect } from 'next/navigation';
 
 import ManageWorkspace from '@/components/ManageWorkspace';
 import { requireViewer } from '@/lib/auth';
@@ -11,6 +12,8 @@ export const fetchCache = 'force-no-store';
 
 export default async function ManagePage() {
   const viewer = await requireViewer('/manage');
+  // Demo is read-only: there is nothing to manage.
+  if (viewer.isDemo) redirect('/');
   const supabase = await createServerSupabaseClient();
   let categories: CategoryView[] = [];
   let products: ProductView[] = [];

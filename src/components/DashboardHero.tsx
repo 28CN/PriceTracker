@@ -25,7 +25,7 @@ export default function DashboardHero({
   eyebrow = 'Price watchlist'
 }: {
   products: ProductView[];
-  accountHref: string;
+  accountHref: string | null;
   title?: string;
   eyebrow?: string;
 }) {
@@ -80,6 +80,7 @@ export default function DashboardHero({
             <ChevronRight size={18} aria-hidden="true" />
           </button>
 
+          {accountHref ? (
           <Link className="account-slot" href={accountHref}>
             <span className="account-slot-icon"><UserRound size={18} aria-hidden="true" /></span>
             <span>
@@ -87,6 +88,7 @@ export default function DashboardHero({
               <small>Privacy and notifications</small>
             </span>
           </Link>
+          ) : null}
         </div>
       </section>
 
