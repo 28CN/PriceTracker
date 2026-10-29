@@ -4311,6 +4311,7 @@ textarea:disabled {
 @media (max-width: 760px) {
   .demo-banner { margin: 7px -12px -9px; padding: 7px 12px; font-size: 0.82rem; }
   .overview-actions > :only-child { grid-column: 1 / -1; }
+  .dashboard-overview { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 420px) {
   .topbar-actions { gap: 5px; }
