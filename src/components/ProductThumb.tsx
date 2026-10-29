@@ -22,6 +22,7 @@ export default function ProductThumb({ source }: { source: ThumbSource }) {
   }
 
   return (
+    // eslint-disable-next-line @next/next/no-img-element -- arbitrary retailer image hosts; next/image would need a remote allowlist
     <img
       className={`product-thumb${status === 'ready' ? ' is-ready' : ' is-loading'}`}
       src={src}

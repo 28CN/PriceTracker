@@ -52,6 +52,7 @@ function PhotoTile({
       aria-pressed={selected}
       title={option.retailer}
     >
+      {/* eslint-disable-next-line @next/next/no-img-element -- arbitrary retailer image hosts; next/image would need a remote allowlist */}
       <img
         src={option.url}
         alt=""
