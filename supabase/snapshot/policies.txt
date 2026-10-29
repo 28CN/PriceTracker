@@ -41,6 +41,7 @@ profiles | demo users cannot insert | INSERT | RESTRICTIVE | authenticated | - |
 profiles | demo users cannot update | UPDATE | RESTRICTIVE | authenticated | (NOT ( SELECT is_demo_user() AS is_demo_user)) | -
 profiles | users read own profile | SELECT | PERMISSIVE | authenticated | (id = ( SELECT auth.uid() AS uid)) | -
 profiles | users update own profile | UPDATE | PERMISSIVE | authenticated | (id = ( SELECT auth.uid() AS uid)) | (id = ( SELECT auth.uid() AS uid))
+retailer_promo_cycles | anyone reads promo cycles | SELECT | PERMISSIVE | anon,authenticated | true | -
 tracked_links | demo users cannot delete | DELETE | RESTRICTIVE | authenticated | (NOT ( SELECT is_demo_user() AS is_demo_user)) | -
 tracked_links | demo users cannot insert | INSERT | RESTRICTIVE | authenticated | - | (NOT ( SELECT is_demo_user() AS is_demo_user))
 tracked_links | demo users cannot update | UPDATE | RESTRICTIVE | authenticated | (NOT ( SELECT is_demo_user() AS is_demo_user)) | -

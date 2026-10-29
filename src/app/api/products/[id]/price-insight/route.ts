@@ -7,9 +7,10 @@ import {
   lowestPriceSeries,
   MAX_DAILY_ROWS,
   PAGE_SIZE,
-  type PriceInsight,
   type PricePoint
 } from '@/lib/priceInsight';
+import type { LinkStats, PriceInsightResponse } from '@/lib/priceInsightTypes';
+import { buildPromoPeriods, resolveCycle, type CycleRow, type Observation } from '@/lib/promoPeriods';
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
@@ -26,39 +27,13 @@ export const fetchCache = 'force-no-store';
  *
  * `days` (1..365, default 180) limits the chart series only. The verdict
  * always uses the last 90 days, and `allTimeLow`/`stats` use full history.
+ *
+ * v1.1: each link also carries `promo` (its retailer's catalogue cycle from
+ * retailer_promo_cycles, or the default Wed/7d/Sydney), `periods` (lowest raw
+ * scrape per promo period over the chart range, local-time ISO with offset)
+ * and `coverage`. Periods are per link because each link has its own retailer.
  */
-export type PriceInsightResponse = {
-  product: { id: string; name: string; targetPrice: number | null };
-  range: { days: number; from: string; to: string };
-  /** Lowest current price across links over time, ascending; for the main line. */
-  lowest: PricePoint[];
-  /** One series per tracked link, ascending; for per-retailer lines. */
-  links: Array<{
-    linkId: string;
-    retailer: string;
-    url: string;
-    stockStatus: string;
-    points: PricePoint[];
-    stats: LinkStats | null;
-  }>;
-  insight: PriceInsight;
-};
-
-export type LinkStats = {
-  currentPrice: number | null;
-  lastSeenAt: string | null;
-  allTimeLow: number | null;
-  allTimeLowAt: string | null;
-  low30d: number | null;
-  avg30d: number | null;
-  high30d: number | null;
-  low90d: number | null;
-  avg90d: number | null;
-  high90d: number | null;
-  sampleCount: number;
-  sampleCount90d: number;
-  lastChangeAt: string | null;
-};
+export type { LinkStats, PriceInsightResponse } from '@/lib/priceInsightTypes';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DAY_MS = 86_400_000;
@@ -107,14 +82,23 @@ export async function GET(request: Request, { params }: RouteContext) {
 
   let dailyRows: DailyRow[] = [];
   let statsRows: Array<Record<string, unknown>> = [];
+  let rawRows: RawRow[] = [];
+  let cycleRows: CycleRow[] = [];
   if (linkIds.length) {
-    const [daily, stats] = await Promise.all([
+    const [daily, stats, raw, cycles] = await Promise.all([
       loadDaily(db, linkIds, historyFrom.slice(0, 10)),
-      db.from('price_link_stats').select('*').eq('product_id', id)
+      db.from('price_link_stats').select('*').eq('product_id', id),
+      loadRaw(db, linkIds, chartFrom),
+      db.from('retailer_promo_cycles').select('retailer, anchor_weekday, cycle_days, timezone')
     ]);
-    if (daily === 'too_many') {
+    if (daily === 'too_many' || raw === 'too_many') {
       return NextResponse.json({ error: 'Too much price history to load.' }, { status: 500 });
     }
+    if (raw === 'error' || cycles.error) {
+      return NextResponse.json({ error: 'Could not load price history.' }, { status: 500 });
+    }
+    rawRows = raw;
+    cycleRows = (cycles.data ?? []) as CycleRow[];
     if (daily === 'error' || stats.error) {
       return NextResponse.json({ error: 'Could not load price history.' }, { status: 500 });
     }
@@ -155,19 +139,22 @@ export async function GET(request: Request, { params }: RouteContext) {
   if (insight.isAllTimeLow && insight.verdict !== 'insufficient_data') insight.reasons.push('all_time_low');
 
   const inChart = (p: PricePoint) => p.at >= chartFrom;
+  const toIso = now.toISOString();
+  const rawByLink = new Map<string, Observation[]>();
+  for (const r of rawRows) {
+    const list = rawByLink.get(r.link_id) ?? [];
+    list.push({ at: r.created_at, price: Number(r.price) });
+    rawByLink.set(r.link_id, list);
+  }
   const body: PriceInsightResponse = {
     product: { id: product.id, name: product.name, targetPrice: num(product.target_price) },
-    range: { days, from: chartFrom, to: now.toISOString() },
+    range: { days, from: chartFrom, to: toIso },
     lowest: lowestAll.filter(inChart),
     links: (links ?? []).map((l) => {
       const s = statsByLink.get(l.id);
-      return {
-        linkId: l.id,
-        retailer: l.retailer,
-        url: l.url,
-        stockStatus: l.stock_status ?? 'unknown',
-        points: (series.find((x) => x.linkId === l.id)?.points ?? []).filter(inChart),
-        stats: s
+      const promo = resolveCycle(l.retailer ?? '', cycleRows);
+      const { periods, coverage } = buildPromoPeriods(rawByLink.get(l.id) ?? [], promo, chartFrom, toIso);
+      const stats: LinkStats | null = s
           ? {
               currentPrice: num(s.current_price),
               lastSeenAt: (s.last_seen_at as string) ?? null,
@@ -183,7 +170,17 @@ export async function GET(request: Request, { params }: RouteContext) {
               sampleCount90d: Number(s.sample_count_90d ?? 0),
               lastChangeAt: (s.last_change_at as string) ?? null
             }
-          : null
+          : null;
+      return {
+        linkId: l.id,
+        retailer: l.retailer,
+        url: l.url,
+        stockStatus: l.stock_status ?? 'unknown',
+        points: (series.find((x) => x.linkId === l.id)?.points ?? []).filter(inChart),
+        stats,
+        promo,
+        periods,
+        coverage
       };
     }),
     insight
@@ -214,6 +211,31 @@ async function loadDaily(db: Db, linkIds: string[], fromDay: string): Promise<Da
       .range(offset, offset + PAGE_SIZE - 1);
     if (error) return 'error';
     const page = (data ?? []) as DailyRow[];
+    rows.push(...page);
+    if (page.length < PAGE_SIZE) return rows;
+  }
+}
+
+type RawRow = { link_id: string; price: number | string; created_at: string };
+
+/**
+ * Raw price_history scrapes in the chart range (read-only), paged by
+ * (created_at, id). Same MAX_DAILY_ROWS cap: 'too_many' rather than truncating.
+ */
+async function loadRaw(db: Db, linkIds: string[], fromIso: string): Promise<RawRow[] | 'error' | 'too_many'> {
+  const rows: RawRow[] = [];
+  for (let offset = 0; ; offset += PAGE_SIZE) {
+    if (offset >= MAX_DAILY_ROWS) return 'too_many';
+    const { data, error } = await db
+      .from('price_history')
+      .select('link_id, price, created_at')
+      .in('link_id', linkIds)
+      .gte('created_at', fromIso)
+      .order('created_at', { ascending: true })
+      .order('id', { ascending: true })
+      .range(offset, offset + PAGE_SIZE - 1);
+    if (error) return 'error';
+    const page = (data ?? []) as RawRow[];
     rows.push(...page);
     if (page.length < PAGE_SIZE) return rows;
   }

@@ -31,6 +31,8 @@ products | products_pkey | CREATE UNIQUE INDEX products_pkey ON public.products 
 profiles | profiles_pkey | CREATE UNIQUE INDEX profiles_pkey ON public.profiles USING btree (id)
 profiles | profiles_public_slug_key | CREATE UNIQUE INDEX profiles_public_slug_key ON public.profiles USING btree (lower(public_slug)) WHERE (public_slug IS NOT NULL)
 profiles | profiles_username_key | CREATE UNIQUE INDEX profiles_username_key ON public.profiles USING btree (lower(username))
+retailer_promo_cycles | retailer_promo_cycles_pkey | CREATE UNIQUE INDEX retailer_promo_cycles_pkey ON public.retailer_promo_cycles USING btree (id)
+retailer_promo_cycles | retailer_promo_cycles_retailer_ci | CREATE UNIQUE INDEX retailer_promo_cycles_retailer_ci ON public.retailer_promo_cycles USING btree (lower(btrim(retailer)))
 tracked_links | tracked_links_pkey | CREATE UNIQUE INDEX tracked_links_pkey ON public.tracked_links USING btree (id)
 tracked_links | tracked_links_product_id_idx | CREATE INDEX tracked_links_product_id_idx ON public.tracked_links USING btree (product_id)
 user_preferences | user_preferences_pkey | CREATE UNIQUE INDEX user_preferences_pkey ON public.user_preferences USING btree (user_id, key)
