@@ -6,6 +6,7 @@ import {
   consumeAuthRateLimit,
   normalizeUsername
 } from '@/lib/auth';
+import { sendOutboxRowAfterResponse } from '@/lib/emailOutboxServer';
 import { absoluteUrl } from '@/lib/siteUrl';
 import { createAdminSupabaseClient } from '@/lib/supabase/admin';
 
@@ -68,15 +69,20 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (tokenRow) {
-    await admin.from('email_outbox').insert({
-      user_id: profile.id,
-      kind: 'recover_password',
-      recipient: account.contact_email,
-      payload: {
-        recoverUrl: absoluteUrl(`/reset-password?token=${encodeURIComponent(rawToken)}`)
-      },
-      dedupe_key: `recover:${tokenRow.id}`
-    });
+    const { data: outboxRow } = await admin
+      .from('email_outbox')
+      .insert({
+        user_id: profile.id,
+        kind: 'recover_password',
+        recipient: account.contact_email,
+        payload: {
+          recoverUrl: absoluteUrl(`/reset-password?token=${encodeURIComponent(rawToken)}`)
+        },
+        dedupe_key: `recover:${tokenRow.id}`
+      })
+      .select('id')
+      .single();
+    sendOutboxRowAfterResponse(outboxRow?.id);
   }
   return NextResponse.json(GENERIC_RESPONSE);
 }
