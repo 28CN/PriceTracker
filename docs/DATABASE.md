@@ -71,4 +71,5 @@ The snapshots describe what the migrations build, not necessarily production.
 Known difference (2026-10-29): production still has five legacy policies created
 by hand — "Allow public insert" on `products`/`tracked_links` and "Allow public
 read" on `products`/`tracked_links`/`price_history`. They are not in any migration
-or snapshot; PR2.1 drops them.
+or snapshot; `202610290001_drop_legacy_public_policies.sql` drops them (until it is
+applied to production, production keeps them).
