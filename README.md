@@ -18,6 +18,10 @@ For an existing installation, follow [`docs/AUTH-SETUP.md`](docs/AUTH-SETUP.md).
 It covers the account/RLS migration, initial account bootstrap, Resend, deployment
 secrets and first-login verification.
 
+For a new database, apply `supabase/migrations/` in order (`supabase db push`, or
+`supabase db start` locally). The migrations are the only schema source; see
+[`docs/DATABASE.md`](docs/DATABASE.md).
+
 ### 2. GitHub repository secrets
 
 `Settings` -> `Secrets and variables` -> `Actions`:

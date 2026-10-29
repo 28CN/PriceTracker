@@ -72,7 +72,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     if (error) {
       if (/image_url/.test(error.message) && /does not exist|42703|schema cache/.test(error.message)) {
         return NextResponse.json(
-          { error: 'Run supabase/schema.sql first: products.image_url is missing.' },
+          { error: 'Apply supabase/migrations first: products.image_url is missing.' },
           { status: 500 }
         );
       }

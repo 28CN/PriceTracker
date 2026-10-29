@@ -1,0 +1,134 @@
+account_private,allow_product_improvement,boolean,NO
+account_private,auth_email,text,NO
+account_private,contact_email,text,YES
+account_private,contact_email_verified_at,timestamp with time zone,YES
+account_private,created_at,timestamp with time zone,NO
+account_private,deletion_requested_at,timestamp with time zone,YES
+account_private,phone_country,text,YES
+account_private,phone_e164,text,YES
+account_private,phone_verified_at,timestamp with time zone,YES
+account_private,updated_at,timestamp with time zone,NO
+account_private,user_id,uuid,NO
+app_settings,key,text,NO
+app_settings,updated_at,timestamp with time zone,NO
+app_settings,value,jsonb,NO
+auth_rate_limits,action,text,NO
+auth_rate_limits,attempts,integer,NO
+auth_rate_limits,key_hash,text,NO
+auth_rate_limits,window_started_at,timestamp with time zone,NO
+categories,created_at,timestamp with time zone,NO
+categories,id,uuid,NO
+categories,is_public,boolean,NO
+categories,name,text,NO
+categories,owner_id,uuid,YES
+crawl_events,created_at,timestamp with time zone,NO
+crawl_events,id,uuid,NO
+crawl_events,is_read,boolean,NO
+crawl_events,level,text,NO
+crawl_events,link_id,uuid,YES
+crawl_events,message,text,NO
+crawl_jobs,claimed_at,timestamp with time zone,YES
+crawl_jobs,created_at,timestamp with time zone,NO
+crawl_jobs,finished_at,timestamp with time zone,YES
+crawl_jobs,id,uuid,NO
+crawl_jobs,last_error,text,YES
+crawl_jobs,link_id,uuid,YES
+crawl_jobs,product_id,uuid,YES
+crawl_jobs,requested_by,uuid,YES
+crawl_jobs,runner,text,YES
+crawl_jobs,status,text,NO
+email_delivery_events,created_at,timestamp with time zone,NO
+email_delivery_events,event_type,text,NO
+email_delivery_events,id,uuid,NO
+email_delivery_events,outbox_id,uuid,YES
+email_delivery_events,provider_message_id,text,YES
+email_delivery_events,provider_payload,jsonb,NO
+email_outbox,attempt_count,integer,NO
+email_outbox,created_at,timestamp with time zone,NO
+email_outbox,dedupe_key,text,NO
+email_outbox,id,uuid,NO
+email_outbox,kind,text,NO
+email_outbox,last_error,text,YES
+email_outbox,locked_at,timestamp with time zone,YES
+email_outbox,next_attempt_at,timestamp with time zone,NO
+email_outbox,payload,jsonb,NO
+email_outbox,product_id,uuid,YES
+email_outbox,provider_message_id,text,YES
+email_outbox,recipient,text,NO
+email_outbox,sent_at,timestamp with time zone,YES
+email_outbox,status,text,NO
+email_outbox,user_id,uuid,YES
+email_verification_tokens,consumed_at,timestamp with time zone,YES
+email_verification_tokens,created_at,timestamp with time zone,NO
+email_verification_tokens,email,text,NO
+email_verification_tokens,expires_at,timestamp with time zone,NO
+email_verification_tokens,id,uuid,NO
+email_verification_tokens,purpose,text,NO
+email_verification_tokens,token_hash,text,NO
+email_verification_tokens,user_id,uuid,NO
+notification_preferences,digest_frequency,text,NO
+notification_preferences,personalised_recommendations_email,boolean,NO
+notification_preferences,popular_deals_email,boolean,NO
+notification_preferences,quiet_hours_end,time without time zone,YES
+notification_preferences,quiet_hours_start,time without time zone,YES
+notification_preferences,target_price_email,boolean,NO
+notification_preferences,timezone,text,NO
+notification_preferences,updated_at,timestamp with time zone,NO
+notification_preferences,user_id,uuid,NO
+price_alert_states,episode,integer,NO
+price_alert_states,evaluated_at,timestamp with time zone,NO
+price_alert_states,is_below_target,boolean,NO
+price_alert_states,last_price,numeric,YES
+price_alert_states,last_retailer,text,YES
+price_alert_states,product_id,uuid,NO
+price_alert_states,user_id,uuid,NO
+price_history,created_at,timestamp with time zone,YES
+price_history,id,uuid,NO
+price_history,link_id,uuid,YES
+price_history,price,numeric,NO
+privacy_consents,consent_type,text,NO
+privacy_consents,created_at,timestamp with time zone,NO
+privacy_consents,granted,boolean,NO
+privacy_consents,id,uuid,NO
+privacy_consents,policy_version,text,NO
+privacy_consents,source,text,NO
+privacy_consents,user_id,uuid,NO
+products,category_id,uuid,YES
+products,created_at,timestamp with time zone,YES
+products,id,uuid,NO
+products,image_url,text,YES
+products,name,text,NO
+products,owner_id,uuid,YES
+products,target_price,numeric,YES
+profiles,avatar_path,text,YES
+profiles,bio,text,YES
+profiles,created_at,timestamp with time zone,NO
+profiles,display_name,text,YES
+profiles,id,uuid,NO
+profiles,public_slug,text,YES
+profiles,updated_at,timestamp with time zone,NO
+profiles,username,text,NO
+profiles,watchlist_visibility,text,NO
+tracked_links,created_at,timestamp with time zone,YES
+tracked_links,id,uuid,NO
+tracked_links,image_candidates,jsonb,YES
+tracked_links,image_url,text,YES
+tracked_links,is_active,boolean,YES
+tracked_links,product_id,uuid,YES
+tracked_links,retailer,text,NO
+tracked_links,stock_checked_at,timestamp with time zone,YES
+tracked_links,stock_status,text,NO
+tracked_links,url,text,NO
+user_preferences,key,text,NO
+user_preferences,updated_at,timestamp with time zone,NO
+user_preferences,user_id,uuid,NO
+user_preferences,value,jsonb,NO
+user_roles,created_at,timestamp with time zone,NO
+user_roles,role,text,NO
+user_roles,user_id,uuid,NO
+user_security,created_at,timestamp with time zone,NO
+user_security,disabled_at,timestamp with time zone,YES
+user_security,last_password_change_at,timestamp with time zone,YES
+user_security,must_change_password,boolean,NO
+user_security,updated_at,timestamp with time zone,NO
+user_security,user_id,uuid,NO
