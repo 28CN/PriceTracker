@@ -19,12 +19,13 @@ jobs:
     steps:
       - name: Drain email outbox
         env:
-          APP_URL: ${{ secrets.APP_URL }}
+          # vars.SITE_URL is the new source; secrets.APP_URL is a temporary fallback until it is set.
+          SITE_URL: ${{ vars.SITE_URL || secrets.APP_URL }}
           EMAIL_WORKER_SECRET: ${{ secrets.EMAIL_WORKER_SECRET }}
         run: |
-          test -n "$APP_URL"
+          test -n "$SITE_URL"
           test -n "$EMAIL_WORKER_SECRET"
           curl --fail-with-body --silent --show-error \
             --request POST \
             --header "Authorization: Bearer $EMAIL_WORKER_SECRET" \
-            "${APP_URL%/}/api/internal/email-worker"
+            "${SITE_URL%/}/api/internal/email-worker"
