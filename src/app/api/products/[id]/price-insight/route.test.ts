@@ -119,7 +119,39 @@ describe('GET /api/products/:id/price-insight', () => {
     expect(ph.ops).toContain(`in:${JSON.stringify([LID])}`);
     const gte = ph.ops.find((o) => o.startsWith('gte:'))!;
     expect(Date.now() - Date.parse(JSON.parse(gte.slice(4)))).toBeGreaterThanOrEqual(89 * 86_400_000);
-    expect(calls.some((c) => c.table === 'price_history')).toBe(false);
+    // v1.1: raw price_history is read (never written) only for this link and the chart range.
+    const raw = calls.find((c) => c.table === 'price_history')!;
+    expect(raw.ops).toContain(`in:${JSON.stringify([LID])}`);
+    expect(raw.ops).toContain(`gte:${JSON.stringify(body.range.from)}`);
+    // Unknown retailer 'Shop' -> default cycle.
+    expect(body.links[0].promo).toEqual({ retailer: 'Shop', timezone: 'Australia/Sydney', anchorWeekday: 3, cycleDays: 7, isDefault: true });
+  });
+
+  it('adds promo periods and coverage per link from raw scrapes and the cycle table', async () => {
+    const { db } = fakeDb({
+      products: { data: { id: PID, name: 'Kettle', target_price: null }, error: null },
+      tracked_links: { data: [{ id: LID, retailer: 'COLES', url: 'https://c.example/k', stock_status: 'in_stock' }], error: null },
+      price_history: { data: [{ link_id: LID, price: '9.50', created_at: day(1) }, { link_id: LID, price: '8.00', created_at: day(1) }], error: null },
+      retailer_promo_cycles: { data: [{ retailer: 'Coles', anchor_weekday: 3, cycle_days: 7, timezone: 'Australia/Sydney' }], error: null }
+    });
+    getApiAuth.mockResolvedValue({ supabase: db, userId: 'u', isAdmin: false });
+    const body = await (await call(PID, '?days=30')).json();
+    const link = body.links[0];
+    expect(link.promo).toMatchObject({ retailer: 'COLES', isDefault: false, cycleDays: 7 });
+    expect(link.periods.length).toBeGreaterThanOrEqual(5);
+    expect(link.periods.at(-1).minPrice ?? link.periods.at(-2).minPrice).toBe(8);
+    expect(link.periods[0].start).toMatch(/T00:00:00\+1[01]:00$/);
+    expect(link.coverage).toMatchObject({ observed: 1, total: link.periods.length });
+  });
+
+  it('500 when the promo cycle table cannot be read', async () => {
+    const { db } = fakeDb({
+      products: { data: { id: PID, name: 'K', target_price: null }, error: null },
+      tracked_links: { data: [{ id: LID, retailer: 'Coles', url: 'u', stock_status: null }], error: null },
+      retailer_promo_cycles: { data: null, error: { message: 'x' } }
+    });
+    getApiAuth.mockResolvedValue({ supabase: db, userId: 'u', isAdmin: false });
+    expect((await call()).status).toBe(500);
   });
 
   it('a product with no links returns empty series and insufficient_data', async () => {

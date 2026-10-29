@@ -110,6 +110,13 @@ profiles,public_slug,text,YES
 profiles,updated_at,timestamp with time zone,NO
 profiles,username,text,NO
 profiles,watchlist_visibility,text,NO
+retailer_promo_cycles,anchor_weekday,smallint,NO
+retailer_promo_cycles,created_at,timestamp with time zone,NO
+retailer_promo_cycles,cycle_days,smallint,NO
+retailer_promo_cycles,id,uuid,NO
+retailer_promo_cycles,retailer,text,NO
+retailer_promo_cycles,timezone,text,NO
+retailer_promo_cycles,updated_at,timestamp with time zone,NO
 tracked_links,created_at,timestamp with time zone,YES
 tracked_links,id,uuid,NO
 tracked_links,image_candidates,jsonb,YES

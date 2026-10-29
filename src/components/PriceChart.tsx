@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
-import type { PriceInsightResponse } from '@/app/api/products/[id]/price-insight/route';
+import type { PriceInsightResponse } from '@/lib/priceInsightTypes';
 import { formatMoney } from '@/lib/format';
 import type { PricePoint, Verdict } from '@/lib/priceInsight';
 
