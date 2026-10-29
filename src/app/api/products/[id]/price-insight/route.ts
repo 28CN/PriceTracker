@@ -5,6 +5,8 @@ import {
   buildSeries,
   judgeDiscount,
   lowestPriceSeries,
+  MAX_DAILY_ROWS,
+  PAGE_SIZE,
   type PriceInsight,
   type PricePoint
 } from '@/lib/priceInsight';
@@ -60,7 +62,6 @@ export type LinkStats = {
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DAY_MS = 86_400_000;
-import { MAX_DAILY_ROWS, PAGE_SIZE } from '@/lib/priceInsight';
 
 const num = (v: unknown) => (v === null || v === undefined ? null : Number(v));
 
