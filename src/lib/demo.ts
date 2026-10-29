@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server.js';
 export const DEMO_USER_ID = 'd3300000-0000-4000-8000-00000000de30';
 export const DEMO_AUTH_EMAIL = 'demo@users.invalid';
 export const DEMO_PUBLIC_SLUG = 'demo-shop';
-export const DEMO_READ_ONLY_MESSAGE = 'The demo account is read-only. Create a free account to make changes.';
+export const DEMO_READ_ONLY_MESSAGE = 'This is a sample list, so changes aren’t saved. Make your own free list to start tracking.';
 
 export type SupabaseLike = {
   from: (table: string) => {

@@ -27,7 +27,7 @@ export default function GuestLanding({ featured }: { featured: ProductView[] }) 
             <Link className="button secondary" href="/login">Sign in</Link>
             {/* POST-only: GET /demo never signs in (login CSRF). */}
             <form action="/demo" method="post" className="demo-form">
-              <button className="button secondary" type="submit">Try the demo</button>
+              <button className="button secondary" type="submit">See an example</button>
             </form>
           </div>
         </div>

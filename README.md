@@ -16,9 +16,9 @@ shows the cheapest shop up front and the full list when you tap a product.
 
 ![Demo watchlist: cheapest shop per product, target prices and read-only banner](docs/media/demo-dashboard.png)
 
-## Try the demo
+## See an example
 
-Open [pricetracker-au.vercel.app](https://pricetracker-au.vercel.app) and press **Try the demo**. No sign-up needed.
+Open [pricetracker-au.vercel.app](https://pricetracker-au.vercel.app) and press **See an example**. No sign-up needed.
 
 - You land in a sample watchlist with real retailer prices, categories and target prices.
 - The demo account is **read-only**: adding, editing and deleting are blocked, and a banner says so.

@@ -22,9 +22,9 @@ export default async function LoginPage({
       : null;
   const demoNotice =
     demo === 'rate_limited'
-      ? 'Too many demo sign-ins from your network. Please try again in a few minutes.'
+      ? 'Lots of people are looking at the example right now. Please try again in a few minutes.'
       : demo === 'unavailable'
-        ? 'The demo is unavailable right now. Please try again later.'
+        ? 'The example isn’t available right now. Please try again later.'
         : null;
 
   return (
