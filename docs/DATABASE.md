@@ -40,3 +40,15 @@ join information_schema.tables t using (table_schema, table_name)
 where c.table_schema = 'public' and t.table_type = 'BASE TABLE'
 order by 1;
 ```
+
+## Before pushing to production (baseline migration)
+
+`202610010001_baseline_legacy_tables.sql` is dated *before* migrations that were
+already applied to production by hand, and production's migration history does not
+contain it. Its statements are no-ops there, but the Supabase CLI would refuse or
+reorder it. Mark it applied first:
+
+```bash
+supabase migration repair --status applied 202610010001
+# alternatively: supabase db push --include-all
+```
