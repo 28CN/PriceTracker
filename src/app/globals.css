@@ -4299,6 +4299,7 @@ textarea:disabled {
 .brand-exit { padding: 0; border: 0; background: none; font: inherit; cursor: pointer; }
 .brand-exit .brand { display: block; }
 .demo-banner { flex: 1 0 100%; margin: 8px -18px -12px; }
+.demo-banner .demo-exit { margin-left: 10px; vertical-align: middle; }
 .demo-exit {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 8px 12px; font-size: 13px; font-weight: 650; white-space: nowrap;
@@ -4314,7 +4315,8 @@ textarea:disabled {
 @media (max-width: 420px) {
   .topbar-actions { gap: 5px; }
   .topbar-actions .icon-button { width: 34px; height: 34px; }
-  .demo-exit { padding: 7px 10px; font-size: 12px; }
+  .demo-exit { padding: 5px 10px; font-size: 12px; }
+  .demo-banner .demo-exit { margin: 6px auto 0; display: flex; }
   .overview-actions { grid-template-columns: 1fr; }
   .target-summary { width: 100%; }
 }

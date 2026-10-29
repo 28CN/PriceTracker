@@ -171,7 +171,7 @@ export default function PriceChart({ productId, days = 180 }: { productId: strin
             {formatMoney(t)}
           </span>
         ))}
-        {geo.atl && geo.atl.at !== geo.last.at ? (
+        {geo.atl && geo.atl.price !== geo.last.price ? (
           <span
             className="pc-label pc-label-atl"
             style={{ top: `${(geo.y(geo.atl.price) / H) * 100}%`, left: `${(geo.x(Date.parse(geo.atl.at)) / W) * 100}%` }}
