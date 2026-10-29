@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server.js';
 
-/** Fixed id and login of the seeded read-only demo account (see migration 202610290002). */
+/** Fixed id and login of the seeded read-only demo account (see migration 202610290005). */
 export const DEMO_USER_ID = 'd3300000-0000-4000-8000-00000000de30';
 export const DEMO_AUTH_EMAIL = 'demo@users.invalid';
 export const DEMO_PUBLIC_SLUG = 'demo-shop';
