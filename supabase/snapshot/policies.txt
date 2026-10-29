@@ -33,6 +33,7 @@ products | demo users cannot insert | INSERT | RESTRICTIVE | authenticated | - |
 products | demo users cannot update | UPDATE | RESTRICTIVE | authenticated | (NOT ( SELECT is_demo_user() AS is_demo_user)) | -
 products | users delete own products | DELETE | PERMISSIVE | authenticated | (owner_id = ( SELECT auth.uid() AS uid)) | -
 products | users insert own products | INSERT | PERMISSIVE | authenticated | - | ((owner_id = ( SELECT auth.uid() AS uid)) AND ((category_id IS NULL) OR owns_category(category_id)))
+products | users read own products | SELECT | PERMISSIVE | authenticated | (owner_id = ( SELECT auth.uid() AS uid)) | -
 products | users read visible products | SELECT | PERMISSIVE | anon,authenticated | can_view_product(id) | -
 products | users update own products | UPDATE | PERMISSIVE | authenticated | (owner_id = ( SELECT auth.uid() AS uid)) | ((owner_id = ( SELECT auth.uid() AS uid)) AND ((category_id IS NULL) OR owns_category(category_id)))
 profiles | demo users cannot delete | DELETE | RESTRICTIVE | authenticated | (NOT ( SELECT is_demo_user() AS is_demo_user)) | -
