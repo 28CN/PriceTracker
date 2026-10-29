@@ -18,7 +18,13 @@ function urlKey(url: string): string {
   return cleanHttpUrl(url) || url.trim();
 }
 
-export default function ProductSearch({ trackedUrls }: { trackedUrls: string[] }) {
+export default function ProductSearch({
+  trackedUrls,
+  readOnly = false
+}: {
+  trackedUrls: string[];
+  readOnly?: boolean;
+}) {
   const router = useRouter();
   const tracked = useMemo(() => new Set(trackedUrls.map(urlKey)), [trackedUrls]);
   const [query, setQuery] = useState('');
@@ -124,14 +130,20 @@ export default function ProductSearch({ trackedUrls }: { trackedUrls: string[] }
                     {hit.retailer}
                   </span>
                 </div>
-                <button
-                  className="button secondary"
-                  type="button"
-                  disabled={saved || pendingUrl === key}
-                  onClick={() => track(hit)}
-                >
-                  {saved ? 'Tracked' : pendingUrl === key ? 'Adding…' : 'Track'}
-                </button>
+                {readOnly ? (
+                  <a className="button secondary" href={hit.url} target="_blank" rel="noreferrer">
+                    Open
+                  </a>
+                ) : (
+                  <button
+                    className="button secondary"
+                    type="button"
+                    disabled={saved || pendingUrl === key}
+                    onClick={() => track(hit)}
+                  >
+                    {saved ? 'Tracked' : pendingUrl === key ? 'Adding…' : 'Track'}
+                  </button>
+                )}
               </article>
             );
           })}

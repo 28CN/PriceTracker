@@ -67,7 +67,9 @@ export default async function HomePage() {
   return (
     <main>
       <DashboardHero products={products} accountHref={viewer.isDemo ? null : '/account'} />
-      <ProductSearch trackedUrls={products.flatMap((product) => product.links.map((link) => link.url))} />
+      <ProductSearch trackedUrls={products.flatMap((product) => product.links.map((link) => link.url))}
+        readOnly={viewer.isDemo}
+      />
 
       {loadError ? (
         <div className="alert">
