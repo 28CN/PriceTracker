@@ -1,5 +1,6 @@
 import { lookup as dnsLookup } from 'node:dns/promises';
-import { isIP } from 'node:net';
+import { isIP, type LookupFunction } from 'node:net';
+import { Agent, fetch as undiciFetch } from 'undici';
 
 /**
  * SSRF-safe fetch for remote images.
@@ -10,9 +11,10 @@ import { isIP } from 'node:net';
  * - accepts only image/* responses and enforces a byte cap while streaming
  * - hard timeout across the whole request chain
  *
- * Note: Node's fetch re-resolves the host when connecting, so a DNS-rebinding
- * window still exists between our check and the connection. This blocks the
- * practical cases (stored internal URLs, redirects to internal hosts).
+ * - DNS-rebinding safe: the socket connects through an undici Agent whose
+ *   connect.lookup resolves, validates every address and hands only the
+ *   validated IP to the socket. SNI / Host stay the original hostname, so TLS
+ *   certificate validation is unaffected.
  */
 
 export type SafeFetchErrorCode =
@@ -47,6 +49,7 @@ export interface SafeFetchOptions {
   acceptContentType?: string;
   /** Injectable for tests. */
   lookup?: LookupFn;
+  /** Injectable for tests. Defaults to undici fetch through a pinned-IP Agent. */
   fetchImpl?: typeof fetch;
 }
 
@@ -189,6 +192,34 @@ export async function assertSafeUrl(raw: string, lookup: LookupFn = defaultLooku
   return url;
 }
 
+/**
+ * Node-style lookup for net/tls connect: resolves via `lookup`, rejects if ANY
+ * address is non-public, and returns only validated addresses.
+ */
+export function createValidatingLookup(lookup: LookupFn = defaultLookup): LookupFunction {
+  return ((hostname: string, options: { all?: boolean }, callback: (...args: unknown[]) => void) => {
+    const host = hostname.replace(/^\[|\]$/g, '');
+    const done = (records: { address: string; family: number }[]) => {
+      if (!records.length) return callback(new SafeFetchError('DNS_FAILED', 'No DNS records'));
+      if (records.some((r) => isBlockedAddress(r.address))) {
+        return callback(new SafeFetchError('BLOCKED_ADDRESS', 'Resolved address not allowed'));
+      }
+      if (options?.all) return callback(null, records);
+      callback(null, records[0].address, records[0].family);
+    };
+    const literal = isIP(host);
+    if (literal) return done([{ address: host, family: literal }]);
+    lookup(host).then(done, () => callback(new SafeFetchError('DNS_FAILED', 'DNS lookup failed')));
+  }) as unknown as LookupFunction;
+}
+
+function createPinnedFetch(lookup: LookupFn): { fetchImpl: typeof fetch; close: () => Promise<void> } {
+  const agent = new Agent({ connect: { lookup: createValidatingLookup(lookup) } });
+  const fetchImpl = ((input: string, init: RequestInit = {}) =>
+    undiciFetch(input, { ...(init as object), dispatcher: agent } as Parameters<typeof undiciFetch>[1])) as unknown as typeof fetch;
+  return { fetchImpl, close: () => agent.close().catch(() => {}) };
+}
+
 async function readCapped(res: Response, maxBytes: number): Promise<Buffer> {
   if (!res.body) return Buffer.alloc(0);
   const reader = res.body.getReader();
@@ -215,8 +246,11 @@ export async function safeFetch(rawUrl: string, options: SafeFetchOptions = {}):
     headers = {},
     acceptContentType = 'image/',
     lookup = defaultLookup,
-    fetchImpl = fetch
+    fetchImpl: injectedFetch
   } = options;
+  // A fresh Agent per call: every hop's connection re-resolves and re-validates.
+  const pinned = injectedFetch ? null : createPinnedFetch(lookup);
+  const fetchImpl = injectedFetch ?? pinned!.fetchImpl;
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -232,8 +266,10 @@ export async function safeFetch(rawUrl: string, options: SafeFetchOptions = {}):
           cache: 'no-store',
           signal: controller.signal
         });
-      } catch {
+      } catch (err) {
         if (controller.signal.aborted) throw new SafeFetchError('TIMEOUT', 'Request timed out');
+        const blocked = findSafeFetchError(err);
+        if (blocked) throw blocked;
         throw new SafeFetchError('NETWORK', 'Network error');
       }
 
@@ -272,5 +308,14 @@ export async function safeFetch(rawUrl: string, options: SafeFetchOptions = {}):
     }
   } finally {
     clearTimeout(timer);
+    await pinned?.close();
   }
+}
+
+function findSafeFetchError(err: unknown): SafeFetchError | null {
+  for (let e: unknown = err, i = 0; e && i < 5; i++) {
+    if (e instanceof SafeFetchError) return e;
+    e = (e as { cause?: unknown }).cause;
+  }
+  return null;
 }

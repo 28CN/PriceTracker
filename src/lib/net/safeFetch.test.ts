@@ -123,3 +123,43 @@ test('times out', async () => {
     new Promise((_r, reject) => init?.signal?.addEventListener('abort', () => reject(new Error('aborted'))))) as typeof fetch;
   await assert.rejects(safeFetch('https://cdn.test/slow', { timeoutMs: 50, lookup: publicLookup, fetchImpl: hang }), code('TIMEOUT'));
 });
+
+test('DNS rebinding: pre-check sees public IP, connect-time resolve gets 127.0.0.1 -> rejected', async () => {
+  const { createServer } = await import('node:http');
+  let hits = 0;
+  const server = createServer((_req, res) => {
+    hits++;
+    res.writeHead(200, { 'content-type': 'image/png' });
+    res.end('x');
+  });
+  await new Promise<void>((r) => server.listen(0, '127.0.0.1', () => r()));
+  const port = (server.address() as { port: number }).port;
+  let calls = 0;
+  const rebinding: LookupFn = async () =>
+    ++calls === 1 ? [{ address: '93.184.216.34', family: 4 }] : [{ address: '127.0.0.1', family: 4 }];
+  try {
+    await assert.rejects(
+      safeFetch(`http://rebind.test:${port}/a.png`, { lookup: rebinding, timeoutMs: 3000 }),
+      code('BLOCKED_ADDRESS')
+    );
+    assert.ok(calls >= 2, 'connect-time lookup must run');
+    assert.equal(hits, 0, 'internal server must never be reached');
+  } finally {
+    server.close();
+  }
+});
+
+test('pinned connection reaches the validated IP (sanity)', async () => {
+  const { createValidatingLookup } = await import('./safeFetch.ts');
+  const lk = createValidatingLookup(async () => [{ address: '93.184.216.34', family: 4 }]);
+  const addr = await new Promise((res, rej) =>
+    (lk as any)('cdn.test', {}, (e: unknown, a: string) => (e ? rej(e) : res(a)))
+  );
+  assert.equal(addr, '93.184.216.34');
+  await assert.rejects(
+    new Promise((res, rej) =>
+      (createValidatingLookup(async () => [{ address: '10.0.0.1', family: 4 }]) as any)('x', { all: true }, (e: unknown, a: unknown) => (e ? rej(e) : res(a)))
+    ),
+    code('BLOCKED_ADDRESS')
+  );
+});
