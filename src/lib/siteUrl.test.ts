@@ -1,5 +1,5 @@
-// Run with: npm test  (Node >= 22.18 strips TypeScript natively)
-import { test } from 'node:test';
+// Run with: npm test (Vitest)
+import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { absoluteUrl, getSiteUrl } from './siteUrl.ts';
 

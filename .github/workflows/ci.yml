@@ -22,13 +22,31 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version-file: .nvmrc # Node 22
           cache: npm
       - run: npm ci
       - run: npx tsc --noEmit
+      - run: npm run lint
+      - run: npm test
       - run: npm run build
 
+  python-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: crawler/requirements*.txt
+      # Only the Python packages; the tests never launch a browser.
+      - run: pip install -r crawler/requirements-dev.txt
+      - run: python -m pytest -q
+        working-directory: crawler
+
   schema-drift:
+    # Also runs the pgTAP tests in supabase/tests/ against the same throwaway DB.
     # Builds a throwaway local Postgres from supabase/migrations/ only and
     # compares it with supabase/snapshot/columns.csv. No production secrets.
     runs-on: ubuntu-latest
@@ -42,6 +60,8 @@ jobs:
         run: supabase db start
       - name: Check migrations are idempotent and match the live snapshot
         run: ./scripts/check-schema-drift.sh
+      - name: Database tests (pgTAP, rolled back)
+        run: supabase test db
       - name: Lint database functions
         run: supabase db lint --level error
       - name: Dump schema for review
