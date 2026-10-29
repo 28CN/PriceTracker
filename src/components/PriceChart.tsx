@@ -151,7 +151,7 @@ export default function PriceChart({ productId, days = 180 }: { productId: strin
         <span className={`verdict-pill tone-${verdict.tone}`}>{verdict.label}</span>
         {insight.isAllTimeLow ? <span className="verdict-pill tone-good">All-time low</span> : null}
         {insight.median90d !== null ? (
-          <span className="price-chart-meta">Usual price {formatMoney(insight.median90d)}</span>
+          <span className="price-chart-meta">Normally {formatMoney(insight.median90d)}</span>
         ) : null}
         {product.targetPrice !== null ? (
           <span className="price-chart-meta pc-target-key">Target {formatMoney(product.targetPrice)}</span>
@@ -223,7 +223,7 @@ export default function PriceChart({ productId, days = 180 }: { productId: strin
                 {formatMoney(t)}
               </span>
             ))}
-            {periodGeo.lowest !== periodGeo.latest ? (
+            {periodGeo.lowest.minPrice < periodGeo.now ? (
               <span
                 className="pc-label pc-label-atl"
                 style={{
