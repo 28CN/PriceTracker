@@ -62,3 +62,59 @@ test('resetDemoCredentials fails closed', async () => {
   assert.equal(await resetDemoCredentials(null, 'pw'), false);
   assert.equal(await resetDemoCredentials(failing, ''), false);
 });
+
+import { isSameSiteDemoRequest, runDemoSignIn } from './demoFlow.ts';
+
+const URL_ = 'https://pt.example/demo';
+const h = (o: Record<string, string>) => ({ get: (k: string) => o[k] ?? null });
+
+test('isSameSiteDemoRequest accepts same origin only', () => {
+  assert.equal(isSameSiteDemoRequest(h({ origin: 'https://pt.example' }), URL_), true);
+  assert.equal(isSameSiteDemoRequest(h({ origin: 'https://evil.example' }), URL_), false);
+  assert.equal(isSameSiteDemoRequest(h({ origin: 'null' }), URL_), false);
+  assert.equal(isSameSiteDemoRequest(h({ 'sec-fetch-site': 'same-origin' }), URL_), true);
+  assert.equal(isSameSiteDemoRequest(h({ 'sec-fetch-site': 'cross-site' }), URL_), false);
+  assert.equal(isSameSiteDemoRequest(h({}), URL_), false);
+});
+
+function deps(over: Partial<Parameters<typeof runDemoSignIn>[0]> = {}) {
+  const calls: string[] = [];
+  const d = {
+    password: 'pw',
+    sameOrigin: true,
+    consumeRateLimit: async () => { calls.push('limit'); return true; },
+    resetCredentials: async () => { calls.push('reset'); return true; },
+    signIn: async () => { calls.push('signin'); return true; },
+    ...over
+  };
+  return { d, calls };
+}
+
+test('runDemoSignIn: rate limit, then reset, then sign-in', async () => {
+  const { d, calls } = deps();
+  assert.deepEqual(await runDemoSignIn(d), { status: 303, location: '/' });
+  assert.deepEqual(calls, ['limit', 'reset', 'signin']);
+});
+
+test('runDemoSignIn: cross-site request is rejected before anything runs', async () => {
+  const { d, calls } = deps({ sameOrigin: false });
+  assert.deepEqual(await runDemoSignIn(d), { status: 403 });
+  assert.deepEqual(calls, []);
+});
+
+test('runDemoSignIn: rate limited skips the admin reset', async () => {
+  const { d, calls } = deps();
+  d.consumeRateLimit = async () => { calls.push('limit'); return false; };
+  assert.deepEqual(await runDemoSignIn(d), { status: 303, location: '/login?demo=rate_limited' });
+  assert.deepEqual(calls, ['limit']);
+});
+
+test('runDemoSignIn fails closed', async () => {
+  assert.deepEqual(await runDemoSignIn(deps({ password: undefined }).d), { status: 303, location: '/login?demo=unavailable' });
+  assert.deepEqual(await runDemoSignIn(deps({ resetCredentials: async () => false }).d), { status: 303, location: '/login?demo=unavailable' });
+  assert.deepEqual(await runDemoSignIn(deps({ signIn: async () => false }).d), { status: 303, location: '/login?demo=unavailable' });
+  assert.deepEqual(
+    await runDemoSignIn(deps({ consumeRateLimit: async () => { throw new Error('db down'); } }).d),
+    { status: 303, location: '/login?demo=unavailable' }
+  );
+});

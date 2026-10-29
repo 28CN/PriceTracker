@@ -4214,3 +4214,6 @@ html[data-theme='dark'] .aisle { opacity: 0.55; }
   color: #5a4300;
   border-color: #f0d58a;
 }
+
+.demo-form { display: inline; margin: 0; }
+.demo-notice { margin: 0 auto 1rem; max-width: 28rem; text-align: center; }

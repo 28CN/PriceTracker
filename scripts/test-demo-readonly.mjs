@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Hand-written API tests for the read-only demo account (PR5).
-// 1. Signs in through GET /demo and keeps the session cookies.
+// 1. Signs in through POST /demo and keeps the session cookies.
 // 2. Calls every write API route and expects HTTP 403 (code demo_read_only).
 // 3. Optionally (when NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY and
 //    DEMO_ACCOUNT_PASSWORD are set) signs in directly to Supabase as the demo user
@@ -43,9 +43,22 @@ async function check(name, fn) {
   }
 }
 
-const login = await fetch(`${BASE_URL}/demo`, { redirect: 'manual' });
+const getDemo = await fetch(`${BASE_URL}/demo`, { redirect: 'manual' });
+await check('GET /demo does not sign in', () => {
+  assert.ok(!getDemo.headers.getSetCookie().some((c) => c.startsWith('sb-')), 'GET set an auth cookie');
+});
+const crossSite = await fetch(`${BASE_URL}/demo`, {
+  method: 'POST', redirect: 'manual', headers: { origin: 'https://evil.example' }
+});
+await check('cross-site POST /demo is rejected', () => {
+  assert.equal(crossSite.status, 403);
+  assert.ok(!crossSite.headers.getSetCookie().some((c) => c.startsWith('sb-')));
+});
+const login = await fetch(`${BASE_URL}/demo`, {
+  method: 'POST', redirect: 'manual', headers: { origin: new URL(BASE_URL).origin }
+});
 const cookies = login.headers.getSetCookie();
-await check('GET /demo redirects home and sets a session cookie', () => {
+await check('same-origin POST /demo redirects home and sets a session cookie', () => {
   assert.equal(login.status, 303);
   assert.equal(new URL(login.headers.get('location'), BASE_URL).pathname, '/');
   assert.ok(cookies.some((c) => c.startsWith('sb-')), 'no sb-* auth cookie set');

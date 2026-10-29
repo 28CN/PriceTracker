@@ -52,7 +52,7 @@ export function assertSameOrigin(request: NextRequest): boolean {
 
 export async function consumeAuthRateLimit(
   request: NextRequest,
-  action: 'login' | 'register' | 'recover',
+  action: 'login' | 'register' | 'recover' | 'demo',
   identifier: string,
   attemptLimit: number
 ): Promise<boolean> {
