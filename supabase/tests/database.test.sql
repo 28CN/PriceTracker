@@ -16,6 +16,9 @@ values
   ('00000000-0000-0000-0000-000000000000', '22222222-2222-4222-8222-222222222222', 'authenticated', 'authenticated',
    'bob@users.invalid', '{"username":"bob-test"}', now(), now());
 
+-- Protected-field triggers only let the server (service_role claim) set these.
+select set_config('request.jwt.claims', '{"role":"service_role"}', true);
+
 -- Alice wants target-price emails and has a verified contact address.
 update public.account_private
 set contact_email = 'alice@example.com', contact_email_verified_at = now()
