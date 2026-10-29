@@ -4223,31 +4223,14 @@ textarea:disabled {
   padding: 8px 16px;
   text-align: center;
   font-size: 0.9rem;
-  background: #fff4d6;
-  color: #5a4300;
-  border-top: 1px solid #f0d58a;
-  border-bottom: 1px solid #f0d58a;
+  background: var(--warn-soft);
+  color: color-mix(in srgb, var(--warn) 70%, var(--text));
+  border-top: 1px solid color-mix(in srgb, var(--warn) 35%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--warn) 35%, transparent);
 }
 .demo-banner a {
   color: inherit;
   text-decoration: underline;
-}
-@media (prefers-color-scheme: dark) {
-  .demo-banner {
-    background: #3a3112;
-    color: #f5e6b0;
-    border-color: #5c4d1d;
-  }
-}
-:root[data-theme='dark'] .demo-banner {
-  background: #3a3112;
-  color: #f5e6b0;
-  border-color: #5c4d1d;
-}
-:root[data-theme='light'] .demo-banner {
-  background: #fff4d6;
-  color: #5a4300;
-  border-color: #f0d58a;
 }
 
 .demo-form { display: inline-flex; align-items: center; margin: 0; flex-shrink: 0; }
@@ -4296,18 +4279,28 @@ textarea:disabled {
 .topbar { flex-wrap: wrap; }
 .brand-link, .brand, .brand-mark { flex-shrink: 0; white-space: nowrap; }
 .topbar-actions { min-width: 0; flex-shrink: 1; }
-.brand-exit { padding: 0; border: 0; background: none; font: inherit; cursor: pointer; }
-.brand-exit .brand { display: block; }
+/* Demo logo is a <button> (POST /demo/exit) styled exactly like the logo link:
+   strip every UA button style (iOS/Safari paint a grey pill otherwise). */
+.brand-exit {
+  -webkit-appearance: none; appearance: none;
+  margin: 0; padding: 0; border: 0; border-radius: 0; box-shadow: none;
+  background: transparent; color: inherit; font: inherit; line-height: inherit;
+  text-align: left; cursor: pointer;
+}
+.brand-exit:active { transform: none; }
+.brand-exit:focus-visible { border-radius: 12px; }
+.brand-exit .brand { display: block; margin: 0; }
+.demo-banner .demo-form { vertical-align: middle; }
 .demo-banner { flex: 1 0 100%; margin: 8px -18px -12px; }
 .demo-banner .demo-exit { margin-left: 10px; vertical-align: middle; }
 .demo-exit {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 8px 12px; font-size: 13px; font-weight: 650; white-space: nowrap;
-  color: #5a4300; background: #fff4d6; border: 1px solid #e9c766;
+  color: color-mix(in srgb, var(--warn) 70%, var(--text));
+  background: color-mix(in srgb, var(--warn-soft) 70%, var(--surface-strong));
+  border: 1px solid color-mix(in srgb, var(--warn) 45%, transparent);
 }
-.demo-exit:hover { background: #ffecb8; }
-:root[data-theme='dark'] .demo-exit { color: #f5e6b0; background: #3a3112; border-color: #7a6526; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme='light']) .demo-exit { color: #f5e6b0; background: #3a3112; border-color: #7a6526; } }
+.demo-exit:hover { background: color-mix(in srgb, var(--warn) 14%, var(--warn-soft)); }
 @media (max-width: 760px) {
   .demo-banner { margin: 7px -12px -9px; padding: 7px 12px; font-size: 0.82rem; }
   .overview-actions > :only-child { grid-column: 1 / -1; }
@@ -4317,7 +4310,11 @@ textarea:disabled {
   .topbar-actions { gap: 5px; }
   .topbar-actions .icon-button { width: 34px; height: 34px; }
   .demo-exit { padding: 5px 10px; font-size: 12px; }
-  .demo-banner .demo-exit { margin: 6px auto 0; display: flex; }
+  .demo-banner .demo-form { display: flex; justify-content: center; margin-top: 6px; }
+  .demo-banner .demo-exit { margin: 0; }
+  /* "N at target": chevron sits under the text instead of squeezing it. */
+  .target-summary { display: grid; grid-template-columns: auto minmax(0, 1fr); row-gap: 2px; }
+  .target-summary-arrow { grid-column: 2; justify-self: start; }
   .overview-actions { grid-template-columns: 1fr; }
   .target-summary { width: 100%; }
 }

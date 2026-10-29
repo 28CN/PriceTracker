@@ -77,7 +77,7 @@ export default function DashboardHero({
               <strong>{deals.length} at target</strong>
               <span>{deals.length > 0 ? 'View ready-to-buy items' : 'No matches yet'}</span>
             </span>
-            <ChevronRight size={18} aria-hidden="true" />
+            <ChevronRight className="target-summary-arrow" size={18} aria-hidden="true" />
           </button>
 
           {accountHref ? (
