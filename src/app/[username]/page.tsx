@@ -40,7 +40,9 @@ async function findPublicProfile(slug: string) {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { username } = await params;
   const { profile } = await findPublicProfile(normalizeUsername(username));
-  if (!profile) return { title: 'Watchlist not found · PriceTracker' };
+  // notFound() here and in the page. This route sits outside (app)/, so no loading.tsx
+  // streams first and unknown or private watchlists return a real HTTP 404.
+  if (!profile) notFound();
   const name = profile.display_name || profile.public_slug;
   return {
     title: `${name}'s watchlist · PriceTracker`,

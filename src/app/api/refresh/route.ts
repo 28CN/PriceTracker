@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 
 import { getApiAuth } from '@/lib/auth';
 import { createAdminSupabaseClient } from '@/lib/supabase/admin';
+import { dispatchCrawl } from '@/lib/github/dispatch';
 
 export async function POST(request: Request) {
   try {
@@ -65,45 +66,16 @@ export async function POST(request: Request) {
     }
 
     const queuedMessage = 'Refresh queued. It will run on the next crawl.';
-    const owner = process.env.GITHUB_OWNER;
-    const repo = process.env.GITHUB_REPO;
-    const workflowId = process.env.GITHUB_WORKFLOW_ID;
-    const token = process.env.GITHUB_TOKEN;
-    if (!owner || !repo || !workflowId || !token) {
-      if (jobError) {
-        return NextResponse.json(
-          { error: 'Refresh could not be saved. Run the latest Supabase migration.' },
-          { status: 500 }
-        );
+    const dispatch = await dispatchCrawl({
+      product_id: productId,
+      link_id: linkId,
+      force_refresh: 'true'
+    });
+    if (!dispatch.ok) {
+      if (dispatch.reason !== 'NOT_CONFIGURED') {
+        console.warn(`[refresh] ${dispatch.message}`);
       }
-      return NextResponse.json({ ok: true, message: queuedMessage });
-    }
-
-    const ref = process.env.GITHUB_REF || 'main';
-    const response = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/actions/workflows/${workflowId}/dispatches`,
-      {
-        method: 'POST',
-        headers: {
-          Accept: 'application/vnd.github+json',
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'X-GitHub-Api-Version': '2022-11-28'
-        },
-        body: JSON.stringify({
-          ref,
-          inputs: {
-            product_id: productId,
-            link_id: linkId,
-            force_refresh: 'true'
-          }
-        }),
-        cache: 'no-store'
-      }
-    );
-
-    if (!response.ok) {
-      if (!job) {
+      if (jobError || !job) {
         return NextResponse.json(
           { error: 'Refresh could not be saved. Run the latest Supabase migration.' },
           { status: 500 }
