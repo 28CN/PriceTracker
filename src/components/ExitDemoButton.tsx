@@ -1,9 +1,8 @@
-'use client';
-
 import { LogOut } from 'lucide-react';
-import { useState, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 
-import { exitDemo } from '@/lib/exitDemo';
+// Plain form post: /demo/exit (PR #23) signs out, clears cookies and 303s to '/'.
+export const DEMO_EXIT_ACTION = '/demo/exit';
 
 export default function ExitDemoButton({
   className = 'button demo-exit',
@@ -14,25 +13,16 @@ export default function ExitDemoButton({
   label?: string;
   children?: ReactNode;
 }) {
-  const [pending, setPending] = useState(false);
-
   return (
-    <button
-      type="button"
-      className={className}
-      aria-label={children ? label : undefined}
-      disabled={pending}
-      onClick={() => {
-        setPending(true);
-        void exitDemo();
-      }}
-    >
-      {children ?? (
-        <>
-          <LogOut size={15} aria-hidden="true" />
-          {pending ? 'Leaving…' : label}
-        </>
-      )}
-    </button>
+    <form method="post" action={DEMO_EXIT_ACTION} className="demo-form">
+      <button type="submit" className={className} aria-label={children ? label : undefined}>
+        {children ?? (
+          <>
+            <LogOut size={15} aria-hidden="true" />
+            {label}
+          </>
+        )}
+      </button>
+    </form>
   );
 }
