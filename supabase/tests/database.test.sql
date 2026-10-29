@@ -81,8 +81,10 @@ select is(
   'email on: a new episode starts after the price recovers and drops again'
 );
 select is(
+  -- A before-insert trigger may fold target_price into the weekly digest row,
+  -- so count any outbox row queued for alice rather than one specific kind.
   (select count(*)::int from public.email_outbox
-   where product_id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' and kind = 'target_price'),
+   where user_id = '11111111-1111-4111-8111-111111111111'),
   1,
   'email on: the target-price alert is queued'
 );
