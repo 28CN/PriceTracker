@@ -61,9 +61,16 @@ type PriceInsight = {
 
 ## Verdict rules (`src/lib/priceInsight.ts`, constants in `INSIGHT_RULES`)
 
-The verdict runs on the product's lowest price across links. It counts one
-sample per UTC day (the last price that day), so frequent crawls don't skew
-it. The medians use the daily prices before today's.
+The verdict runs on the product's lowest price across links. Its input is
+already one sample per link per UTC day: the day's **minimum** price from
+`price_link_daily`, except that each link's newest day uses its live
+`current_price` from `price_link_stats`. So the latest point always equals
+`insight.currentPrice`, and an intraday dip that has since ended doesn't count
+as the current price. The rules were written for one price per UTC day, so
+they apply unchanged: sample counts are days, the raise/drop checks compare
+day-to-day, and the medians use the daily prices before today's. (A daily min
+can make a past day look slightly cheaper than its close, which makes
+`real_discount` marginally harder to reach, never easier.)
 
 1. **insufficient_data**: fewer than 5 daily samples in 90 days
    (`too_few_samples`), or history spans less than 7 days (`history_too_short`).
@@ -83,5 +90,14 @@ the all-time low.
 
 `public.price_link_stats` (migration `202610290009`) is a `security_invoker`
 view over `price_history` + `tracked_links`, one row per link. `anon` has no
-access. It never modifies `price_history`. pgTAP:
+access. It never modifies `price_history`. The all-time low always comes from
+this view (full history), never from the charted window.
+
+`public.price_link_daily` (migration `202610290010`) is a `security_invoker`
+view with one row per link per UTC day: `link_id, product_id, day, min_price,
+last_at, samples`. Same grants (`authenticated`, `service_role`; no `anon`),
+read-only. The API reads it for `max(days, 90)` days, paging with `.range()`
+1000 rows at a time (the PostgREST cap) until a short page, ordered by
+`(day, link_id)`. Past 20,000 daily rows it returns 500 rather than a
+truncated series. Raw `price_history` rows are never pulled. pgTAP:
 `supabase/tests/price_insight.test.sql`.

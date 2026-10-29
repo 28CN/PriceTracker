@@ -3,7 +3,7 @@
 // - NEXT_PUBLIC_EMAIL_ENABLED: UI only. Inlined at build time, so a change needs a redeploy.
 // The database has its own gate: app_settings key 'email_enabled' (see docs/EMAIL.md).
 
-export const EMAIL_DISABLED_MESSAGE = '邮件功能开发中，暂不可用';
+export const EMAIL_DISABLED_MESSAGE = 'Email features are under development and temporarily unavailable.';
 
 export function flagOn(value: string | undefined): boolean {
   return value === 'true';

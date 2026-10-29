@@ -5,7 +5,7 @@ Email is **off by default** and gated in three places. All three must be on for 
 | Gate | Where | Controls |
 | --- | --- | --- |
 | `EMAIL_ENABLED` | Vercel env (server-only) | API routes that queue email return 503 / skip queuing; `/api/internal/email-worker` returns `{ ok: true, skipped: true }` without claiming rows or calling Resend. |
-| `NEXT_PUBLIC_EMAIL_ENABLED` | Vercel env (UI only) | Greys out email controls and shows `邮件功能开发中，暂不可用`. **`NEXT_PUBLIC_` values are inlined at build time, so changing it needs a redeploy.** |
+| `NEXT_PUBLIC_EMAIL_ENABLED` | Vercel env (UI only) | Greys out email controls and shows `Email features are under development and temporarily unavailable.` (`EMAIL_DISABLED_MESSAGE`, also the body of the 503 responses). **`NEXT_PUBLIC_` values are inlined at build time, so changing it needs a redeploy.** |
 | `app_settings.email_enabled` | Supabase table row | A `BEFORE INSERT` trigger on `email_outbox` (`email_outbox_00_email_enabled_gate`) drops every new outbox row while this is not `true`. This stops the target-price and weekly-digest triggers. Alert state (`price_alert_states`, episodes) still updates normally, so old alerts don't flood out when email is switched on. |
 
 Each flag is on only when the value is exactly `true`.
