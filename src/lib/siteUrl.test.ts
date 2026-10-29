@@ -28,3 +28,17 @@ test('absoluteUrl joins paths', () => {
   assert.equal(absoluteUrl('unsubscribe', env), 'https://a.example/unsubscribe');
   assert.equal(absoluteUrl('', env), 'https://a.example');
 });
+
+test('production prefers VERCEL_PROJECT_PRODUCTION_URL over VERCEL_URL', () => {
+  assert.equal(
+    getSiteUrl({ VERCEL_ENV: 'production', VERCEL_PROJECT_PRODUCTION_URL: 'pricetracker-au.vercel.app', VERCEL_URL: 'x-123.vercel.app' }),
+    'https://pricetracker-au.vercel.app',
+  );
+});
+
+test('preview uses VERCEL_URL', () => {
+  assert.equal(
+    getSiteUrl({ VERCEL_ENV: 'preview', VERCEL_PROJECT_PRODUCTION_URL: 'pricetracker-au.vercel.app', VERCEL_URL: 'x-123.vercel.app' }),
+    'https://x-123.vercel.app',
+  );
+});
