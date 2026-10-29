@@ -9,22 +9,20 @@ A small price matrix for Australian shops. You save a product once, paste the li
 for each shop that stocks it, and a scheduled crawler fills in the prices. The site
 shows the cheapest shop up front and the full list when you tap a product.
 
-<!-- PLACEHOLDER:SCREENSHOTS (frontend agent) -->
-<!-- Replace this block with 2–3 screenshots and one short GIF, e.g.
-     ![Home: cheapest shop per product](docs/media/home.png)
-     ![Product: all shops and price trend](docs/media/product.png)
-     ![Adding a product](docs/media/add-product.gif)
-     Use the demo account only. No real user data in images. -->
-> 📸 _Screenshots and a GIF are coming soon._
-<!-- /PLACEHOLDER:SCREENSHOTS -->
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/media/landing-dark.png">
+  <img alt="PriceTracker landing page with the kangaroo price-tag animation" src="docs/media/landing-light.png">
+</picture>
+
+![Demo watchlist: cheapest shop per product, target prices and read-only banner](docs/media/demo-dashboard.png)
 
 ## Try the demo
 
-<!-- PLACEHOLDER:TRY-THE-DEMO (frontend agent) -->
-<!-- Fill in: the demo URL, what the visitor can do (read-only), and that the
-     demo account resets on every sign-in. Do not put any password here. -->
-> 🧪 _Demo details are coming soon._
-<!-- /PLACEHOLDER:TRY-THE-DEMO -->
+Open [pricetracker-au.vercel.app](https://pricetracker-au.vercel.app) and press **Try the demo**. No sign-up needed.
+
+- You land in a sample watchlist with real retailer prices, categories and target prices.
+- The demo account is **read-only**: adding, editing and deleting are blocked, and a banner says so.
+- The account is reset to a clean state every time someone starts the demo, so what you see is always the same.
 
 ## Architecture
 
