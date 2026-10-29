@@ -91,7 +91,7 @@ export default async function HomePage() {
         </div>
       ) : null}
 
-      <CategoryList groups={groups} savedLayout={layout} />
+      <CategoryList groups={groups} savedLayout={layout} readOnly={viewer.isDemo} />
     </main>
   );
 }

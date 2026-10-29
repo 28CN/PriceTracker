@@ -23,7 +23,7 @@ export default async function TopBar() {
           </p>
         </Link>
         <div className="topbar-actions">
-          {viewer ? (
+          {viewer?.isDemo ? null : viewer ? (
             <Link className="button topbar-manage" href="/manage">
               <Settings2 size={16} aria-hidden="true" />
               Manage
@@ -47,8 +47,7 @@ export default async function TopBar() {
       </div>
       {viewer?.isDemo ? (
         <div className="demo-banner" role="status">
-          <strong>Demo, read-only.</strong> You are browsing a sample account. Changes are
-          disabled. <Link href="/register">Create your own free account</Link> to track
+          <strong>Demo mode: read-only, resets on each visit.</strong> <Link href="/register">Create your own free account</Link> to track
           products.
         </div>
       ) : null}
