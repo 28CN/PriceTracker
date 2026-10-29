@@ -4272,12 +4272,15 @@ textarea:disabled {
 .verdict-pill.tone-good { background: var(--success-soft); color: var(--success); }
 .verdict-pill.tone-warn { background: var(--warn-soft); color: var(--warn); }
 .verdict-pill.tone-neutral { background: var(--surface-strong); color: var(--text); }
-.price-chart-svg { display: block; width: 100%; height: auto; overflow: visible; }
+.price-chart-svg { display: block; width: 100%; height: 100%; overflow: visible; }
 .pc-axis { stroke: var(--muted); stroke-opacity: 0.25; }
 .pc-line { fill: none; stroke: var(--brand); stroke-width: 2; stroke-linejoin: round; stroke-dasharray: 2000; stroke-dashoffset: 2000; animation: pc-draw 1.1s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
 @keyframes pc-draw { to { stroke-dashoffset: 0; } }
 .pc-target line { stroke: var(--accent-cyan); stroke-dasharray: 4 4; }
-.pc-target text, .pc-date { fill: var(--muted); font-size: 10px; }
+.pc-axis-labels { display: flex; justify-content: space-between; margin-top: 4px; color: var(--muted); font-size: 12px; }
+.pc-target-key::before { content: ''; display: inline-block; width: 16px; margin-right: 5px; vertical-align: middle; border-top: 2px dashed var(--accent-cyan); }
+.pc-plot { width: 100%; max-width: 720px; }
+.pc-canvas { width: 100%; aspect-ratio: 560 / 160; }
 .pc-atl circle { fill: var(--success); stroke: var(--surface-strong); stroke-width: 2; }
 .pc-now { fill: var(--brand); }
 .pc-dot { fill: var(--brand); opacity: 0.55; }

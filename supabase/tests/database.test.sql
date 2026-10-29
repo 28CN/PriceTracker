@@ -122,13 +122,15 @@ select is_empty(
   $$ select 1 from public.account_private where user_id = '11111111-1111-4111-8111-111111111111' $$,
   'RLS: a user cannot read another user''s private account row'
 );
-select is_empty(
+select throws_ok(
   $$ select 1 from public.email_outbox $$,
-  'RLS: authenticated users cannot read the email outbox'
+  '42501', null,
+  'authenticated users have no privilege to read the email outbox'
 );
-select is_empty(
+select throws_ok(
   $$ select 1 from public.app_settings $$,
-  'RLS: authenticated users cannot read app_settings'
+  '42501', null,
+  'authenticated users have no privilege to read app_settings'
 );
 select throws_ok(
   $$ insert into public.products (name, owner_id) values ('Not mine', '11111111-1111-4111-8111-111111111111') $$,
