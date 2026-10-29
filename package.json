@@ -11,7 +11,8 @@
     "bootstrap:accounts": "node --env-file=.env.local scripts/bootstrap-accounts.mjs",
     "db": "node --env-file=.env.local scripts/db.mjs",
     "logs": "node --env-file=.env.local scripts/read-crawl-logs.mjs",
-    "test": "node --test 'src/lib/**/*.test.ts'"
+    "test": "node --test 'src/lib/**/*.test.ts'",
+    "test:demo": "node scripts/test-demo-readonly.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

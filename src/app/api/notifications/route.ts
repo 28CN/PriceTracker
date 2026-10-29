@@ -5,6 +5,7 @@ import { getApiAuth } from '@/lib/auth';
 import { latestTimestamp } from '@/lib/format';
 import { isResolved, isStaleNoise, needsAction, type LinkHealth } from '@/lib/notices';
 import type { CrawlEventView } from '@/lib/types';
+import { getWritableApiAuth } from '@/lib/demoGuard';
 
 export const dynamic = 'force-dynamic';
 
@@ -147,10 +148,9 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const auth = await getApiAuth();
-    if (!auth) {
-      return NextResponse.json({ error: 'Sign in required.' }, { status: 401 });
-    }
+    const guard = await getWritableApiAuth();
+    if (!guard.ok) return guard.response;
+    const auth = guard.auth;
     const { supabase } = auth;
     let body: { id?: string; ids?: string[] } = {};
     try {

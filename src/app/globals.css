@@ -4202,3 +4202,37 @@ button:disabled {
   display: block;
   font-size: 12px;
 }
+
+.demo-banner {
+  padding: 8px 16px;
+  text-align: center;
+  font-size: 0.9rem;
+  background: #fff4d6;
+  color: #5a4300;
+  border-top: 1px solid #f0d58a;
+  border-bottom: 1px solid #f0d58a;
+}
+.demo-banner a {
+  color: inherit;
+  text-decoration: underline;
+}
+@media (prefers-color-scheme: dark) {
+  .demo-banner {
+    background: #3a3112;
+    color: #f5e6b0;
+    border-color: #5c4d1d;
+  }
+}
+:root[data-theme='dark'] .demo-banner {
+  background: #3a3112;
+  color: #f5e6b0;
+  border-color: #5c4d1d;
+}
+:root[data-theme='light'] .demo-banner {
+  background: #fff4d6;
+  color: #5a4300;
+  border-color: #f0d58a;
+}
+
+.demo-form { display: inline; margin: 0; }
+.demo-notice { margin: 0 auto 1rem; max-width: 28rem; text-align: center; }

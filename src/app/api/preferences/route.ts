@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 
 import { getApiAuth } from '@/lib/auth';
 import { CATEGORY_LAYOUT_KEY, fetchCategoryLayout, parseCategoryLayout } from '@/lib/categoryLayout';
+import { getWritableApiAuth } from '@/lib/demoGuard';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,10 +22,9 @@ export async function GET() {
 
 export async function PUT(request: Request) {
   try {
-    const auth = await getApiAuth();
-    if (!auth) {
-      return NextResponse.json({ error: 'Sign in required.' }, { status: 401 });
-    }
+    const guard = await getWritableApiAuth();
+    if (!guard.ok) return guard.response;
+    const auth = guard.auth;
     const body = await request.json().catch(() => null);
     const layout = parseCategoryLayout(body);
     if (!layout) {
