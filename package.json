@@ -45,6 +45,6 @@
     "source-map-js": "1.2.2"
   },
   "engines": {
-    "node": ">=22"
+    "node": "22.x"
   }
 }
