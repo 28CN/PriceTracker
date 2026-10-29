@@ -65,6 +65,32 @@ supabase migration repair --status reverted 20261022155804   # remote-only dupli
 Do **NOT** use `supabase db push --include-all`: it would re-run the baseline and the
 other hand-applied migrations against production.
 
+## Aligning local and remote migration history (`supabase migration repair`)
+
+Migrations applied live with the Supabase MCP `apply_migration` tool are recorded in
+`supabase_migrations.schema_migrations` under a generated 14-digit timestamp, not the
+12-digit prefix of the file in `supabase/migrations/`. Files can also be renamed later
+to avoid prefix clashes (for example PR #7's demo migrations moved to `202610290005`
+and `202610290006` because hotfix PR #8 uses `202610290002` and `202610290004`).
+`supabase db push` / `supabase migration list` then report the remote rows as unknown
+and the local files as pending.
+
+`migration repair` only edits history rows. It never runs or reverts SQL, so it does
+not touch data (including `price_history`).
+
+1. Compare: `supabase migration list --linked`
+2. Mark the remote-only rows as reverted (history row only, schema unchanged):
+   `supabase migration repair --status reverted 20261029025826 20261029030627`
+3. Mark the matching local files as applied, without running them:
+   `supabase migration repair --status applied 202610290005 202610290006`
+4. Re-run `supabase migration list --linked`. Every version should now show on both sides.
+
+The versions above are the PR #7 demo migrations (`demo_read_only_account`,
+`demo_slug_demo_shop`). For any other migration, look up its remote version with
+`select version, name from supabase_migrations.schema_migrations order by version;`
+and pair it with its file by name. Only repair a version whose SQL really is live.
+Otherwise `db push` would skip a migration that never ran.
+
 ## Snapshot = intended state
 
 The snapshots describe what the migrations build, not necessarily production.

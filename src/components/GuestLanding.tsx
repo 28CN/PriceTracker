@@ -25,6 +25,10 @@ export default function GuestLanding({ featured }: { featured: ProductView[] }) 
           <div className="guest-hero-actions">
             <Link className="button" href="/register">Create a free account</Link>
             <Link className="button secondary" href="/login">Sign in</Link>
+            {/* POST-only: GET /demo never signs in (login CSRF). */}
+            <form action="/demo" method="post" className="demo-form">
+              <button className="button secondary" type="submit">Try the demo</button>
+            </form>
           </div>
         </div>
         <KangarooPriceAnimation />

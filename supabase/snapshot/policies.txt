@@ -1,25 +1,55 @@
+account_private | demo users cannot delete | DELETE | RESTRICTIVE | authenticated | (NOT ( SELECT is_demo_user() AS is_demo_user)) | -
+account_private | demo users cannot insert | INSERT | RESTRICTIVE | authenticated | - | (NOT ( SELECT is_demo_user() AS is_demo_user))
+account_private | demo users cannot update | UPDATE | RESTRICTIVE | authenticated | (NOT ( SELECT is_demo_user() AS is_demo_user)) | -
 account_private | users read own private account | SELECT | PERMISSIVE | authenticated | (user_id = ( SELECT auth.uid() AS uid)) | -
 account_private | users update own private account | UPDATE | PERMISSIVE | authenticated | (user_id = ( SELECT auth.uid() AS uid)) | (user_id = ( SELECT auth.uid() AS uid))
+categories | demo users cannot delete | DELETE | RESTRICTIVE | authenticated | (NOT ( SELECT is_demo_user() AS is_demo_user)) | -
+categories | demo users cannot insert | INSERT | RESTRICTIVE | authenticated | - | (NOT ( SELECT is_demo_user() AS is_demo_user))
+categories | demo users cannot update | UPDATE | RESTRICTIVE | authenticated | (NOT ( SELECT is_demo_user() AS is_demo_user)) | -
 categories | users delete own categories | DELETE | PERMISSIVE | authenticated | (owner_id = ( SELECT auth.uid() AS uid)) | -
 categories | users insert own categories | INSERT | PERMISSIVE | authenticated | - | (owner_id = ( SELECT auth.uid() AS uid))
 categories | users read visible categories | SELECT | PERMISSIVE | anon,authenticated | ((owner_id = ( SELECT auth.uid() AS uid)) OR ((is_public IS TRUE) AND can_view_owner(owner_id))) | -
 categories | users update own categories | UPDATE | PERMISSIVE | authenticated | (owner_id = ( SELECT auth.uid() AS uid)) | (owner_id = ( SELECT auth.uid() AS uid))
+crawl_events | demo users cannot delete | DELETE | RESTRICTIVE | authenticated | (NOT ( SELECT is_demo_user() AS is_demo_user)) | -
+crawl_events | demo users cannot insert | INSERT | RESTRICTIVE | authenticated | - | (NOT ( SELECT is_demo_user() AS is_demo_user))
+crawl_events | demo users cannot update | UPDATE | RESTRICTIVE | authenticated | (NOT ( SELECT is_demo_user() AS is_demo_user)) | -
 crawl_events | users mark own crawl events read | UPDATE | PERMISSIVE | authenticated | ((link_id IS NOT NULL) AND (EXISTS ( SELECT 1 FROM tracked_links l WHERE ((l.id = crawl_events.link_id) AND owns_product(l.product_id))))) | ((link_id IS NOT NULL) AND (EXISTS ( SELECT 1 FROM tracked_links l WHERE ((l.id = crawl_events.link_id) AND owns_product(l.product_id)))))
 crawl_events | users read own crawl events | SELECT | PERMISSIVE | authenticated | ((link_id IS NOT NULL) AND (EXISTS ( SELECT 1 FROM tracked_links l WHERE ((l.id = crawl_events.link_id) AND owns_product(l.product_id))))) | -
+notification_preferences | demo users cannot delete | DELETE | RESTRICTIVE | authenticated | (NOT ( SELECT is_demo_user() AS is_demo_user)) | -
+notification_preferences | demo users cannot insert | INSERT | RESTRICTIVE | authenticated | - | (NOT ( SELECT is_demo_user() AS is_demo_user))
+notification_preferences | demo users cannot update | UPDATE | RESTRICTIVE | authenticated | (NOT ( SELECT is_demo_user() AS is_demo_user)) | -
 notification_preferences | users manage own notification preferences | ALL | PERMISSIVE | authenticated | (user_id = ( SELECT auth.uid() AS uid)) | (user_id = ( SELECT auth.uid() AS uid))
+price_history | demo users cannot delete | DELETE | RESTRICTIVE | authenticated | (NOT ( SELECT is_demo_user() AS is_demo_user)) | -
+price_history | demo users cannot insert | INSERT | RESTRICTIVE | authenticated | - | (NOT ( SELECT is_demo_user() AS is_demo_user))
+price_history | demo users cannot update | UPDATE | RESTRICTIVE | authenticated | (NOT ( SELECT is_demo_user() AS is_demo_user)) | -
 price_history | users read visible price history | SELECT | PERMISSIVE | anon,authenticated | (EXISTS ( SELECT 1 FROM tracked_links l WHERE ((l.id = price_history.link_id) AND can_view_product(l.product_id)))) | -
+privacy_consents | demo users cannot delete | DELETE | RESTRICTIVE | authenticated | (NOT ( SELECT is_demo_user() AS is_demo_user)) | -
+privacy_consents | demo users cannot insert | INSERT | RESTRICTIVE | authenticated | - | (NOT ( SELECT is_demo_user() AS is_demo_user))
+privacy_consents | demo users cannot update | UPDATE | RESTRICTIVE | authenticated | (NOT ( SELECT is_demo_user() AS is_demo_user)) | -
 privacy_consents | users read own consents | SELECT | PERMISSIVE | authenticated | (user_id = ( SELECT auth.uid() AS uid)) | -
 privacy_consents | users record own consents | INSERT | PERMISSIVE | authenticated | - | (user_id = ( SELECT auth.uid() AS uid))
+products | demo users cannot delete | DELETE | RESTRICTIVE | authenticated | (NOT ( SELECT is_demo_user() AS is_demo_user)) | -
+products | demo users cannot insert | INSERT | RESTRICTIVE | authenticated | - | (NOT ( SELECT is_demo_user() AS is_demo_user))
+products | demo users cannot update | UPDATE | RESTRICTIVE | authenticated | (NOT ( SELECT is_demo_user() AS is_demo_user)) | -
 products | users delete own products | DELETE | PERMISSIVE | authenticated | (owner_id = ( SELECT auth.uid() AS uid)) | -
 products | users insert own products | INSERT | PERMISSIVE | authenticated | - | ((owner_id = ( SELECT auth.uid() AS uid)) AND ((category_id IS NULL) OR owns_category(category_id)))
 products | users read visible products | SELECT | PERMISSIVE | anon,authenticated | can_view_product(id) | -
 products | users update own products | UPDATE | PERMISSIVE | authenticated | (owner_id = ( SELECT auth.uid() AS uid)) | ((owner_id = ( SELECT auth.uid() AS uid)) AND ((category_id IS NULL) OR owns_category(category_id)))
+profiles | demo users cannot delete | DELETE | RESTRICTIVE | authenticated | (NOT ( SELECT is_demo_user() AS is_demo_user)) | -
+profiles | demo users cannot insert | INSERT | RESTRICTIVE | authenticated | - | (NOT ( SELECT is_demo_user() AS is_demo_user))
+profiles | demo users cannot update | UPDATE | RESTRICTIVE | authenticated | (NOT ( SELECT is_demo_user() AS is_demo_user)) | -
 profiles | users read own profile | SELECT | PERMISSIVE | authenticated | (id = ( SELECT auth.uid() AS uid)) | -
 profiles | users update own profile | UPDATE | PERMISSIVE | authenticated | (id = ( SELECT auth.uid() AS uid)) | (id = ( SELECT auth.uid() AS uid))
+tracked_links | demo users cannot delete | DELETE | RESTRICTIVE | authenticated | (NOT ( SELECT is_demo_user() AS is_demo_user)) | -
+tracked_links | demo users cannot insert | INSERT | RESTRICTIVE | authenticated | - | (NOT ( SELECT is_demo_user() AS is_demo_user))
+tracked_links | demo users cannot update | UPDATE | RESTRICTIVE | authenticated | (NOT ( SELECT is_demo_user() AS is_demo_user)) | -
 tracked_links | users delete links for own products | DELETE | PERMISSIVE | authenticated | owns_product(product_id) | -
 tracked_links | users insert links for own products | INSERT | PERMISSIVE | authenticated | - | owns_product(product_id)
 tracked_links | users read visible tracked links | SELECT | PERMISSIVE | anon,authenticated | can_view_product(product_id) | -
 tracked_links | users update links for own products | UPDATE | PERMISSIVE | authenticated | owns_product(product_id) | owns_product(product_id)
+user_preferences | demo users cannot delete | DELETE | RESTRICTIVE | authenticated | (NOT ( SELECT is_demo_user() AS is_demo_user)) | -
+user_preferences | demo users cannot insert | INSERT | RESTRICTIVE | authenticated | - | (NOT ( SELECT is_demo_user() AS is_demo_user))
+user_preferences | demo users cannot update | UPDATE | RESTRICTIVE | authenticated | (NOT ( SELECT is_demo_user() AS is_demo_user)) | -
 user_preferences | users manage own preferences | ALL | PERMISSIVE | authenticated | (user_id = ( SELECT auth.uid() AS uid)) | (user_id = ( SELECT auth.uid() AS uid))
 user_roles | users read own roles | SELECT | PERMISSIVE | authenticated | (user_id = ( SELECT auth.uid() AS uid)) | -
 user_security | users read own security state | SELECT | PERMISSIVE | authenticated | (user_id = ( SELECT auth.uid() AS uid)) | -

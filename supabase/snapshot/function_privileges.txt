@@ -17,3 +17,5 @@ finish_crawl_jobs(uuid[],text,text) | definer | anon=false | authenticated=false
 unsubscribe_target_email(text) | definer | anon=false | authenticated=false | service_role=true
 evaluate_target_price_alert() | definer | anon=false | authenticated=false | service_role=true
 queue_weekly_target_digest() | definer | anon=false | authenticated=false | service_role=true
+is_demo_user() | definer | anon=true | authenticated=true | service_role=true
+protect_profile_demo_flag() | invoker | anon=true | authenticated=true | service_role=true

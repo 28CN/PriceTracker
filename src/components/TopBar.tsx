@@ -45,6 +45,13 @@ export default async function TopBar() {
           ) : null}
         </div>
       </div>
+      {viewer?.isDemo ? (
+        <div className="demo-banner" role="status">
+          <strong>Demo, read-only.</strong> You are browsing a sample account. Changes are
+          disabled. <Link href="/register">Create your own free account</Link> to track
+          products.
+        </div>
+      ) : null}
     </header>
   );
 }
