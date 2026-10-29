@@ -4,6 +4,10 @@ import { KeyRound } from 'lucide-react';
 import Link from 'next/link';
 import { FormEvent, useState } from 'react';
 
+import { EMAIL_DISABLED_MESSAGE, isEmailUiEnabled } from '@/lib/emailFeature';
+
+const EMAIL_UI_ENABLED = isEmailUiEnabled();
+
 export default function RecoveryPanel({
   mode,
   token = ''
@@ -51,6 +55,8 @@ export default function RecoveryPanel({
   }
 
   const resetting = mode === 'reset';
+  // Requesting a reset link sends email; using an existing link (reset mode) does not.
+  const requestDisabled = !resetting && !EMAIL_UI_ENABLED;
   return (
     <section className="auth-shell">
       <span className="auth-mark"><KeyRound size={22} /></span>
@@ -90,11 +96,20 @@ export default function RecoveryPanel({
           ) : (
             <label className="field">
               <span>Username</span>
-              <input name="username" type="text" autoComplete="username" required />
+              <input
+                name="username"
+                type="text"
+                autoComplete="username"
+                required
+                disabled={requestDisabled}
+              />
             </label>
           )}
+          {requestDisabled ? (
+            <p className="email-disabled-note" role="note">{EMAIL_DISABLED_MESSAGE}</p>
+          ) : null}
           {error ? <div className="form-error">{error}</div> : null}
-          <button className="button auth-submit" type="submit" disabled={pending || (resetting && !token)}>
+          <button className="button auth-submit" type="submit" disabled={pending || requestDisabled || (resetting && !token)}>
             {pending ? 'Please wait…' : resetting ? 'Set new password' : 'Send reset link'}
           </button>
         </form>

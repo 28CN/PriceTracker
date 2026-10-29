@@ -2,6 +2,7 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 
 import { emailFrame, escapeHtml, sendEmail } from '@/lib/email';
+import { isEmailEnabled } from '@/lib/emailFeature';
 import { absoluteUrl } from '@/lib/siteUrl';
 import { createAdminSupabaseClient } from '@/lib/supabase/admin';
 
@@ -119,6 +120,11 @@ async function contentFor(row: OutboxRow) {
 export async function POST(request: NextRequest) {
   if (!authorised(request)) {
     return NextResponse.json({ error: 'Not authorised.' }, { status: 401 });
+  }
+
+  if (!isEmailEnabled()) {
+    // Email is switched off: claim nothing, send nothing, leave queued rows untouched.
+    return NextResponse.json({ ok: true, skipped: true, claimed: 0, sent: 0, failed: 0 });
   }
 
   const admin = createAdminSupabaseClient();
