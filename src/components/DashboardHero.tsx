@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowUpRight,
   BadgeDollarSign,
@@ -8,60 +8,64 @@ import {
   CheckCircle2,
   ChevronRight,
   UserRound,
-  X
-} from 'lucide-react';
-import Link from 'next/link';
-import { useEffect, useState } from 'react';
+  X,
+} from "lucide-react";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 
-import ProductVisual from '@/components/ProductVisual';
-import { formatMoney } from '@/lib/format';
-import { productThumb } from '@/lib/productImage';
-import type { ProductView } from '@/lib/types';
+import ProductVisual from "@/components/ProductVisual";
+import { formatMoney } from "@/lib/format";
+import { productThumb } from "@/lib/productImage";
+import type { ProductView } from "@/lib/types";
 
 export default function DashboardHero({
   products,
   accountHref,
-  title = 'Your tracked prices',
-  eyebrow = 'Price watchlist'
+  title = "Your tracked prices",
+  eyebrow = "Price watchlist",
 }: {
   products: ProductView[];
-  accountHref: string;
+  accountHref: string | null;
   title?: string;
   eyebrow?: string;
 }) {
   const stores = new Set(
     products.flatMap((product) =>
-      product.links.filter((link) => link.isActive).map((link) => link.retailer)
-    )
+      product.links
+        .filter((link) => link.isActive)
+        .map((link) => link.retailer),
+    ),
   ).size;
   const deals = products.filter(
     (product) =>
       product.targetPrice !== null &&
       product.lowestPrice !== null &&
-      product.lowestPrice <= product.targetPrice
+      product.lowestPrice <= product.targetPrice,
   );
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
     function closeOnEscape(event: KeyboardEvent) {
-      if (event.key === 'Escape') setIsOpen(false);
+      if (event.key === "Escape") setIsOpen(false);
     }
-    document.addEventListener('keydown', closeOnEscape);
-    return () => document.removeEventListener('keydown', closeOnEscape);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
   }, [isOpen]);
 
   return (
     <>
       <section className="dashboard-overview">
         <div className="overview-copy">
-        <span className="eyebrow">
+          <span className="eyebrow">
             <BellRing size={14} aria-hidden="true" />
             {eyebrow}
-        </span>
+          </span>
           <h1>{title}</h1>
-          <p>{products.length} products across {stores} retailers</p>
-      </div>
+          <p>
+            {products.length} products across {stores} retailers
+          </p>
+        </div>
 
         <div className="overview-actions">
           <button
@@ -75,18 +79,26 @@ export default function DashboardHero({
             </span>
             <span className="target-summary-copy">
               <strong>{deals.length} at target</strong>
-              <span>{deals.length > 0 ? 'View ready-to-buy items' : 'No matches yet'}</span>
+              <span>
+                {deals.length > 0
+                  ? "View ready-to-buy items"
+                  : "No matches yet"}
+              </span>
             </span>
             <ChevronRight size={18} aria-hidden="true" />
           </button>
 
-          <Link className="account-slot" href={accountHref}>
-            <span className="account-slot-icon"><UserRound size={18} aria-hidden="true" /></span>
-            <span>
-              <strong>Alerts & profile</strong>
-              <small>Privacy and notifications</small>
-            </span>
-          </Link>
+          {accountHref ? (
+            <Link className="account-slot" href={accountHref}>
+              <span className="account-slot-icon">
+                <UserRound size={18} aria-hidden="true" />
+              </span>
+              <span>
+                <strong>Alerts & profile</strong>
+                <small>Privacy and notifications</small>
+              </span>
+            </Link>
+          ) : null}
         </div>
       </section>
 
@@ -113,9 +125,15 @@ export default function DashboardHero({
             >
               <header className="deal-dialog-head">
                 <div>
-                  <span className="eyebrow"><CheckCircle2 size={14} /> Ready to buy</span>
+                  <span className="eyebrow">
+                    <CheckCircle2 size={14} /> Ready to buy
+                  </span>
                   <h2 id="deal-dialog-title">Items at your target</h2>
-                  <p>{deals.length} {deals.length === 1 ? 'product is' : 'products are'} at or below target.</p>
+                  <p>
+                    {deals.length}{" "}
+                    {deals.length === 1 ? "product is" : "products are"} at or
+                    below target.
+                  </p>
                 </div>
                 <button
                   type="button"
@@ -134,7 +152,7 @@ export default function DashboardHero({
                   const bestLink = product.links.find(
                     (link) =>
                       link.retailer === product.lowestRetailer ||
-                      link.latestPrice === product.lowestPrice
+                      link.latestPrice === product.lowestPrice,
                   );
                   const thumb = productThumb(product, bestLink?.id);
                   return (
@@ -146,13 +164,20 @@ export default function DashboardHero({
                       />
                       <div className="deal-row-main">
                         <strong>{product.name}</strong>
-                        <span>{product.categoryName || 'Uncategorised'} · {product.lowestRetailer}</span>
+                        <span>
+                          {product.categoryName || "Uncategorised"} ·{" "}
+                          {product.lowestRetailer}
+                        </span>
                         <small>Target {formatMoney(product.targetPrice)}</small>
                       </div>
                       <div className="deal-row-price">
                         <strong>{formatMoney(product.lowestPrice)}</strong>
                         {bestLink?.url ? (
-                          <a href={bestLink.url} target="_blank" rel="noreferrer">
+                          <a
+                            href={bestLink.url}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
                             Shop <ArrowUpRight size={13} aria-hidden="true" />
                           </a>
                         ) : null}
@@ -165,7 +190,10 @@ export default function DashboardHero({
                   <div className="deal-empty">
                     <BadgeDollarSign size={30} aria-hidden="true" />
                     <strong>No target matches yet</strong>
-                    <p>We will surface products here as soon as a tracked price reaches its target.</p>
+                    <p>
+                      We will surface products here as soon as a tracked price
+                      reaches its target.
+                    </p>
                   </div>
                 ) : null}
               </div>

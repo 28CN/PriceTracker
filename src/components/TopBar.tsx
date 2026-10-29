@@ -41,6 +41,7 @@ export default async function TopBar() {
               username={viewer.username}
               displayName={viewer.displayName}
               publicSlug={viewer.watchlistPublic ? viewer.publicSlug : null}
+              hideSettings={viewer.isDemo}
             />
           ) : null}
         </div>
