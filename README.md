@@ -38,7 +38,7 @@ For a new database, apply `supabase/migrations/` in order (`supabase db push`, o
 | `NEXT_PUBLIC_SUPABASE_URL` | `https://<project>.supabase.co` |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | the publishable (`sb_publishable_...`) key |
 | `SUPABASE_SERVICE_ROLE_KEY` | the secret key, used by the write routes |
-| `GITHUB_TOKEN` | a personal access token with the `workflow` scope |
+| `GITHUB_TOKEN` | fine-grained token limited to this repo, Actions read/write only (see `docs/GITHUB-TOKEN.md`) |
 | `GITHUB_OWNER` | your GitHub username |
 | `GITHUB_REPO` | the repository name |
 | `GITHUB_WORKFLOW_ID` | `crawl-prices.yml` |
