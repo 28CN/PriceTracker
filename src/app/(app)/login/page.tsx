@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 
 import AuthPanel from '@/components/AuthPanel';
 import { getViewer } from '@/lib/auth';
-import { EMAIL_DISABLED_MESSAGE, isEmailUiEnabled } from '@/lib/emailFeature';
+import { isEmailUiEnabled } from '@/lib/emailFeature';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,7 +18,7 @@ export default async function LoginPage({
     created === '1'
       ? isEmailUiEnabled()
         ? 'Account created. Sign in to start tracking.'
-        : `Account created. Sign in to start tracking. ${EMAIL_DISABLED_MESSAGE}，暂未发送验证邮件。`
+        : 'Account created. Sign in to start tracking. Email features are not available yet, so no verification email was sent.'
       : null;
   const demoNotice =
     demo === 'rate_limited'
