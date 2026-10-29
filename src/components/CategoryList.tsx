@@ -379,6 +379,7 @@ export default function CategoryList({
       window.removeEventListener('pointerup', onPointerUp);
       window.removeEventListener('pointercancel', onPointerUp);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- window listeners are bound once per layout mode on purpose; adding the handler would re-bind them on every render
   }, [useColumns]);
 
   function startPress(category: string, zone: Zone, event: ReactPointerEvent) {

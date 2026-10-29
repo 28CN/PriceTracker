@@ -1,16 +1,162 @@
 # PriceTracker
 
+[![Application checks](https://github.com/28CN/PriceTracker/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/28CN/PriceTracker/actions/workflows/ci.yml)
+[![Crawl product prices](https://github.com/28CN/PriceTracker/actions/workflows/crawl-prices.yml/badge.svg?branch=main)](https://github.com/28CN/PriceTracker/actions/workflows/crawl-prices.yml)
+[![Send queued emails](https://github.com/28CN/PriceTracker/actions/workflows/send-emails.yml/badge.svg?branch=main)](https://github.com/28CN/PriceTracker/actions/workflows/send-emails.yml)
+![Node 22](https://img.shields.io/badge/node-22.x-339933?logo=node.js&logoColor=white)
+
 A small price matrix for Australian shops. You save a product once, paste the links
 for each shop that stocks it, and a scheduled crawler fills in the prices. The site
 shows the cheapest shop up front and the full list when you tap a product.
 
-- **Supabase** stores products, links and price history
-- **Supabase Auth + RLS** keeps each account and private watchlist isolated
-- **GitHub Actions** runs the crawler twice a week, and on demand
-- **Resend** delivers verified target-price alerts from a transactional outbox
-- **Vercel** hosts the site
+<!-- PLACEHOLDER:SCREENSHOTS (frontend agent) -->
+<!-- Replace this block with 2–3 screenshots and one short GIF, e.g.
+     ![Home: cheapest shop per product](docs/media/home.png)
+     ![Product: all shops and price trend](docs/media/product.png)
+     ![Adding a product](docs/media/add-product.gif)
+     Use the demo account only. No real user data in images. -->
+> 📸 _Screenshots and a GIF are coming soon._
+<!-- /PLACEHOLDER:SCREENSHOTS -->
 
-## Setup
+## Try the demo
+
+<!-- PLACEHOLDER:TRY-THE-DEMO (frontend agent) -->
+<!-- Fill in: the demo URL, what the visitor can do (read-only), and that the
+     demo account resets on every sign-in. Do not put any password here. -->
+> 🧪 _Demo details are coming soon._
+<!-- /PLACEHOLDER:TRY-THE-DEMO -->
+
+## Architecture
+
+```mermaid
+flowchart LR
+  user([Browser]) -->|HTTPS| next
+
+  subgraph vercel[Vercel]
+    next[Next.js 15 app<br/>pages + API routes]
+  end
+
+  subgraph supabase[Supabase]
+    auth[Auth<br/>cookie sessions]
+    db[(Postgres<br/>RLS on every table)]
+    outbox[[email_outbox]]
+    db --- outbox
+  end
+
+  subgraph gha[GitHub Actions]
+    crawler[Crawler<br/>Python + Playwright<br/>twice a week / on demand]
+    worker[Email worker<br/>every 10 min]
+    ci[CI: types, lint, Vitest,<br/>pytest, schema drift, pgTAP]
+  end
+
+  resend[Resend]
+
+  next -->|user session, RLS applies| db
+  next --> auth
+  next -->|service role, server only| db
+  next -->|refresh button: workflow_dispatch| crawler
+  crawler -->|service role: prices| db
+  db -->|price triggers queue alerts| outbox
+  worker -->|POST /api/internal/email-worker<br/>bearer secret| next
+  next -->|only when email_enabled| resend
+  resend -->|delivery webhooks| next
+```
+
+- **Next.js on Vercel** serves the pages and API routes. Reads go through the
+  signed-in user's Supabase session, so Postgres row-level security decides what
+  they see. Only a few server-only routes use the service-role key.
+- **Supabase** holds accounts, products, links and price history. Price inserts
+  fire triggers that update alert state and queue emails in a transactional outbox.
+- **GitHub Actions** runs the crawler on a schedule (or when someone presses
+  refresh). It also runs the email worker, which asks the app to drain the outbox.
+- **Resend** sends mail, but only when the `email_enabled` flag is on.
+
+## Technical highlights
+
+- **Row-level security everywhere.** Every `public` table has RLS on, and policies
+  are written per owner. Public watchlists are read-only for everyone else. CI
+  checks this with pgTAP (`supabase/tests/`).
+- **Security-definer lockdown.** Definer functions run with `search_path = ''`.
+  `EXECUTE` is revoked from `PUBLIC`, `anon` and `authenticated` unless a function
+  is meant to be called by users. A pgTAP test fails if any definer function in
+  `public` is executable by `PUBLIC`. A snapshot of function privileges is
+  diffed in CI.
+- **A read-only demo account.** Restrictive RLS policies block every write by the
+  demo user, and a trigger stops it clearing its own demo flag. The `/demo` route
+  resets the demo password through the admin API *before* signing in. If the reset
+  fails, login is refused rather than falling back to an old password.
+- **Email feature flag.** `app_settings.email_enabled` (default off) is checked by
+  a `BEFORE INSERT` trigger on `email_outbox`. With it off, alert state still
+  advances but no mail is queued. The app routes return a clear 503 for flows that
+  need email. See [`docs/EMAIL.md`](docs/EMAIL.md).
+- **Price insight** (in review, PR #12). A `security_invoker` stats view gives
+  30/90-day low/avg/high per link. A pure TypeScript verdict reports
+  `real_discount`, `fake_discount` (raised shortly before the "sale") or
+  `insufficient_data`. It compares against daily-sampled medians.
+- **Layered CI** ([`ci.yml`](.github/workflows/ci.yml)):
+  1. TypeScript `tsc`, ESLint, Vitest unit and route tests, `next build` (Node 22)
+  2. pytest for the crawler's parsing helpers (Python 3.11)
+  3. A local Postgres from `supabase db start`. CI re-applies every migration to
+     prove they are idempotent, and diffs columns, policies, indexes and function
+     privileges against a snapshot of production. Then pgTAP tests run, rolled back.
+- **SSRF-safe fetching.** Server-side fetches of user-supplied URLs resolve DNS
+  first and refuse private and reserved addresses (`src/lib/net/safeFetch.ts`).
+
+## Design tradeoffs
+
+- **GitHub Actions instead of a queue or cron service.** It is free and simple, and
+  it has logs and artifacts for crawler diagnostics. The cost is latency: crawls
+  take minutes to start, and the email worker polls every 10 minutes rather than
+  sending instantly. An "after()" send-immediately variant exists on the
+  `email-send-immediately` branch but is not merged.
+- **Transactional outbox in Postgres.** Emails are queued by the same triggers that
+  update alert state, so an alert is never lost or sent twice (dedupe keys). The
+  cost is one more table and a worker to drain it.
+- **The flag sits in the database, not an env var.** Turning email on or off needs
+  no redeploy, and the trigger enforces it even for code paths that forget to
+  check. The cost is that switching it is a SQL change, not a dashboard toggle.
+- **RLS as the authority.** API routes use the user's session client, so a bug in a
+  route cannot leak another user's rows. The cost is that policies and definer
+  functions need careful review, which is why pgTAP and privilege snapshots run in CI.
+- **pgTAP on `supabase db start`, not the full stack.** CI only starts Postgres,
+  which is enough for RLS and trigger tests and is quicker than `supabase start`.
+  The tradeoff is that the tests run against migrations on an empty database, not
+  production data.
+- **Bot-walled shops are crawled from a desktop PC.** Some retailers block cloud
+  and headless browsers. They are skipped in Actions and covered by a scheduled
+  local run (see below) rather than paying for proxies.
+- **Plain `<img>` for product images.** Images come from arbitrary retailer hosts,
+  so `next/image` would need a remote allowlist that changes whenever a shop is added.
+
+## Running locally
+
+Requirements: Node 22 (`nvm use`), Docker (for the local Supabase), the Supabase
+CLI, and Python 3.11+ for the crawler.
+
+```bash
+npm ci
+cp .env.local.example .env.local      # fill in your own project values; never commit it
+
+# local database built only from migrations
+supabase db start
+supabase test db                      # pgTAP tests (rolled back)
+bash scripts/check-schema-drift.sh    # idempotency + snapshot diff
+
+npm run dev                           # http://localhost:3000
+npm run lint
+npm test                              # Vitest
+npx tsc --noEmit
+
+# crawler unit tests
+pip install -r crawler/requirements-dev.txt
+(cd crawler && python -m pytest -q)
+```
+
+For a local database, point `NEXT_PUBLIC_SUPABASE_URL` / keys at the values printed by
+`supabase status`. Email stays off unless you turn on `email_enabled` in
+`app_settings` and set the Resend variables.
+
+## Deploying your own copy
 
 ### 1. Database
 

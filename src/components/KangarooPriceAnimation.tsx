@@ -163,6 +163,7 @@ export default function KangarooPriceAnimation() {
           className={`roo-travel roo-look-${pass % 3} is-route-${pass % ROUTES}`}
           onAnimationEnd={finishHop}
         >
+          {/* eslint-disable-next-line @next/next/no-img-element -- animated GIF; next/image would not optimise it */}
           <img className="roo roo-gif" src="/illustrations/kangaroo.gif" alt="" />
           <svg className="roo roo-drawn" viewBox="0 0 150 160">
             <g className="roo-tail">
