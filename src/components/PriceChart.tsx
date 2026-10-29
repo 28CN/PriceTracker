@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import type { PriceInsightResponse } from '@/lib/priceInsightTypes';
+import { coverageText, mergePeriods, sydneyDate, type ChartPeriod } from '@/lib/chartPeriods';
 import { formatMoney } from '@/lib/format';
 import type { PricePoint, Verdict } from '@/lib/priceInsight';
 
@@ -58,8 +59,40 @@ export default function PriceChart({ productId, days = 180 }: { productId: strin
     return () => ctrl.abort();
   }, [productId, days]);
 
-  const geo = useMemo(() => {
+  const periodGeo = useMemo(() => {
     if (state.status !== 'ready') return null;
+    const { links, product, insight } = state.data;
+    const merged = mergePeriods(links ?? []);
+    if (!merged || merged.coverage.observed === 0) return null;
+    const { periods } = merged;
+    const seen = periods.filter((p): p is ChartPeriod & { minPrice: number } => p.minPrice !== null);
+    const t0 = periods[0].startMs;
+    const t1 = periods[periods.length - 1].endMs;
+    const prices = seen.map((p) => p.minPrice);
+    if (product.targetPrice !== null) prices.push(product.targetPrice);
+    let lo = Math.min(...prices);
+    let hi = Math.max(...prices);
+    const span = hi - lo || hi * 0.1 || 1;
+    lo -= span * 0.15;
+    hi += span * 0.15;
+    const x = (t: number) => PAD.left + ((t - t0) / Math.max(t1 - t0, 1)) * (W - PAD.left - PAD.right);
+    const y = (p: number) => PAD.top + (1 - (p - lo) / (hi - lo)) * (H - PAD.top - PAD.bottom);
+    const lowest = seen.reduce((a, b) => (b.minPrice < a.minPrice ? b : a));
+    const latest = seen[seen.length - 1];
+    const now = insight.currentPrice ?? latest.minPrice;
+    const dataLo = Math.min(...prices);
+    const dataHi = Math.max(...prices);
+    const ticks = dataHi - dataLo < 0.01 ? [dataLo] : [dataHi, (dataHi + dataLo) / 2, dataLo];
+    return {
+      x, y, periods, ticks, lowest, latest, now,
+      hasUnchecked: merged.coverage.observed < merged.coverage.total,
+      coverage: coverageText(merged.coverage, merged.cycleDays),
+      from: periods[0].start
+    };
+  }, [state]);
+
+  const geo = useMemo(() => {
+    if (state.status !== 'ready' || periodGeo) return null;
     const { lowest, range, product, insight } = state.data;
     if (lowest.length < 2) return null;
     const t0 = Date.parse(range.from);
@@ -85,7 +118,7 @@ export default function PriceChart({ productId, days = 180 }: { productId: strin
     const dataHi = Math.max(...prices);
     const ticks = dataHi - dataLo < 0.01 ? [dataLo] : [dataHi, (dataHi + dataLo) / 2, dataLo];
     return { x, y, segments, area, atl, hasGap, ticks, points: lowest, last: lowest[lowest.length - 1] };
-  }, [state]);
+  }, [state, periodGeo]);
 
   if (state.status === 'loading') {
     return (
@@ -118,16 +151,100 @@ export default function PriceChart({ productId, days = 180 }: { productId: strin
         <span className={`verdict-pill tone-${verdict.tone}`}>{verdict.label}</span>
         {insight.isAllTimeLow ? <span className="verdict-pill tone-good">All-time low</span> : null}
         {insight.median90d !== null ? (
-          <span className="price-chart-meta">90-day median {formatMoney(insight.median90d)}</span>
+          <span className="price-chart-meta">Usual price {formatMoney(insight.median90d)}</span>
         ) : null}
         {product.targetPrice !== null ? (
           <span className="price-chart-meta pc-target-key">Target {formatMoney(product.targetPrice)}</span>
         ) : null}
-        <span className="price-chart-meta">Last {range.days} days</span>
-        {geo?.hasGap ? <span className="price-chart-meta pc-gap-key">Dashed: no checks for over 7 days</span> : null}
+        {periodGeo ? (
+          <span className="price-chart-meta">{periodGeo.coverage}</span>
+        ) : (
+          <span className="price-chart-meta">Last {range.days} days</span>
+        )}
+        {periodGeo?.hasUnchecked ? <span className="price-chart-meta pc-hatch-key">Not checked</span> : null}
+        {geo?.hasGap ? <span className="price-chart-meta pc-gap-key">Dotted: not checked for over a week</span> : null}
       </figcaption>
 
-      {geo ? (
+      {periodGeo ? (
+        <div className="pc-plot">
+          <div className="pc-canvas">
+            <svg
+              viewBox={`0 0 ${W} ${H}`}
+              className="price-chart-svg"
+              role="img"
+              aria-label={`Lowest price each sale week since ${sydneyDate(periodGeo.from)}. Lowest ${formatMoney(periodGeo.lowest.minPrice)}, now ${formatMoney(periodGeo.now)}. ${periodGeo.coverage}.`}
+            >
+              <defs>
+                <pattern id={`pc-hatch-${productId}`} width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                  <line x1="0" y1="0" x2="0" y2="6" className="pc-hatch-line" />
+                </pattern>
+              </defs>
+              {periodGeo.ticks.map((t) => (
+                <line key={t} x1={PAD.left} x2={W - PAD.right} y1={periodGeo.y(t)} y2={periodGeo.y(t)} className="pc-grid" />
+              ))}
+              <line x1={PAD.left} x2={W - PAD.right} y1={H - PAD.bottom} y2={H - PAD.bottom} className="pc-axis" />
+              {periodGeo.periods.map((p) =>
+                p.observed ? null : (
+                  <rect
+                    key={p.start}
+                    className="pc-unchecked"
+                    x={periodGeo.x(p.startMs) + 0.5}
+                    y={PAD.top}
+                    width={Math.max(periodGeo.x(p.endMs) - periodGeo.x(p.startMs) - 1, 1)}
+                    height={H - PAD.top - PAD.bottom}
+                    fill={`url(#pc-hatch-${productId})`}
+                  >
+                    <title>{`Not checked ${sydneyDate(p.start)} – ${sydneyDate(p.endMs - 1)}`}</title>
+                  </rect>
+                )
+              )}
+              {product.targetPrice !== null ? (
+                <g className="pc-target">
+                  <line x1={PAD.left} x2={W - PAD.right} y1={periodGeo.y(product.targetPrice)} y2={periodGeo.y(product.targetPrice)} />
+                </g>
+              ) : null}
+              {periodGeo.periods.map((p) =>
+                p.minPrice === null ? null : (
+                  <line
+                    key={p.start}
+                    className={p === periodGeo.lowest ? 'pc-period is-lowest' : 'pc-period'}
+                    x1={periodGeo.x(p.startMs) + 1.5}
+                    x2={periodGeo.x(p.endMs) - 1.5}
+                    y1={periodGeo.y(p.minPrice)}
+                    y2={periodGeo.y(p.minPrice)}
+                  >
+                    <title>{`${sydneyDate(p.start)} – ${sydneyDate(p.endMs - 1)}: lowest ${formatMoney(p.minPrice)}`}</title>
+                  </line>
+                )
+              )}
+            </svg>
+            {periodGeo.ticks.map((t) => (
+              <span key={t} className="pc-tick" style={{ top: `${(periodGeo.y(t) / H) * 100}%` }} aria-hidden="true">
+                {formatMoney(t)}
+              </span>
+            ))}
+            {periodGeo.lowest !== periodGeo.latest ? (
+              <span
+                className="pc-label pc-label-atl"
+                style={{
+                  top: `${(periodGeo.y(periodGeo.lowest.minPrice) / H) * 100}%`,
+                  left: `${(periodGeo.x((periodGeo.lowest.startMs + periodGeo.lowest.endMs) / 2) / W) * 100}%`
+                }}
+                aria-hidden="true"
+              >
+                Lowest {formatMoney(periodGeo.lowest.minPrice)}
+              </span>
+            ) : null}
+            <span className="pc-label pc-label-now" style={{ top: `${(periodGeo.y(periodGeo.now) / H) * 100}%` }} aria-hidden="true">
+              Now {formatMoney(periodGeo.now)}
+            </span>
+          </div>
+          <div className="pc-axis-labels" aria-hidden="true">
+            <span>{sydneyDate(periodGeo.from)}</span>
+            <span>This week</span>
+          </div>
+        </div>
+      ) : geo ? (
         <div className="pc-plot">
         <div className="pc-canvas">
         <svg
@@ -177,7 +294,7 @@ export default function PriceChart({ productId, days = 180 }: { productId: strin
             style={{ top: `${(geo.y(geo.atl.price) / H) * 100}%`, left: `${(geo.x(Date.parse(geo.atl.at)) / W) * 100}%` }}
             aria-hidden="true"
           >
-            Low {formatMoney(geo.atl.price)}
+            Lowest {formatMoney(geo.atl.price)}
           </span>
         ) : null}
         <span className="pc-label pc-label-now" style={{ top: `${(geo.y(geo.last.price) / H) * 100}%` }} aria-hidden="true">
@@ -185,7 +302,7 @@ export default function PriceChart({ productId, days = 180 }: { productId: strin
         </span>
         </div>
         <div className="pc-axis-labels" aria-hidden="true">
-          <span>{new Date(range.from).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}</span>
+          <span>{sydneyDate(range.from)}</span>
           <span>Today</span>
         </div>
         </div>

@@ -1,5 +1,6 @@
 'use client';
 
+import { Package } from 'lucide-react';
 import { useState } from 'react';
 
 import type { ThumbSource } from '@/lib/productImage';
@@ -18,7 +19,7 @@ export default function ProductThumb({ source }: { source: ThumbSource }) {
   );
 
   if (status === 'gone') {
-    return null;
+    return <ProductPlaceholder />;
   }
 
   return (
@@ -45,5 +46,14 @@ export default function ProductThumb({ source }: { source: ThumbSource }) {
         setStatus('gone');
       }}
     />
+  );
+}
+
+/** Same box as a loaded thumbnail, for products with no (or a broken) photo. */
+export function ProductPlaceholder() {
+  return (
+    <span className="product-thumb product-thumb-placeholder is-ready" aria-hidden="true">
+      <Package size={26} strokeWidth={1.6} />
+    </span>
   );
 }
