@@ -66,8 +66,10 @@ export default async function HomePage() {
 
   return (
     <main>
-      <DashboardHero products={products} accountHref="/account" />
-      <ProductSearch trackedUrls={products.flatMap((product) => product.links.map((link) => link.url))} />
+      <DashboardHero products={products} accountHref={viewer.isDemo ? null : '/account'} />
+      {viewer.isDemo ? null : (
+        <ProductSearch trackedUrls={products.flatMap((product) => product.links.map((link) => link.url))} />
+      )}
 
       {loadError ? (
         <div className="alert">
@@ -91,7 +93,7 @@ export default async function HomePage() {
         </div>
       ) : null}
 
-      <CategoryList groups={groups} savedLayout={layout} />
+      <CategoryList groups={groups} savedLayout={layout} readOnly={viewer.isDemo} />
     </main>
   );
 }

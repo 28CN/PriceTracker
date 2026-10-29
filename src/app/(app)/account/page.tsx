@@ -6,6 +6,7 @@ import { fetchCategories } from '@/lib/queries';
 import { createAdminSupabaseClient } from '@/lib/supabase/admin';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 
 function describeLatestAlert(
   alert: { status: string; sent_at: string | null; created_at: string } | null
@@ -32,6 +33,8 @@ export const fetchCache = 'force-no-store';
 
 export default async function AccountPage() {
   const viewer = await requireViewer('/account');
+  // Demo is read-only: no settings to change.
+  if (viewer.isDemo) redirect('/');
   const supabase = await createServerSupabaseClient();
   const [{ data: profile }, { data: privateAccount }, { data: preferences }, categories] =
     await Promise.all([

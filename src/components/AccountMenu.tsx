@@ -7,11 +7,13 @@ import { useEffect, useRef, useState } from 'react';
 export default function AccountMenu({
   username,
   displayName,
-  publicSlug
+  publicSlug,
+  hideSettings = false
 }: {
   username: string;
   displayName: string | null;
   publicSlug: string | null;
+  hideSettings?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
@@ -63,10 +65,12 @@ export default function AccountMenu({
             <strong>{displayName || username}</strong>
             <span>@{username}</span>
           </div>
-          <Link href="/account" onClick={() => setOpen(false)}>
-            <Settings size={15} aria-hidden="true" />
-            Account settings
-          </Link>
+          {hideSettings ? null : (
+            <Link href="/account" onClick={() => setOpen(false)}>
+              <Settings size={15} aria-hidden="true" />
+              Account settings
+            </Link>
+          )}
           {publicSlug ? (
             <Link href={`/${publicSlug}`} onClick={() => setOpen(false)}>
               <UserRound size={15} aria-hidden="true" />
