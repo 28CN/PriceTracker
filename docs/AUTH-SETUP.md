@@ -58,7 +58,7 @@ $bytes = New-Object byte[] 32
 Add these names to `.env.local`; use a different generated value for each secret:
 
 ```dotenv
-NEXT_PUBLIC_APP_URL=http://localhost:3000
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
 AUTH_RATE_LIMIT_PEPPER=<first-random-value>
 EMAIL_WORKER_SECRET=<second-random-value>
 BOOTSTRAP_ACCOUNT_TOKEN=<third-random-value>
@@ -98,10 +98,10 @@ recover only the accounts it created, without trusting a predictable username or
 
 In **Authentication → URL Configuration**:
 
-- Site URL: the production site, for example `https://your-domain.example`
+- Site URL: the production site, for example `https://pricetracker-au.vercel.app`
 - Redirect URLs:
   - `http://localhost:3000/**`
-  - `https://your-domain.example/**`
+  - `https://pricetracker-au.vercel.app/**`
   - the Vercel preview pattern if previews are used
 
 In **Authentication → Providers → Email**:
@@ -150,8 +150,10 @@ and Development scopes as appropriate. Never expose service, Resend or worker se
 
 In GitHub repository **Settings → Secrets and variables → Actions**, add:
 
-- `APP_URL`: the deployed site URL
-- `EMAIL_WORKER_SECRET`: exactly the same value used by the deployment
+- Variable (Variables tab) `SITE_URL`: the deployed site URL, e.g. `https://pricetracker-au.vercel.app`
+- Secret `EMAIL_WORKER_SECRET`: exactly the same value used by the deployment
+
+(`SITE_URL` replaces the old `APP_URL` secret; it is not sensitive, so it is a repository variable.)
 
 The `send-emails.yml` workflow drains queued mail every ten minutes and can also be run
 manually from the Actions page.

@@ -1,7 +1,8 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 
-import { appUrl, emailFrame, escapeHtml, sendEmail } from '@/lib/email';
+import { emailFrame, escapeHtml, sendEmail } from '@/lib/email';
+import { absoluteUrl } from '@/lib/siteUrl';
 import { createAdminSupabaseClient } from '@/lib/supabase/admin';
 
 type OutboxRow = {
@@ -149,7 +150,7 @@ export async function POST(request: NextRequest) {
           row.payload = { ...row.payload, unsubscribeToken: rawToken };
           await admin.from('email_outbox').update({ payload: row.payload }).eq('id', row.id);
         }
-        unsubscribeUrl = `${appUrl()}/unsubscribe?token=${encodeURIComponent(rawToken)}`;
+        unsubscribeUrl = absoluteUrl(`/unsubscribe?token=${encodeURIComponent(rawToken)}`);
       }
 
       const content = await contentFor(row);

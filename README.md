@@ -39,6 +39,9 @@ secrets and first-login verification.
 | `GITHUB_REPO` | the repository name |
 | `GITHUB_WORKFLOW_ID` | `crawl-prices.yml` |
 | `GITHUB_REF` | `main` |
+| `NEXT_PUBLIC_SITE_URL` | the public site URL without a trailing slash, e.g. `https://pricetracker-au.vercel.app` |
+
+All absolute links (email verification, unsubscribe) are built from `NEXT_PUBLIC_SITE_URL` via `src/lib/siteUrl.ts`. GitHub Actions uses the repository variable `SITE_URL` for the same value.
 
 Redeploy after adding them so the new values are picked up.
 
