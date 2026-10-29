@@ -60,7 +60,7 @@ export type LinkStats = {
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DAY_MS = 86_400_000;
-const MAX_ROWS = 20_000;
+import { MAX_DAILY_ROWS, PAGE_SIZE } from '@/lib/priceInsight';
 
 const num = (v: unknown) => (v === null || v === undefined ? null : Number(v));
 
@@ -104,47 +104,56 @@ export async function GET(request: Request, { params }: RouteContext) {
   const historyFrom = new Date(now.getTime() - Math.max(days, 90) * DAY_MS).toISOString();
   const chartFrom = new Date(now.getTime() - days * DAY_MS).toISOString();
 
-  let historyRows: Array<{ link_id: string; price: number | string; created_at: string }> = [];
+  let dailyRows: DailyRow[] = [];
   let statsRows: Array<Record<string, unknown>> = [];
   if (linkIds.length) {
-    const [history, stats] = await Promise.all([
-      db
-        .from('price_history')
-        .select('link_id, price, created_at')
-        .in('link_id', linkIds)
-        .gte('created_at', historyFrom)
-        .order('created_at', { ascending: true })
-        .limit(MAX_ROWS),
+    const [daily, stats] = await Promise.all([
+      loadDaily(db, linkIds, historyFrom.slice(0, 10)),
       db.from('price_link_stats').select('*').eq('product_id', id)
     ]);
-    if (history.error || stats.error) {
+    if (daily === 'too_many') {
+      return NextResponse.json({ error: 'Too much price history to load.' }, { status: 500 });
+    }
+    if (daily === 'error' || stats.error) {
       return NextResponse.json({ error: 'Could not load price history.' }, { status: 500 });
     }
-    historyRows = history.data ?? [];
+    dailyRows = daily;
     statsRows = stats.data ?? [];
   }
+  const statsByLink = new Map(statsRows.map((s) => [s.link_id as string, s]));
 
+  // One point per link per UTC day: the day's lowest price, stamped with the
+  // day's last observation. The link's newest day uses its live current price
+  // (from price_link_stats), so the chart ends at the price shown elsewhere.
   const series = buildSeries(
-    historyRows.map((r) => ({ linkId: r.link_id, price: r.price, createdAt: r.created_at }))
+    dailyRows.map((r) => ({ linkId: r.link_id, price: r.min_price, createdAt: r.last_at }))
   );
+  for (const s of series) {
+    const last = s.points.at(-1);
+    const current = num(statsByLink.get(s.linkId)?.current_price);
+    const lastSeen = statsByLink.get(s.linkId)?.last_seen_at;
+    if (last && current !== null && typeof lastSeen === 'string' && lastSeen.slice(0, 10) === last.at.slice(0, 10)) {
+      last.price = current;
+      last.at = lastSeen;
+    }
+  }
   const lowestAll = lowestPriceSeries(series);
   const insight = judgeDiscount(lowestPriceSeries(series, { collapse: false }), { now });
 
-  // all-time low comes from the stats view (full history), not the window.
+  // All-time low always comes from price_link_stats (full history), never
+  // from the windowed rows. No stats -> no all-time low.
   let best: { at: string; price: number } | null = null;
   for (const s of statsRows) {
     const price = num(s.all_time_low);
     if (price === null || typeof s.all_time_low_at !== 'string') continue;
     if (!best || price < best.price) best = { at: s.all_time_low_at, price };
   }
-  if (best) {
-    if (!insight.allTimeLow || best.price < insight.allTimeLow.price) insight.allTimeLow = best;
-    insight.isAllTimeLow = insight.currentPrice !== null && insight.currentPrice <= insight.allTimeLow.price;
-  }
+  insight.allTimeLow = best;
+  insight.isAllTimeLow = Boolean(best && insight.currentPrice !== null && insight.currentPrice <= best.price);
+  insight.reasons = insight.reasons.filter((r) => r !== 'all_time_low');
+  if (insight.isAllTimeLow && insight.verdict !== 'insufficient_data') insight.reasons.push('all_time_low');
 
   const inChart = (p: PricePoint) => p.at >= chartFrom;
-  const statsByLink = new Map(statsRows.map((s) => [s.link_id as string, s]));
-
   const body: PriceInsightResponse = {
     product: { id: product.id, name: product.name, targetPrice: num(product.target_price) },
     range: { days, from: chartFrom, to: now.toISOString() },
@@ -179,4 +188,32 @@ export async function GET(request: Request, { params }: RouteContext) {
     insight
   };
   return NextResponse.json(body);
+}
+
+type DailyRow = { link_id: string; day: string; min_price: number | string; last_at: string };
+
+type Db = NonNullable<Awaited<ReturnType<typeof getApiAuth>>>['supabase'];
+
+/**
+ * Read price_link_daily ascending, one PostgREST page at a time, until a
+ * short page. Ordered by (day, link_id), which is unique, so pages are stable.
+ * Returns 'too_many' past MAX_DAILY_ROWS instead of silently truncating.
+ */
+async function loadDaily(db: Db, linkIds: string[], fromDay: string): Promise<DailyRow[] | 'error' | 'too_many'> {
+  const rows: DailyRow[] = [];
+  for (let offset = 0; ; offset += PAGE_SIZE) {
+    if (offset >= MAX_DAILY_ROWS) return 'too_many';
+    const { data, error } = await db
+      .from('price_link_daily')
+      .select('link_id, day, min_price, last_at')
+      .in('link_id', linkIds)
+      .gte('day', fromDay)
+      .order('day', { ascending: true })
+      .order('link_id', { ascending: true })
+      .range(offset, offset + PAGE_SIZE - 1);
+    if (error) return 'error';
+    const page = (data ?? []) as DailyRow[];
+    rows.push(...page);
+    if (page.length < PAGE_SIZE) return rows;
+  }
 }

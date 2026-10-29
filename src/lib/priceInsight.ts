@@ -249,3 +249,8 @@ function countTrailingSame(sorted: PricePoint[]): number {
   for (let i = sorted.length - 1; i > 0 && sorted[i].price === sorted[i - 1].price; i -= 1) n += 1;
   return n;
 }
+
+/** PostgREST caps each response (1000 rows by default), so daily rows are paged. */
+export const PAGE_SIZE = 1000;
+/** Hard safety cap on daily rows read by the API. Hitting it returns 500, never a truncated result. */
+export const MAX_DAILY_ROWS = 20_000;
