@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
+import { isDemoSessionExpired } from '@/lib/demoSession';
 import { getSupabasePublishableKey, getSupabaseUrl } from '@/lib/supabase/config';
 
 export async function middleware(request: NextRequest) {
@@ -27,7 +28,15 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  await supabase.auth.getClaims();
+  const { data } = await supabase.auth.getClaims();
+  // Demo sessions last 1 hour from the demo sign-in. After that, sign out
+  // locally: setAll above clears the auth cookies on both the request (so this
+  // render already sees a signed-out visitor, e.g. / shows the landing page)
+  // and the response.
+  if (isDemoSessionExpired(data?.claims)) {
+    await supabase.auth.signOut({ scope: 'local' });
+    response.headers.set('X-Demo-Session', 'expired');
+  }
   response.headers.set('Cache-Control', 'private, no-store');
   return response;
 }
