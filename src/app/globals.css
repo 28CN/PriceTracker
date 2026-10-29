@@ -2385,15 +2385,6 @@ select:focus {
 }
 
 @media (max-width: 420px) {
-  .brand {
-    font-size: 0;
-  }
-
-  .brand::after {
-    content: 'Price';
-    font-size: 17px;
-  }
-
   .hero-stats {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -4232,39 +4223,21 @@ textarea:disabled {
   padding: 8px 16px;
   text-align: center;
   font-size: 0.9rem;
-  background: #fff4d6;
-  color: #5a4300;
-  border-top: 1px solid #f0d58a;
-  border-bottom: 1px solid #f0d58a;
+  background: var(--warn-soft);
+  color: color-mix(in srgb, var(--warn) 70%, var(--text));
+  border-top: 1px solid color-mix(in srgb, var(--warn) 35%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--warn) 35%, transparent);
 }
 .demo-banner a {
   color: inherit;
   text-decoration: underline;
 }
-@media (prefers-color-scheme: dark) {
-  .demo-banner {
-    background: #3a3112;
-    color: #f5e6b0;
-    border-color: #5c4d1d;
-  }
-}
-:root[data-theme='dark'] .demo-banner {
-  background: #3a3112;
-  color: #f5e6b0;
-  border-color: #5c4d1d;
-}
-:root[data-theme='light'] .demo-banner {
-  background: #fff4d6;
-  color: #5a4300;
-  border-color: #f0d58a;
-}
 
-.demo-form { display: inline; margin: 0; }
+.demo-form { display: inline-flex; align-items: center; margin: 0; flex-shrink: 0; }
 .demo-notice { margin: 0 auto 1rem; max-width: 28rem; text-align: center; }
 
 /* Price chart */
 .price-chart { margin: 4px 0 12px; padding: 12px 14px; border-radius: 12px; background: var(--bg-accent); }
-.price-chart.is-loading { height: 190px; animation: pc-pulse 1.4s ease-in-out infinite; }
 @keyframes pc-pulse { 50% { opacity: 0.55; } }
 .price-chart-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-bottom: 6px; font-size: 13px; }
 .price-chart-meta { color: var(--muted); font-variant-numeric: tabular-nums; }
@@ -4279,12 +4252,70 @@ textarea:disabled {
 .pc-target line { stroke: var(--accent-cyan); stroke-dasharray: 4 4; }
 .pc-axis-labels { display: flex; justify-content: space-between; margin-top: 4px; color: var(--muted); font-size: 12px; }
 .pc-target-key::before { content: ''; display: inline-block; width: 16px; margin-right: 5px; vertical-align: middle; border-top: 2px dashed var(--accent-cyan); }
-.pc-plot { width: 100%; max-width: 720px; }
-.pc-canvas { width: 100%; aspect-ratio: 560 / 160; }
+.pc-plot { width: 100%; max-width: 720px; margin: 0 auto; }
+.pc-canvas { position: relative; width: 100%; aspect-ratio: 560 / 160; }
 .pc-atl circle { fill: var(--success); stroke: var(--surface-strong); stroke-width: 2; }
 .pc-now { fill: var(--brand); }
 .pc-dot { fill: var(--brand); opacity: 0.55; }
-.pc-line.pc-gap { stroke-dasharray: 3 5; stroke-dashoffset: 0; animation: none; stroke-opacity: 0.6; }
-.pc-gap-key::before { content: ''; display: inline-block; width: 16px; margin-right: 5px; vertical-align: middle; border-top: 2px dashed var(--brand); opacity: 0.6; }
+.pc-line.pc-gap { stroke-width: 1.25; stroke-dasharray: 2 6; stroke-dashoffset: 0; animation: none; stroke-opacity: 0.35; }
+.pc-gap-key::before { content: ''; display: inline-block; width: 16px; margin-right: 5px; vertical-align: middle; border-top: 2px dotted var(--brand); opacity: 0.45; }
 .price-chart-empty { margin: 4px 0 12px; color: var(--muted); font-size: 13px; }
-@media (prefers-reduced-motion: reduce) { .pc-line { animation: none; stroke-dashoffset: 0; } .price-chart.is-loading { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .pc-line { animation: none; stroke-dashoffset: 0; } }
+.pc-grid { stroke: var(--muted); stroke-opacity: 0.14; stroke-dasharray: 1 4; }
+.pc-tick, .pc-label { position: absolute; font-size: 11px; line-height: 1; font-variant-numeric: tabular-nums; white-space: nowrap; pointer-events: none; }
+.pc-tick { left: 2px; transform: translateY(-120%); color: var(--muted); }
+.pc-label { padding: 3px 6px; border-radius: 6px; font-weight: 650; background: var(--surface-strong); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08); }
+.pc-label-now { right: 0; transform: translateY(-150%); color: var(--brand); }
+.pc-label-atl { transform: translate(-50%, 45%); color: var(--success); }
+.pc-skel-head { display: flex; gap: 8px; margin-bottom: 10px; }
+.pc-skel-head .pc-skel { width: 84px; height: 20px; border-radius: 999px; }
+.pc-axis-labels .pc-skel { width: 44px; height: 10px; border-radius: 4px; }
+.pc-skel { display: block; border-radius: 8px; background: linear-gradient(90deg, color-mix(in srgb, var(--muted) 10%, transparent) 25%, color-mix(in srgb, var(--muted) 20%, transparent) 50%, color-mix(in srgb, var(--muted) 10%, transparent) 75%); background-size: 200% 100%; animation: pc-shimmer 1.4s linear infinite; }
+@keyframes pc-shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+@media (prefers-reduced-motion: reduce) { .pc-skel { animation: none; } }
+@media (max-width: 420px) { .price-chart { padding: 10px; } .pc-tick, .pc-label { font-size: 10px; } }
+
+/* Mobile polish ------------------------------------------------------------ */
+.topbar { flex-wrap: wrap; }
+.brand-link, .brand, .brand-mark { flex-shrink: 0; white-space: nowrap; }
+.topbar-actions { min-width: 0; flex-shrink: 1; }
+/* Demo logo is a <button> (POST /demo/exit) styled exactly like the logo link:
+   strip every UA button style (iOS/Safari paint a grey pill otherwise). */
+.brand-exit {
+  -webkit-appearance: none; appearance: none;
+  margin: 0; padding: 0; border: 0; border-radius: 0; box-shadow: none;
+  background: transparent; color: inherit; font: inherit; line-height: inherit;
+  text-align: left; cursor: pointer;
+}
+.brand-exit:active { transform: none; }
+.brand-exit:focus-visible { border-radius: 12px; }
+.brand-exit .brand { display: block; margin: 0; }
+.demo-banner .demo-form { vertical-align: middle; }
+.demo-banner { flex: 1 0 100%; margin: 8px -18px -12px; }
+.demo-banner .demo-exit { margin-left: 10px; vertical-align: middle; }
+.demo-exit {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 12px; font-size: 13px; font-weight: 650; white-space: nowrap;
+  color: color-mix(in srgb, var(--warn) 70%, var(--text));
+  background: color-mix(in srgb, var(--warn-soft) 70%, var(--surface-strong));
+  border: 1px solid color-mix(in srgb, var(--warn) 45%, transparent);
+}
+.demo-exit:hover { background: color-mix(in srgb, var(--warn) 14%, var(--warn-soft)); }
+@media (max-width: 760px) {
+  .demo-banner { margin: 7px -12px -9px; padding: 7px 12px; font-size: 0.82rem; }
+  .overview-actions > :only-child { grid-column: 1 / -1; }
+  .dashboard-overview { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 420px) {
+  .topbar-actions { gap: 5px; }
+  .topbar-actions .icon-button { width: 34px; height: 34px; }
+  .demo-exit { padding: 5px 10px; font-size: 12px; }
+  .demo-banner .demo-form { display: flex; justify-content: center; margin-top: 6px; }
+  .demo-banner .demo-exit { margin: 0; }
+  /* "N at target": chevron sits under the text instead of squeezing it. */
+  .target-summary { display: grid; grid-template-columns: auto minmax(0, 1fr); row-gap: 2px; }
+  .target-summary-arrow { grid-column: 2; justify-self: start; }
+  .overview-actions { grid-template-columns: 1fr; }
+  .target-summary { width: 100%; }
+}
+@media (max-width: 360px) { .demo-exit svg { display: none; } }

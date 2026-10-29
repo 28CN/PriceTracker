@@ -1,9 +1,10 @@
-import { ChartNoAxesCombined, Settings2 } from 'lucide-react';
+import { ChartNoAxesCombined, LogIn, Settings2 } from 'lucide-react';
 import Link from 'next/link';
 
 import { getViewer } from '@/lib/auth';
 
 import AccountMenu from './AccountMenu';
+import ExitDemoButton from './ExitDemoButton';
 import NotificationsBell from './NotificationsBell';
 import RefreshButton from './RefreshButton';
 import ThemeToggle from './ThemeToggle';
@@ -14,14 +15,25 @@ export default async function TopBar() {
   return (
     <header className="topbar">
       <div className="topbar-inner">
-        <Link href="/" className="brand-link" aria-label="PriceTracker home">
+        {viewer?.isDemo ? (
+          <ExitDemoButton className="brand-link brand-exit" label="Exit demo and go to PriceTracker home">
+          <span className="brand-mark" aria-hidden="true">
+            <ChartNoAxesCombined size={21} />
+          </span>
+          <span className="brand">
+            Price<span>Tracker</span>
+          </span>
+          </ExitDemoButton>
+        ) : (
+          <Link href="/" className="brand-link" aria-label="PriceTracker home">
           <span className="brand-mark" aria-hidden="true">
             <ChartNoAxesCombined size={21} />
           </span>
           <p className="brand">
             Price<span>Tracker</span>
           </p>
-        </Link>
+          </Link>
+        )}
         <div className="topbar-actions">
           {viewer?.isDemo ? null : viewer ? (
             <Link className="button topbar-manage" href="/manage">
@@ -29,7 +41,8 @@ export default async function TopBar() {
               Manage
             </Link>
           ) : (
-            <Link className="button topbar-manage" href="/login">
+            <Link className="button topbar-manage" href="/login" aria-label="Sign in">
+              <LogIn size={16} aria-hidden="true" />
               Sign in
             </Link>
           )}
@@ -50,6 +63,7 @@ export default async function TopBar() {
         <div className="demo-banner" role="status">
           <strong>Demo mode: read-only, resets on each visit.</strong> <Link href="/register">Create your own free account</Link> to track
           products.
+          <ExitDemoButton />
         </div>
       ) : null}
     </header>
