@@ -4280,5 +4280,8 @@ textarea:disabled {
 .pc-target text, .pc-date { fill: var(--muted); font-size: 10px; }
 .pc-atl circle { fill: var(--success); stroke: var(--surface-strong); stroke-width: 2; }
 .pc-now { fill: var(--brand); }
+.pc-dot { fill: var(--brand); opacity: 0.55; }
+.pc-line.pc-gap { stroke-dasharray: 3 5; stroke-dashoffset: 0; animation: none; stroke-opacity: 0.6; }
+.pc-gap-key::before { content: ''; display: inline-block; width: 16px; margin-right: 5px; vertical-align: middle; border-top: 2px dashed var(--brand); opacity: 0.6; }
 .price-chart-empty { margin: 4px 0 12px; color: var(--muted); font-size: 13px; }
 @media (prefers-reduced-motion: reduce) { .pc-line { animation: none; stroke-dashoffset: 0; } .price-chart.is-loading { animation: none; } }

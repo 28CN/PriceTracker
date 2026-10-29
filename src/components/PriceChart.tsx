@@ -22,16 +22,26 @@ type State =
   | { status: 'error' }
   | { status: 'ready'; data: PriceInsightResponse };
 
-/** Step path: price holds until the next sample, like a shelf tag. */
-function stepPath(points: PricePoint[], x: (t: number) => number, y: (p: number) => number) {
-  return points
-    .map((p, i) => {
-      const px = x(Date.parse(p.at));
-      const py = y(p.price);
-      if (i === 0) return `M${px},${py}`;
-      return `H${px}V${py}`;
-    })
-    .join('');
+const GAP_MS = 7 * 86_400_000;
+
+type Segment = { d: string; gap: boolean };
+
+/**
+ * Step segments between consecutive samples: the price holds until the next
+ * sample, then steps. A hold longer than 7 days had no crawls, so it is marked
+ * as a gap and drawn dashed instead of pretending we saw that price.
+ */
+function stepSegments(points: PricePoint[], x: (t: number) => number, y: (p: number) => number): Segment[] {
+  const out: Segment[] = [];
+  for (let i = 1; i < points.length; i += 1) {
+    const t0 = Date.parse(points[i - 1].at);
+    const t1 = Date.parse(points[i].at);
+    out.push({
+      d: `M${x(t0)},${y(points[i - 1].price)}H${x(t1)}V${y(points[i].price)}`,
+      gap: t1 - t0 > GAP_MS
+    });
+  }
+  return out;
 }
 
 export default function PriceChart({ productId, days = 180 }: { productId: string; days?: number }) {
@@ -63,11 +73,13 @@ export default function PriceChart({ productId, days = 180 }: { productId: strin
     hi += span * 0.12;
     const x = (t: number) => PAD.left + ((t - t0) / Math.max(t1 - t0, 1)) * (W - PAD.left - PAD.right);
     const y = (p: number) => PAD.top + (1 - (p - lo) / (hi - lo)) * (H - PAD.top - PAD.bottom);
-    const extended = [...lowest, { at: range.to, price: lowest[lowest.length - 1].price }];
-    const line = stepPath(extended, x, y);
-    const area = `${line}V${H - PAD.bottom}H${x(Date.parse(lowest[0].at))}Z`;
+    const segments = stepSegments(lowest, x, y);
+    const area = `M${x(Date.parse(lowest[0].at))},${H - PAD.bottom}${segments
+      .map((seg) => seg.d.replace(/^M/, 'L'))
+      .join('')}V${H - PAD.bottom}Z`;
+    const hasGap = segments.some((seg) => seg.gap);
     const atl = insight.allTimeLow && Date.parse(insight.allTimeLow.at) >= t0 ? insight.allTimeLow : null;
-    return { x, y, line, area, atl, last: lowest[lowest.length - 1] };
+    return { x, y, segments, area, atl, hasGap, points: lowest, last: lowest[lowest.length - 1] };
   }, [state]);
 
   if (state.status === 'loading') {
@@ -89,6 +101,7 @@ export default function PriceChart({ productId, days = 180 }: { productId: strin
           <span className="price-chart-meta">90-day median {formatMoney(insight.median90d)}</span>
         ) : null}
         <span className="price-chart-meta">Last {range.days} days</span>
+        {geo?.hasGap ? <span className="price-chart-meta pc-gap-key">Dashed: no checks for over 7 days</span> : null}
       </figcaption>
 
       {geo ? (
@@ -114,14 +127,19 @@ export default function PriceChart({ productId, days = 180 }: { productId: strin
             </g>
           ) : null}
           <path d={geo.area} fill={`url(#pc-fill-${productId})`} />
-          <path d={geo.line} className="pc-line" />
+          {geo.segments.map((seg, i) => (
+            <path key={i} d={seg.d} className={seg.gap ? 'pc-line pc-gap' : 'pc-line'} />
+          ))}
+          {geo.points.map((p) => (
+            <circle key={p.at} className="pc-dot" cx={geo.x(Date.parse(p.at))} cy={geo.y(p.price)} r={1.8} />
+          ))}
           {geo.atl ? (
             <g className="pc-atl">
               <circle cx={geo.x(Date.parse(geo.atl.at))} cy={geo.y(geo.atl.price)} r={4} />
               <title>All-time low {formatMoney(geo.atl.price)}</title>
             </g>
           ) : null}
-          <circle className="pc-now" cx={W - PAD.right} cy={geo.y(geo.last.price)} r={3.5} />
+          <circle className="pc-now" cx={geo.x(Date.parse(geo.last.at))} cy={geo.y(geo.last.price)} r={3.5} />
           <text className="pc-date" x={PAD.left} y={H - 6}>{new Date(range.from).toLocaleDateString()}</text>
           <text className="pc-date" x={W - PAD.right} y={H - 6} textAnchor="end">Today</text>
         </svg>
