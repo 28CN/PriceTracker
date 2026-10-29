@@ -110,6 +110,8 @@ export default function PriceChart({ productId, days = 180 }: { productId: strin
       </figcaption>
 
       {geo ? (
+        <div className="pc-plot">
+        <div className="pc-canvas">
         <svg
           viewBox={`0 0 ${W} ${H}`}
           className="price-chart-svg"
@@ -143,11 +145,11 @@ export default function PriceChart({ productId, days = 180 }: { productId: strin
           ) : null}
           <circle className="pc-now" cx={geo.x(Date.parse(geo.last.at))} cy={geo.y(geo.last.price)} r={3.5} />
         </svg>
-      ) : null}
-      {geo ? (
+        </div>
         <div className="pc-axis-labels" aria-hidden="true">
           <span>{new Date(range.from).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}</span>
           <span>Today</span>
+        </div>
         </div>
       ) : (
         <p className="price-chart-empty">Not enough price history to draw a chart yet.</p>
