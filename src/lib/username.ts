@@ -5,6 +5,7 @@ export const RESERVED_USERNAMES = new Set([
   'admin',
   'api',
   'auth',
+  'demo',
   'forgot-password',
   'login',
   'logout',

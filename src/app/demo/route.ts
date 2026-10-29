@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { DEMO_AUTH_EMAIL } from '@/lib/demo';
+import { resetDemoCredentials } from '@/lib/demoReset';
+import { createAdminSupabaseClient } from '@/lib/supabase/admin';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
@@ -14,6 +16,18 @@ export async function GET(request: NextRequest) {
   const home = new URL('/', request.url);
   if (!password) {
     console.error('[demo] DEMO_ACCOUNT_PASSWORD is not configured');
+    return NextResponse.redirect(new URL('/login?demo=unavailable', request.url), 303);
+  }
+
+  // A demo session can call auth.updateUser() to change the password or email.
+  // Restore both with the service-role admin API before every sign-in.
+  let admin = null;
+  try {
+    admin = createAdminSupabaseClient();
+  } catch (error) {
+    console.error('[demo] admin client unavailable:', error instanceof Error ? error.message : error);
+  }
+  if (!(await resetDemoCredentials(admin, password))) {
     return NextResponse.redirect(new URL('/login?demo=unavailable', request.url), 303);
   }
 

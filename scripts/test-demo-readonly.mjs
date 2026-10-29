@@ -52,6 +52,11 @@ await check('GET /demo redirects home and sets a session cookie', () => {
 });
 const cookie = cookieHeader(cookies);
 
+await check('public demo page /demo-shop returns 200 when signed out', async () => {
+  const res = await fetch(`${BASE_URL}/demo-shop`);
+  assert.equal(res.status, 200);
+});
+
 await check('signed-in demo page shows the read-only banner', async () => {
   const res = await fetch(`${BASE_URL}/`, { headers: { cookie } });
   const html = await res.text();
