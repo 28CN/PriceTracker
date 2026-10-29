@@ -8,7 +8,7 @@ import type { PricePoint, Verdict } from '@/lib/priceInsight';
 
 const W = 560;
 const H = 160;
-const PAD = { top: 14, right: 12, bottom: 22, left: 12 };
+const PAD = { top: 10, right: 8, bottom: 6, left: 8 };
 
 const VERDICT_COPY: Record<Verdict, { label: string; tone: string }> = {
   real_discount: { label: 'Real discount', tone: 'good' },
@@ -74,9 +74,11 @@ export default function PriceChart({ productId, days = 180 }: { productId: strin
     const x = (t: number) => PAD.left + ((t - t0) / Math.max(t1 - t0, 1)) * (W - PAD.left - PAD.right);
     const y = (p: number) => PAD.top + (1 - (p - lo) / (hi - lo)) * (H - PAD.top - PAD.bottom);
     const segments = stepSegments(lowest, x, y);
-    const area = `M${x(Date.parse(lowest[0].at))},${H - PAD.bottom}${segments
-      .map((seg) => seg.d.replace(/^M/, 'L'))
-      .join('')}V${H - PAD.bottom}Z`;
+    // Shade only under observed stretches; a gap has no data to shade.
+    const area = segments
+      .filter((seg) => !seg.gap)
+      .map((seg) => `${seg.d.replace(/V[^HV]*$/, '')}V${H - PAD.bottom}H${seg.d.split(',')[0].slice(1)}Z`)
+      .join('');
     const hasGap = segments.some((seg) => seg.gap);
     const atl = insight.allTimeLow && Date.parse(insight.allTimeLow.at) >= t0 ? insight.allTimeLow : null;
     return { x, y, segments, area, atl, hasGap, points: lowest, last: lowest[lowest.length - 1] };
@@ -100,6 +102,9 @@ export default function PriceChart({ productId, days = 180 }: { productId: strin
         {insight.median90d !== null ? (
           <span className="price-chart-meta">90-day median {formatMoney(insight.median90d)}</span>
         ) : null}
+        {product.targetPrice !== null ? (
+          <span className="price-chart-meta pc-target-key">Target {formatMoney(product.targetPrice)}</span>
+        ) : null}
         <span className="price-chart-meta">Last {range.days} days</span>
         {geo?.hasGap ? <span className="price-chart-meta pc-gap-key">Dashed: no checks for over 7 days</span> : null}
       </figcaption>
@@ -121,9 +126,6 @@ export default function PriceChart({ productId, days = 180 }: { productId: strin
           {product.targetPrice !== null ? (
             <g className="pc-target">
               <line x1={PAD.left} x2={W - PAD.right} y1={geo.y(product.targetPrice)} y2={geo.y(product.targetPrice)} />
-              <text x={W - PAD.right} y={geo.y(product.targetPrice) - 4} textAnchor="end">
-                Target {formatMoney(product.targetPrice)}
-              </text>
             </g>
           ) : null}
           <path d={geo.area} fill={`url(#pc-fill-${productId})`} />
@@ -140,9 +142,13 @@ export default function PriceChart({ productId, days = 180 }: { productId: strin
             </g>
           ) : null}
           <circle className="pc-now" cx={geo.x(Date.parse(geo.last.at))} cy={geo.y(geo.last.price)} r={3.5} />
-          <text className="pc-date" x={PAD.left} y={H - 6}>{new Date(range.from).toLocaleDateString()}</text>
-          <text className="pc-date" x={W - PAD.right} y={H - 6} textAnchor="end">Today</text>
         </svg>
+      ) : null}
+      {geo ? (
+        <div className="pc-axis-labels" aria-hidden="true">
+          <span>{new Date(range.from).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}</span>
+          <span>Today</span>
+        </div>
       ) : (
         <p className="price-chart-empty">Not enough price history to draw a chart yet.</p>
       )}
