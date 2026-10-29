@@ -17,7 +17,7 @@ values
    'pi-carol@users.invalid', '{"username":"pi-carol"}', now(), now());
 
 select set_config('request.jwt.claims', '{"role":"service_role"}', true);
-update public.profiles set watchlist_visibility = 'public'
+update public.profiles set watchlist_visibility = 'public', public_slug = 'pi-carol'
 where id = '33333333-3333-4333-8333-333333333333';
 
 insert into public.products (id, name, owner_id) values
