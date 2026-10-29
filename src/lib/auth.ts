@@ -17,6 +17,7 @@ export type Viewer = {
   watchlistPublic: boolean;
   isAdmin: boolean;
   mustChangePassword: boolean;
+  isDemo: boolean;
 };
 
 export async function getApiAuth() {
@@ -85,7 +86,7 @@ export async function getViewer(): Promise<Viewer | null> {
 
   const profileResult = await supabase
     .from('profiles')
-    .select('username, display_name, avatar_path, public_slug, watchlist_visibility')
+    .select('username, display_name, avatar_path, public_slug, watchlist_visibility, is_demo')
     .eq('id', userId)
     .maybeSingle();
   const profileQuery =
@@ -112,6 +113,7 @@ export async function getViewer(): Promise<Viewer | null> {
     avatar_path: string | null;
     watchlist_visibility?: string | null;
     public_slug?: string | null;
+    is_demo?: boolean | null;
   } | null;
   if (profileQuery.error || !profile) return null;
   return {
@@ -122,7 +124,8 @@ export async function getViewer(): Promise<Viewer | null> {
     publicSlug: typeof profile.public_slug === 'string' ? profile.public_slug : null,
     watchlistPublic: profile.watchlist_visibility === 'public',
     isAdmin: (roles || []).some((row) => row.role === 'admin'),
-    mustChangePassword: security?.must_change_password === true
+    mustChangePassword: security?.must_change_password === true,
+    isDemo: profile.is_demo === true
   };
 }
 

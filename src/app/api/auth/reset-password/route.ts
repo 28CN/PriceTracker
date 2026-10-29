@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 
 import { assertSameOrigin, validatePassword } from '@/lib/auth';
+import { DEMO_USER_ID, demoReadOnlyResponse } from '@/lib/demo';
 import { createAdminSupabaseClient } from '@/lib/supabase/admin';
 
 export async function POST(request: NextRequest) {
@@ -36,6 +37,9 @@ export async function POST(request: NextRequest) {
       { error: 'This reset link is invalid or has expired.' },
       { status: 400 }
     );
+  }
+  if (record.user_id === DEMO_USER_ID) {
+    return demoReadOnlyResponse();
   }
 
   const now = new Date().toISOString();

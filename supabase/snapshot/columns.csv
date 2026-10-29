@@ -105,6 +105,7 @@ profiles,bio,text,YES
 profiles,created_at,timestamp with time zone,NO
 profiles,display_name,text,YES
 profiles,id,uuid,NO
+profiles,is_demo,boolean,NO
 profiles,public_slug,text,YES
 profiles,updated_at,timestamp with time zone,NO
 profiles,username,text,NO

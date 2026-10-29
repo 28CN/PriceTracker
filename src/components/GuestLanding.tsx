@@ -25,6 +25,8 @@ export default function GuestLanding({ featured }: { featured: ProductView[] }) 
           <div className="guest-hero-actions">
             <Link className="button" href="/register">Create a free account</Link>
             <Link className="button secondary" href="/login">Sign in</Link>
+            {/* Plain <a>: /demo signs in, so it must not be prefetched. */}
+            <a className="button secondary" href="/demo" rel="nofollow">Try the demo</a>
           </div>
         </div>
         <KangarooPriceAnimation />

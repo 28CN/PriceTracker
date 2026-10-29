@@ -1,16 +1,15 @@
 import { NextResponse } from 'next/server';
 
-import { getApiAuth } from '@/lib/auth';
 import { detectRetailer, isValidHttpUrl } from '@/lib/retailer';
+import { getWritableApiAuth } from '@/lib/demoGuard';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
   try {
-    const auth = await getApiAuth();
-    if (!auth) {
-      return NextResponse.json({ error: 'Sign in required.' }, { status: 401 });
-    }
+    const guard = await getWritableApiAuth();
+    if (!guard.ok) return guard.response;
+    const auth = guard.auth;
     const body = (await request.json().catch(() => ({}))) as {
       productId?: string;
       links?: Array<{ url?: string; retailer?: string }>;

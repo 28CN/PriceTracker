@@ -1,15 +1,14 @@
 import { NextResponse } from 'next/server';
 
-import { getApiAuth } from '@/lib/auth';
 import { createAdminSupabaseClient } from '@/lib/supabase/admin';
 import { dispatchCrawl } from '@/lib/github/dispatch';
+import { getWritableApiAuth } from '@/lib/demoGuard';
 
 export async function POST(request: Request) {
   try {
-    const auth = await getApiAuth();
-    if (!auth) {
-      return NextResponse.json({ error: 'Sign in required.' }, { status: 401 });
-    }
+    const guard = await getWritableApiAuth();
+    if (!guard.ok) return guard.response;
+    const auth = guard.auth;
     const body = (await request.json().catch(() => ({}))) as {
       productId?: string;
       linkId?: string;

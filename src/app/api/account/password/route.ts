@@ -1,16 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-import { assertSameOrigin, getApiAuth, validatePassword } from '@/lib/auth';
+import { assertSameOrigin, validatePassword } from '@/lib/auth';
 import { createAdminSupabaseClient } from '@/lib/supabase/admin';
+import { getWritableApiAuth } from '@/lib/demoGuard';
 
 export async function POST(request: NextRequest) {
   if (!assertSameOrigin(request)) {
     return NextResponse.json({ error: 'Invalid request origin.' }, { status: 403 });
   }
-  const auth = await getApiAuth();
-  if (!auth) {
-    return NextResponse.json({ error: 'Sign in required.' }, { status: 401 });
-  }
+  const guard = await getWritableApiAuth();
+  if (!guard.ok) return guard.response;
+  const auth = guard.auth;
 
   const body = await request.json().catch(() => null);
   const newPassword = typeof body?.newPassword === 'string' ? body.newPassword : '';

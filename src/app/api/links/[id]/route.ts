@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
-import { getApiAuth } from '@/lib/auth';
 import { detectRetailer, isValidHttpUrl } from '@/lib/retailer';
+import { getWritableApiAuth } from '@/lib/demoGuard';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,10 +10,9 @@ type RouteContext = { params: Promise<{ id: string }> };
 export async function PATCH(request: Request, { params }: RouteContext) {
   try {
     const { id } = await params;
-    const auth = await getApiAuth();
-    if (!auth) {
-      return NextResponse.json({ error: 'Sign in required.' }, { status: 401 });
-    }
+    const guard = await getWritableApiAuth();
+    if (!guard.ok) return guard.response;
+    const auth = guard.auth;
     const body = (await request.json().catch(() => ({}))) as {
       isActive?: boolean;
       url?: string;
@@ -83,10 +82,9 @@ export async function PATCH(request: Request, { params }: RouteContext) {
 export async function DELETE(_request: Request, { params }: RouteContext) {
   try {
     const { id } = await params;
-    const auth = await getApiAuth();
-    if (!auth) {
-      return NextResponse.json({ error: 'Sign in required.' }, { status: 401 });
-    }
+    const guard = await getWritableApiAuth();
+    if (!guard.ok) return guard.response;
+    const auth = guard.auth;
     const { error } = await auth.supabase.from('tracked_links').delete().eq('id', id);
 
     if (error) {

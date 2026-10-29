@@ -2,10 +2,11 @@ import { createHash, randomBytes } from 'node:crypto';
 import { parsePhoneNumberFromString, type CountryCode } from 'libphonenumber-js';
 import { NextRequest, NextResponse } from 'next/server';
 
-import { assertSameOrigin, getApiAuth, normalizeUsername } from '@/lib/auth';
+import { assertSameOrigin, normalizeUsername } from '@/lib/auth';
 import { absoluteUrl } from '@/lib/siteUrl';
 import { validatePublicSlug } from '@/lib/publicSlug';
 import { createAdminSupabaseClient } from '@/lib/supabase/admin';
+import { getWritableApiAuth } from '@/lib/demoGuard';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const COUNTRIES = new Set<CountryCode>(['AU', 'NZ', 'GB', 'US', 'CA', 'CN']);
@@ -14,10 +15,9 @@ export async function PATCH(request: NextRequest) {
   if (!assertSameOrigin(request)) {
     return NextResponse.json({ error: 'Invalid request origin.' }, { status: 403 });
   }
-  const auth = await getApiAuth();
-  if (!auth) {
-    return NextResponse.json({ error: 'Sign in required.' }, { status: 401 });
-  }
+  const guard = await getWritableApiAuth();
+  if (!guard.ok) return guard.response;
+  const auth = guard.auth;
 
   const body = await request.json().catch(() => null);
   if (!body || typeof body !== 'object') {
