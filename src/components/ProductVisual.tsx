@@ -32,6 +32,7 @@ export default function ProductVisual({
   }
 
   return (
+    // eslint-disable-next-line @next/next/no-img-element -- arbitrary retailer image hosts; next/image would need a remote allowlist
     <img
       className="product-thumb product-thumb-photo is-ready"
       src={fallbackFor(`${category || 'shopping'} ${name}`)}
