@@ -81,11 +81,29 @@ export default function PriceChart({ productId, days = 180 }: { productId: strin
       .join('');
     const hasGap = segments.some((seg) => seg.gap);
     const atl = insight.allTimeLow && Date.parse(insight.allTimeLow.at) >= t0 ? insight.allTimeLow : null;
-    return { x, y, segments, area, atl, hasGap, points: lowest, last: lowest[lowest.length - 1] };
+    const dataLo = Math.min(...prices);
+    const dataHi = Math.max(...prices);
+    const ticks = dataHi - dataLo < 0.01 ? [dataLo] : [dataHi, (dataHi + dataLo) / 2, dataLo];
+    return { x, y, segments, area, atl, hasGap, ticks, points: lowest, last: lowest[lowest.length - 1] };
   }, [state]);
 
   if (state.status === 'loading') {
-    return <div className="price-chart is-loading" aria-busy="true" aria-label="Loading price history" />;
+    return (
+      <div className="price-chart is-loading" aria-busy="true" aria-label="Loading price history">
+        <div className="pc-skel-head">
+          <span className="pc-skel" />
+          <span className="pc-skel" />
+          <span className="pc-skel" />
+        </div>
+        <div className="pc-plot">
+          <div className="pc-canvas pc-skel" />
+          <div className="pc-axis-labels">
+            <span className="pc-skel" />
+            <span className="pc-skel" />
+          </div>
+        </div>
+      </div>
+    );
   }
   if (state.status === 'error') {
     return <p className="price-chart-empty">Price history is unavailable right now.</p>;
@@ -124,6 +142,9 @@ export default function PriceChart({ productId, days = 180 }: { productId: strin
               <stop offset="100%" stopColor="var(--brand)" stopOpacity="0" />
             </linearGradient>
           </defs>
+          {geo.ticks.map((t) => (
+            <line key={t} x1={PAD.left} x2={W - PAD.right} y1={geo.y(t)} y2={geo.y(t)} className="pc-grid" />
+          ))}
           <line x1={PAD.left} x2={W - PAD.right} y1={H - PAD.bottom} y2={H - PAD.bottom} className="pc-axis" />
           {product.targetPrice !== null ? (
             <g className="pc-target">
@@ -145,6 +166,23 @@ export default function PriceChart({ productId, days = 180 }: { productId: strin
           ) : null}
           <circle className="pc-now" cx={geo.x(Date.parse(geo.last.at))} cy={geo.y(geo.last.price)} r={3.5} />
         </svg>
+        {geo.ticks.map((t) => (
+          <span key={t} className="pc-tick" style={{ top: `${(geo.y(t) / H) * 100}%` }} aria-hidden="true">
+            {formatMoney(t)}
+          </span>
+        ))}
+        {geo.atl && geo.atl.at !== geo.last.at ? (
+          <span
+            className="pc-label pc-label-atl"
+            style={{ top: `${(geo.y(geo.atl.price) / H) * 100}%`, left: `${(geo.x(Date.parse(geo.atl.at)) / W) * 100}%` }}
+            aria-hidden="true"
+          >
+            Low {formatMoney(geo.atl.price)}
+          </span>
+        ) : null}
+        <span className="pc-label pc-label-now" style={{ top: `${(geo.y(geo.last.price) / H) * 100}%` }} aria-hidden="true">
+          Now {formatMoney(geo.last.price)}
+        </span>
         </div>
         <div className="pc-axis-labels" aria-hidden="true">
           <span>{new Date(range.from).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}</span>
