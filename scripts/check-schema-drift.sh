@@ -38,6 +38,7 @@ compare columns supabase/snapshot/columns.csv "
   where c.table_schema = 'public' and t.table_type = 'BASE TABLE'"
 compare policies supabase/snapshot/policies.txt "$(cat scripts/sql/policies.sql)"
 compare indexes supabase/snapshot/indexes.txt "$(cat scripts/sql/indexes.sql)"
+compare function_privileges supabase/snapshot/function_privileges.txt "$(cat scripts/sql/function_privileges.sql)"
 
 if [ "$status" -eq 0 ]; then echo "No schema drift."; fi
 exit "$status"
