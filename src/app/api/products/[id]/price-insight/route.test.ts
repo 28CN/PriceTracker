@@ -165,7 +165,7 @@ describe('GET /api/products/:id/price-insight', () => {
   });
 
   it('returns 500 instead of truncating past the hard cap', async () => {
-    const { MAX_DAILY_ROWS } = await import('./route');
+    const { MAX_DAILY_ROWS } = await import('@/lib/priceInsight');
     const rows = Array.from({ length: MAX_DAILY_ROWS + 1 }, (_, i) => dailyRow(LID, i % 365, '1'));
     const { db } = fakeDb({
       products: { data: { id: PID, name: 'K', target_price: null }, error: null },

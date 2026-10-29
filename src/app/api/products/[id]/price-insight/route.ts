@@ -60,10 +60,7 @@ export type LinkStats = {
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DAY_MS = 86_400_000;
-// PostgREST caps each response (1000 rows by default), so daily rows are paged.
-export const PAGE_SIZE = 1000;
-/** Hard safety cap on daily rows. Hitting it returns 500, never a truncated result. */
-export const MAX_DAILY_ROWS = 20_000;
+import { MAX_DAILY_ROWS, PAGE_SIZE } from '@/lib/priceInsight';
 
 const num = (v: unknown) => (v === null || v === undefined ? null : Number(v));
 
