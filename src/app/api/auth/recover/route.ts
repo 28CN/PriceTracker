@@ -6,7 +6,7 @@ import {
   consumeAuthRateLimit,
   normalizeUsername
 } from '@/lib/auth';
-import { appUrl } from '@/lib/email';
+import { absoluteUrl } from '@/lib/siteUrl';
 import { createAdminSupabaseClient } from '@/lib/supabase/admin';
 
 const GENERIC_RESPONSE = {
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
       kind: 'recover_password',
       recipient: account.contact_email,
       payload: {
-        recoverUrl: `${appUrl()}/reset-password?token=${encodeURIComponent(rawToken)}`
+        recoverUrl: absoluteUrl(`/reset-password?token=${encodeURIComponent(rawToken)}`)
       },
       dedupe_key: `recover:${tokenRow.id}`
     });

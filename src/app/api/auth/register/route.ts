@@ -10,7 +10,7 @@ import {
   validatePassword,
   validateUsername
 } from '@/lib/auth';
-import { appUrl } from '@/lib/email';
+import { absoluteUrl } from '@/lib/siteUrl';
 import { createAdminSupabaseClient } from '@/lib/supabase/admin';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
         kind: 'verify_contact',
         recipient: contactEmail,
         payload: {
-          verifyUrl: `${appUrl()}/verify-email?token=${encodeURIComponent(rawToken)}`
+          verifyUrl: absoluteUrl(`/verify-email?token=${encodeURIComponent(rawToken)}`)
         },
         dedupe_key: `verify:${tokenRow.id}`
       });

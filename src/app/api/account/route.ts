@@ -3,7 +3,7 @@ import { parsePhoneNumberFromString, type CountryCode } from 'libphonenumber-js'
 import { NextRequest, NextResponse } from 'next/server';
 
 import { assertSameOrigin, getApiAuth, normalizeUsername } from '@/lib/auth';
-import { appUrl } from '@/lib/email';
+import { absoluteUrl } from '@/lib/siteUrl';
 import { validatePublicSlug } from '@/lib/publicSlug';
 import { createAdminSupabaseClient } from '@/lib/supabase/admin';
 
@@ -245,7 +245,7 @@ export async function PATCH(request: NextRequest) {
         kind: 'verify_contact',
         recipient: contactEmail,
         payload: {
-          verifyUrl: `${appUrl()}/verify-email?token=${encodeURIComponent(rawToken)}`
+          verifyUrl: absoluteUrl(`/verify-email?token=${encodeURIComponent(rawToken)}`)
         },
         dedupe_key: `verify:${tokenRow.id}`
       });

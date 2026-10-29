@@ -5,11 +5,6 @@ type SendEmailInput = {
   text: string;
 };
 
-export function appUrl(): string {
-  return (process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || 'http://localhost:3000')
-    .replace(/\/+$/, '');
-}
-
 export function escapeHtml(value: unknown): string {
   return String(value ?? '')
     .replaceAll('&', '&amp;')
