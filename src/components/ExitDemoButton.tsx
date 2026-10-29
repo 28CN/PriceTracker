@@ -6,7 +6,7 @@ export const DEMO_EXIT_ACTION = '/demo/exit';
 
 export default function ExitDemoButton({
   className = 'button demo-exit',
-  label = 'Exit demo',
+  label = 'Leave sample',
   children
 }: {
   className?: string;

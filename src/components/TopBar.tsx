@@ -1,4 +1,4 @@
-import { ChartNoAxesCombined, LogIn, Settings2 } from 'lucide-react';
+import { ChartNoAxesCombined, Settings2 } from 'lucide-react';
 import Link from 'next/link';
 
 import { getViewer } from '@/lib/auth';
@@ -16,7 +16,7 @@ export default async function TopBar() {
     <header className="topbar">
       <div className="topbar-inner">
         {viewer?.isDemo ? (
-          <ExitDemoButton className="brand-link brand-exit" label="Exit demo and go to PriceTracker home">
+          <ExitDemoButton className="brand-link brand-exit" label="Leave the sample and go to PriceTracker home">
           <span className="brand-mark" aria-hidden="true">
             <ChartNoAxesCombined size={21} />
           </span>
@@ -41,8 +41,7 @@ export default async function TopBar() {
               Manage
             </Link>
           ) : (
-            <Link className="button topbar-manage" href="/login" aria-label="Sign in">
-              <LogIn size={16} aria-hidden="true" />
+            <Link className="button topbar-signin" href="/login">
               Sign in
             </Link>
           )}
@@ -61,9 +60,11 @@ export default async function TopBar() {
       </div>
       {viewer?.isDemo ? (
         <div className="demo-banner" role="status">
-          <strong>Demo mode: read-only, resets on each visit.</strong> <Link href="/register">Create your own free account</Link> to track
-          products.
-          <ExitDemoButton />
+          <span className="demo-banner-text">You&rsquo;re looking at a sample watchlist.</span>
+          <span className="demo-banner-actions">
+            <Link className="demo-banner-cta" href="/register">Make my own list</Link>
+            <ExitDemoButton />
+          </span>
         </div>
       ) : null}
     </header>
