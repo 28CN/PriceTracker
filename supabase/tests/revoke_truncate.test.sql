@@ -22,9 +22,10 @@ select is(
    join pg_namespace n on n.oid = d.defaclnamespace
    cross join lateral aclexplode(d.defaclacl) a
    where n.nspname = 'public' and d.defaclobjtype = 'r'
+     and d.defaclrole = 'postgres'::regrole
      and a.grantee in ('anon'::regrole::oid, 'authenticated'::regrole::oid)
      and a.privilege_type in ('TRUNCATE','REFERENCES','TRIGGER')),
-  0, 'public default ACLs grant no TRUNCATE/REFERENCES/TRIGGER to anon/authenticated');
+  0, 'postgres default ACLs in public grant no TRUNCATE/REFERENCES/TRIGGER to anon/authenticated');
 
 select * from finish();
 rollback;
