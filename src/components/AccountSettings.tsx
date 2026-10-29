@@ -6,6 +6,9 @@ import { FormEvent, useMemo, useRef, useState } from 'react';
 
 import { validatePublicSlug } from '@/lib/publicSlug';
 import { createBrowserSupabaseClient } from '@/lib/supabase/browser';
+import { EMAIL_DISABLED_MESSAGE, isEmailUiEnabled } from '@/lib/emailFeature';
+
+const EMAIL_UI_ENABLED = isEmailUiEnabled();
 
 type FieldName =
   | 'displayName'
@@ -116,14 +119,20 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
         bio: form.get('bio'),
         watchlistVisibility: visibility,
         publicSlug,
-        contactEmail: form.get('contactEmail'),
+        contactEmail: EMAIL_UI_ENABLED ? form.get('contactEmail') : initial.contactEmail,
         phone: form.get('phone'),
         phoneCountry: form.get('phoneCountry'),
         allowProductImprovement: form.get('allowProductImprovement') === 'on',
-        targetPriceEmail: form.get('targetPriceEmail') === 'on',
-        popularDealsEmail: form.get('popularDealsEmail') === 'on',
-        personalisedRecommendationsEmail:
-          form.get('personalisedRecommendationsEmail') === 'on',
+        // Disabled inputs are not submitted, so keep the saved values while email is off.
+        targetPriceEmail: EMAIL_UI_ENABLED
+          ? form.get('targetPriceEmail') === 'on'
+          : initial.targetPriceEmail,
+        popularDealsEmail: EMAIL_UI_ENABLED
+          ? form.get('popularDealsEmail') === 'on'
+          : initial.popularDealsEmail,
+        personalisedRecommendationsEmail: EMAIL_UI_ENABLED
+          ? form.get('personalisedRecommendationsEmail') === 'on'
+          : initial.personalisedRecommendationsEmail,
         digestFrequency: 'weekly',
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || initial.timezone
       })
@@ -355,10 +364,13 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
                 name="contactEmail"
                 type="email"
                 defaultValue={initial.contactEmail}
+                disabled={!EMAIL_UI_ENABLED}
                 placeholder="you@example.com"
                 aria-invalid={Boolean(fieldErrors.contactEmail)}
               />
-              {fieldErrors.contactEmail ? (
+              {!EMAIL_UI_ENABLED ? (
+                <small className="email-disabled-note">{EMAIL_DISABLED_MESSAGE}</small>
+              ) : fieldErrors.contactEmail ? (
                 <small className="field-error">{fieldErrors.contactEmail}</small>
               ) : (
                 <small>
@@ -447,6 +459,7 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
         <section className="settings-section">
           <span className="eyebrow">Email preferences</span>
           <h2>Choose what reaches your inbox</h2>
+          {!EMAIL_UI_ENABLED ? <p className="email-disabled-note" role="note">{EMAIL_DISABLED_MESSAGE}</p> : null}
           <label className="choice-row">
             <span>
               <strong>Target price alerts</strong>
@@ -456,6 +469,7 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
               name="targetPriceEmail"
               type="checkbox"
               defaultChecked={initial.targetPriceEmail}
+              disabled={!EMAIL_UI_ENABLED}
             />
           </label>
           <label className="choice-row">
@@ -467,6 +481,7 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
               name="popularDealsEmail"
               type="checkbox"
               defaultChecked={initial.popularDealsEmail}
+              disabled={!EMAIL_UI_ENABLED}
             />
           </label>
           <label className="choice-row">
@@ -478,6 +493,7 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
               name="personalisedRecommendationsEmail"
               type="checkbox"
               defaultChecked={initial.personalisedRecommendationsEmail}
+              disabled={!EMAIL_UI_ENABLED}
             />
           </label>
           <label className="choice-row">

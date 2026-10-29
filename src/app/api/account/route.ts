@@ -3,6 +3,7 @@ import { parsePhoneNumberFromString, type CountryCode } from 'libphonenumber-js'
 import { NextRequest, NextResponse } from 'next/server';
 
 import { assertSameOrigin, normalizeUsername } from '@/lib/auth';
+import { EMAIL_DISABLED_MESSAGE, accountUpdateNeedsEmail, isEmailEnabled } from '@/lib/emailFeature';
 import { absoluteUrl } from '@/lib/siteUrl';
 import { validatePublicSlug } from '@/lib/publicSlug';
 import { createAdminSupabaseClient } from '@/lib/supabase/admin';
@@ -94,6 +95,32 @@ export async function PATCH(request: NextRequest) {
       { error: 'Enter a valid email address.', field: 'contactEmail' },
       { status: 400 }
     );
+  }
+
+  if (!isEmailEnabled()) {
+    const [{ data: prevPrivate }, { data: prevPrefs }] = await Promise.all([
+      admin.from('account_private').select('contact_email').eq('user_id', auth.userId).maybeSingle(),
+      admin
+        .from('notification_preferences')
+        .select('target_price_email, popular_deals_email, personalised_recommendations_email')
+        .eq('user_id', auth.userId)
+        .maybeSingle()
+    ]);
+    if (
+      accountUpdateNeedsEmail(
+        { contactEmail: prevPrivate?.contact_email ?? null, prefs: prevPrefs },
+        {
+          contactEmail,
+          prefs: {
+            target_price_email: body.targetPriceEmail === true,
+            popular_deals_email: body.popularDealsEmail === true,
+            personalised_recommendations_email: body.personalisedRecommendationsEmail === true
+          }
+        }
+      )
+    ) {
+      return NextResponse.json({ error: EMAIL_DISABLED_MESSAGE }, { status: 503 });
+    }
   }
 
   const rawPhone = typeof body.phone === 'string' ? body.phone.trim() : '';
@@ -219,7 +246,7 @@ export async function PATCH(request: NextRequest) {
   const emailNeedsVerification =
     Boolean(contactEmail) &&
     (previous?.contact_email !== contactEmail || !previous?.contact_email_verified_at);
-  if (emailNeedsVerification && contactEmail) {
+  if (emailNeedsVerification && contactEmail && isEmailEnabled()) {
     const rawToken = randomBytes(32).toString('base64url');
     const tokenHash = createHash('sha256').update(rawToken).digest('hex');
     await admin

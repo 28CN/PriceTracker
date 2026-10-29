@@ -10,6 +10,7 @@ import {
   validatePassword,
   validateUsername
 } from '@/lib/auth';
+import { isEmailEnabled } from '@/lib/emailFeature';
 import { absoluteUrl } from '@/lib/siteUrl';
 import { createAdminSupabaseClient } from '@/lib/supabase/admin';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
@@ -92,7 +93,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (contactEmail) {
+  // Registration itself is unaffected by the email flag; only the verification email is skipped.
+  if (contactEmail && isEmailEnabled()) {
     const rawToken = randomBytes(32).toString('base64url');
     const tokenHash = createHash('sha256').update(rawToken).digest('hex');
     const { data: tokenRow } = await admin

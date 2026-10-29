@@ -6,6 +6,7 @@ import {
   consumeAuthRateLimit,
   normalizeUsername
 } from '@/lib/auth';
+import { EMAIL_DISABLED_MESSAGE, isEmailEnabled } from '@/lib/emailFeature';
 import { absoluteUrl } from '@/lib/siteUrl';
 import { createAdminSupabaseClient } from '@/lib/supabase/admin';
 
@@ -15,6 +16,9 @@ const GENERIC_RESPONSE = {
 };
 
 export async function POST(request: NextRequest) {
+  if (!isEmailEnabled()) {
+    return NextResponse.json({ error: EMAIL_DISABLED_MESSAGE }, { status: 503 });
+  }
   if (!assertSameOrigin(request)) {
     return NextResponse.json({ error: 'Invalid request origin.' }, { status: 403 });
   }

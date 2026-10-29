@@ -3,6 +3,9 @@
 import { Eye, EyeOff, LockKeyhole, UserRound } from 'lucide-react';
 import Link from 'next/link';
 import { FormEvent, useState } from 'react';
+import { EMAIL_DISABLED_MESSAGE, isEmailUiEnabled } from '@/lib/emailFeature';
+
+const EMAIL_UI_ENABLED = isEmailUiEnabled();
 
 type AuthPanelProps = {
   mode: 'login' | 'register';
@@ -143,8 +146,13 @@ export default function AuthPanel({ mode, nextPath }: AuthPanelProps) {
                   type="email"
                   autoComplete="email"
                   placeholder="you@example.com"
+                  disabled={!EMAIL_UI_ENABLED}
                 />
-                <small>Needed for password recovery and email price alerts.</small>
+                <small className={EMAIL_UI_ENABLED ? undefined : 'email-disabled-note'}>
+                  {EMAIL_UI_ENABLED
+                    ? 'Needed for password recovery and email price alerts.'
+                    : EMAIL_DISABLED_MESSAGE}
+                </small>
               </label>
               <label className="field">
                 <span>Mobile number</span>
@@ -170,7 +178,13 @@ export default function AuthPanel({ mode, nextPath }: AuthPanelProps) {
           </details>
         ) : (
           <div className="auth-form-link">
-            <Link href="/forgot-password">Forgot password?</Link>
+            {EMAIL_UI_ENABLED ? (
+              <Link href="/forgot-password">Forgot password?</Link>
+            ) : (
+              <span className="link-disabled" aria-disabled="true" title={EMAIL_DISABLED_MESSAGE}>
+                Forgot password? <small>{EMAIL_DISABLED_MESSAGE}</small>
+              </span>
+            )}
           </div>
         )}
 
