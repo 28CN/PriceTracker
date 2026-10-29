@@ -15,7 +15,7 @@
 -- nothing and touches no rows (price_history data is untouched).
 
 -- service_role: full access on all application tables.
-grant select, insert, update, delete, truncate, references, trigger on
+grant select, insert, update, delete, references, trigger on
   public.profiles,
   public.account_private,
   public.user_security,
@@ -52,3 +52,9 @@ grant select on public.user_roles, public.user_security to authenticated;
 -- service_role / security definer functions): email_verification_tokens,
 -- price_alert_states, email_outbox, email_delivery_events, auth_rate_limits,
 -- app_settings, crawl_jobs.
+
+-- No role needs TRUNCATE (it bypasses RLS and row triggers); nothing in the
+-- app, scraper or workflows runs it. Remove it from service_role too.
+revoke truncate on all tables in schema public from service_role;
+alter default privileges for role postgres in schema public
+  revoke truncate on tables from service_role;
