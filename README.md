@@ -30,36 +30,36 @@ shows the cheapest shop up front and the full list when you tap a product.
 
 ```mermaid
 flowchart LR
-  user([Browser]) -->|HTTPS| next
+  user(["Browser"]) -->|HTTPS| next
 
-  subgraph vercel[Vercel]
-    next[Next.js 15 app<br/>pages + API routes]
+  subgraph vercel["Vercel"]
+    next["Next.js 15 app · pages + API routes"]
   end
 
-  subgraph supabase[Supabase]
-    auth[Auth<br/>cookie sessions]
-    db[(Postgres<br/>RLS on every table)]
-    outbox[[email_outbox]]
+  subgraph supabase["Supabase"]
+    auth["Auth · cookie sessions"]
+    db[("Postgres · RLS on every table")]
+    outbox[["email_outbox"]]
     db --- outbox
   end
 
-  subgraph gha[GitHub Actions]
-    crawler[Crawler<br/>Python + Playwright<br/>twice a week / on demand]
-    worker[Email worker<br/>every 10 min]
-    ci[CI: types, lint, Vitest,<br/>pytest, schema drift, pgTAP]
+  subgraph gha["GitHub Actions"]
+    crawler["Crawler · Python + Playwright · twice a week or on demand"]
+    worker["Email worker · every 10 min"]
+    ci["CI · types, lint, Vitest, pytest, schema drift, pgTAP"]
   end
 
-  resend[Resend]
+  resend["Resend"]
 
-  next -->|user session, RLS applies| db
+  next -->|"user session, RLS applies"| db
   next --> auth
-  next -->|service role, server only| db
-  next -->|refresh button: workflow_dispatch| crawler
-  crawler -->|service role: prices| db
-  db -->|price triggers queue alerts| outbox
-  worker -->|POST /api/internal/email-worker<br/>bearer secret| next
-  next -->|only when email_enabled| resend
-  resend -->|delivery webhooks| next
+  next -->|"service role, server only"| db
+  next -->|"refresh button · workflow_dispatch"| crawler
+  crawler -->|"service role · prices"| db
+  db -->|"price triggers queue alerts"| outbox
+  worker -->|"POST /api/internal/email-worker · bearer secret"| next
+  next -->|"only when email_enabled"| resend
+  resend -->|"delivery webhooks"| next
 ```
 
 - **Next.js on Vercel** serves the pages and API routes. Reads go through the
