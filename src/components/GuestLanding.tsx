@@ -13,15 +13,10 @@ export default function GuestLanding({ featured }: { featured: ProductView[] }) 
     <main className="guest-home">
       <GlassSurface className="guest-hero">
         <div className="guest-hero-copy">
-          <span className="eyebrow">Australian price tracking</span>
           <h1>
             <span>Watch the <em>price.</em></span>
             <span>Jump on the <em>deal.</em></span>
           </h1>
-          <p>
-            Save products from supported retailers, set your target price and keep
-            the latest offers together in one watchlist.
-          </p>
           <div className="guest-hero-actions">
             <Link className="button" href="/register">Create a free account</Link>
             <Link className="button secondary" href="/login">Sign in</Link>
@@ -38,25 +33,21 @@ export default function GuestLanding({ featured }: { featured: ProductView[] }) 
         <GlassSurface as="article">
           <ListPlus size={21} />
           <strong>Add a product</strong>
-          <span>Paste links from one or more shops.</span>
         </GlassSurface>
         <GlassSurface as="article">
           <LineChart size={21} />
           <strong>Compare prices</strong>
-          <span>See the latest price from every tracked retailer.</span>
         </GlassSurface>
         <GlassSurface as="article">
           <BellRing size={21} />
-          <strong>Get one useful alert</strong>
-          <span>Get alerted when products reach your target (email coming soon).</span>
+          <strong>Get the deal</strong>
         </GlassSurface>
       </section>
 
       <GlassSurface className="guest-retailers">
         <div className="guest-section-heading">
           <div>
-            <span className="eyebrow"><Store size={14} /> Supported retailers</span>
-            <h2>Track shops you already use</h2>
+            <h2><Store size={18} aria-hidden="true" /> Shops we check</h2>
           </div>
           <span>{SUPPORTED_RETAILERS.length} supported</span>
         </div>
@@ -71,7 +62,7 @@ export default function GuestLanding({ featured }: { featured: ProductView[] }) 
       </GlassSurface>
 
       <GlassSurface className="guest-featured">
-        <span className="eyebrow">Ideas to get started</span>
+        <h2>Popular picks</h2>
         <FeaturedShowcase products={featured} />
       </GlassSurface>
     </main>

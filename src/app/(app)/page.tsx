@@ -85,11 +85,8 @@ export default async function HomePage() {
             <circle cx="65" cy="76" r="6" fill="var(--brand)" opacity=".35" />
             <circle cx="115" cy="76" r="6" fill="var(--brand)" opacity=".35" />
           </svg>
-          <h2>Your watchlist is ready</h2>
-          <p className="hint">
-            Nothing tracked yet. Use <Link href="/manage">Manage</Link> to add a product and its shop
-            links.
-          </p>
+          <h2>Nothing tracked yet</h2>
+          <Link className="button" href="/manage">Add a product</Link>
         </div>
       ) : null}
 

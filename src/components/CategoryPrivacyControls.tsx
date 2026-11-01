@@ -1,5 +1,6 @@
 'use client';
 
+import InfoTip from './InfoTip';
 import { Eye, EyeOff } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -36,10 +37,9 @@ export default function CategoryPrivacyControls({
 
   return (
     <div className="category-privacy-compact">
-      <p className="hint">
-        When your watchlist is public, categories are shown unless you hide them.
-        Products without a category stay visible.
-      </p>
+      <InfoTip label="About hidden categories">
+        On a public list, categories show unless you hide them. Products without a category always show.
+      </InfoTip>
       <div className="category-privacy-list">
         {categories.map((category) => (
           <label key={category.id} className="category-privacy-row">

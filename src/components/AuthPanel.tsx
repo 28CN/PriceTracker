@@ -76,13 +76,7 @@ export default function AuthPanel({ mode, nextPath }: AuthPanelProps) {
         <span className="auth-mark" aria-hidden="true">
           <LockKeyhole size={22} />
         </span>
-        <span className="eyebrow">Your watchlist, your account</span>
         <h1 id="auth-title">{registering ? 'Create your account' : 'Welcome back'}</h1>
-        <p>
-          {registering
-            ? 'Start with the essentials. You can add alerts and profile details later.'
-            : 'Sign in to manage tracked products and price alerts.'}
-        </p>
       </div>
 
       <form className="auth-form" onSubmit={submit}>

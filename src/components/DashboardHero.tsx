@@ -4,7 +4,6 @@ import { AnimatePresence, motion } from 'framer-motion';
 import {
   ArrowUpRight,
   BadgeDollarSign,
-  BellRing,
   CheckCircle2,
   ChevronRight,
   UserRound,
@@ -21,13 +20,11 @@ import type { ProductView } from '@/lib/types';
 export default function DashboardHero({
   products,
   accountHref,
-  title = 'Your tracked prices',
-  eyebrow = 'Price watchlist'
+  title = 'Your tracked prices'
 }: {
   products: ProductView[];
   accountHref: string | null;
   title?: string;
-  eyebrow?: string;
 }) {
   const stores = new Set(
     products.flatMap((product) =>
@@ -55,10 +52,6 @@ export default function DashboardHero({
     <>
       <section className="dashboard-overview">
         <div className="overview-copy">
-        <span className="eyebrow">
-            <BellRing size={14} aria-hidden="true" />
-            {eyebrow}
-        </span>
           <h1>{title}</h1>
           <p>{products.length} products across {stores} retailers</p>
       </div>
