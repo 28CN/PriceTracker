@@ -147,7 +147,7 @@ export default function AddProductForm({ categories }: { categories: CategoryVie
       </div>
 
       <div className="field">
-        <label htmlFor="target-price">Target price (optional)</label>
+        <label htmlFor="target-price">Goal price (optional)</label>
         <input
           id="target-price"
           type="number"

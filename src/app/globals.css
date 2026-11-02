@@ -4390,3 +4390,45 @@ textarea:disabled {
 .info-tip-bubble[hidden] {
   display: none;
 }
+
+.pc-step { fill: none; stroke: var(--brand); stroke-width: 2; stroke-linejoin: round; opacity: 0.85; }
+.pc-step-gap { stroke-dasharray: 3 4; opacity: 0.55; }
+
+/* Card header: Edit sits top-right so the price block reaches the right edge */
+.card-head-row { position: relative; }
+.card-head-row .card-title-row { padding-right: 76px; }
+.card-head-row .card-edit-btn { position: absolute; top: 0; right: 0; margin: 0; }
+.card-head-row .card-chevron { position: absolute; right: 4px; bottom: 0; }
+.card-meta-left { gap: 6px; }
+.save-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--success) 14%, transparent);
+  color: var(--success);
+  font-size: 13px;
+  font-weight: 700;
+}
+.row.is-best {
+  margin-inline: -8px;
+  padding-inline: 8px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--success) 9%, transparent);
+}
+.best-tag {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--success);
+  color: var(--surface-strong);
+  font-size: 11px;
+  font-weight: 700;
+}
+@media (min-width: 760px) {
+  .card-head-row .card-head { flex-direction: row; align-items: center; gap: 18px; }
+  .card-head-row .card-title-row { flex: 1; padding-right: 0; }
+  .card-head-row .card-meta-row { width: auto; flex: 0 0 auto; align-items: center; padding-top: 30px; }
+  .card-head-row .card-chevron { display: none; }
+  .price { font-size: 26px; }
+}
+.search-fallback { display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; }

@@ -222,7 +222,7 @@ export default function EditProductForm({ product, onClose }: Props) {
       </div>
 
       <div className="field">
-        <label htmlFor={`edit-target-${product.id}`}>Target price (optional)</label>
+        <label htmlFor={`edit-target-${product.id}`}>Goal price (optional)</label>
         <input
           id={`edit-target-${product.id}`}
           type="number"

@@ -1,6 +1,6 @@
 'use client';
 
-import { LoaderCircle, Search } from 'lucide-react';
+import { ExternalLink, LoaderCircle, Search } from 'lucide-react';
 import { FormEvent, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
@@ -28,6 +28,7 @@ export default function ProductSearch({ trackedUrls }: { trackedUrls: string[] }
   const [added, setAdded] = useState<Set<string>>(() => new Set());
   const [message, setMessage] = useState<string | null>(null);
   const [configured, setConfigured] = useState(true);
+  const [searched, setSearched] = useState<string | null>(null);
 
   async function search(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -35,6 +36,7 @@ export default function ProductSearch({ trackedUrls }: { trackedUrls: string[] }
     if (!nextQuery) return;
     setSearching(true);
     setMessage(null);
+    setSearched(null);
     const response = await fetch('/api/search', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -46,18 +48,18 @@ export default function ProductSearch({ trackedUrls }: { trackedUrls: string[] }
     setSearching(false);
     if (!response.ok) {
       setHits([]);
-      setMessage(result?.error || 'Product search is unavailable right now.');
+      setSearched(nextQuery);
       return;
     }
     if (result?.configured === false) {
       setConfigured(false);
       setHits([]);
-      setMessage('Product search is not configured yet. Paste a shop link instead.');
+      setSearched(nextQuery);
       return;
     }
     const results = result?.results || [];
     setHits(results);
-    setMessage(results.length === 0 ? 'No supported shop pages found for that search.' : null);
+    setSearched(results.length === 0 ? nextQuery : null);
   }
 
   async function track(hit: SearchHit) {
@@ -87,8 +89,7 @@ export default function ProductSearch({ trackedUrls }: { trackedUrls: string[] }
   return (
     <section className="product-search card">
       <div>
-        <span className="eyebrow"><Search size={14} /> Search</span>
-        <h2>Find a product</h2>
+        <h2><Search size={18} aria-hidden="true" /> Find a product</h2>
       </div>
       <form onSubmit={search}>
         <input
@@ -104,6 +105,16 @@ export default function ProductSearch({ trackedUrls }: { trackedUrls: string[] }
         </button>
       </form>
       {message ? <p className="hint">{message}</p> : null}
+      {searched ? (
+        <a
+          className="button secondary search-fallback"
+          href={`https://www.google.com/search?tbm=shop&q=${encodeURIComponent(searched)}`}
+          target="_blank"
+          rel="noreferrer"
+        >
+          Search shops for “{searched}” <ExternalLink size={14} aria-hidden="true" />
+        </a>
+      ) : null}
       {configured && hits.length > 0 ? (
         <div className="product-search-results">
           {hits.map((hit) => {
