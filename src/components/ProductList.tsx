@@ -172,7 +172,7 @@ function ProductCard({ product, readOnly }: { product: ProductView; readOnly: bo
         >
           {product.links.length === 0 ? (
             <p className="hint">
-              {readOnly ? 'No shop links are available.' : 'No links yet. Use Edit to add shop URLs.'}
+              {readOnly ? 'No shop links are available.' : 'No shop links yet.'}
             </p>
           ) : null}
 
@@ -244,7 +244,7 @@ export default function ProductList({
   if (products.length === 0) {
     return (
       <div className="card empty">
-        <p className="hint">Nothing tracked yet. Head to Manage to add your first product.</p>
+        <p className="hint">Nothing tracked yet.</p>
       </div>
     );
   }

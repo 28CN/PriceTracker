@@ -165,7 +165,7 @@ export default function AddProductForm({ categories }: { categories: CategoryVie
           Shop links
         </p>
         <span className="hint">
-          {links.length} / {MAX_LINKS} rows
+          {links.length} / {MAX_LINKS}
         </span>
       </div>
 
@@ -215,7 +215,7 @@ export default function AddProductForm({ categories }: { categories: CategoryVie
 
       {!canAddMore ? (
         <p className="hint" style={{ marginTop: 8 }}>
-          Row limit reached. Save first, then add more links from Manage.
+          Limit reached. Save, then add more later.
         </p>
       ) : null}
 

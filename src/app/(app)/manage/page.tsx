@@ -1,4 +1,3 @@
-import { LayoutDashboard } from 'lucide-react';
 import { redirect } from 'next/navigation';
 
 import ManageWorkspace from '@/components/ManageWorkspace';
@@ -32,11 +31,7 @@ export default async function ManagePage() {
     <main>
       <section className="manage-hero">
         <div>
-          <span className="eyebrow">
-            <LayoutDashboard size={14} /> Watchlist tools
-          </span>
-          <h1>Add and edit tracked products.</h1>
-          <p>Search a shop, paste links, or fix products that need attention.</p>
+          <h1>Add and edit products</h1>
         </div>
       </section>
 

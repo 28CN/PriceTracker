@@ -1,0 +1,16 @@
+---
+description: Minimal UI copy rules for any change to screens or UI text
+globs: src/**/*.tsx
+alwaysApply: false
+---
+
+# Minimal copy
+
+Follow `docs/DESIGN.md` → "Minimal copy" and run its review checklist.
+
+- Let layout, hierarchy, spacing and one clear primary action explain the screen.
+- No eyebrows, restating subtitles, slogans, tutorial paragraphs or per-section help.
+- Optional context: `InfoTip` (accessible button + tooltip), not always-visible text.
+- Keep form labels, accessible names and error/status messages.
+- Destructive or irreversible actions keep a visible consequence warning and confirmation.
+- Plain everyday words, text buttons over ambiguous icons.

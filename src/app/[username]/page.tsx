@@ -83,7 +83,6 @@ export default async function PublicWatchlistPage({ params }: PageProps) {
       <DashboardHero
         products={products}
         accountHref={isOwner ? '/account' : '/login'}
-        eyebrow={isOwner ? 'Your public watchlist' : 'Public watchlist'}
         title={`${name}'s tracked prices`}
       />
       {profile.bio ? <p className="public-profile-bio">{profile.bio}</p> : null}

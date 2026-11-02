@@ -112,9 +112,7 @@ export default async function AccountPage() {
   return (
     <main>
       <header className="account-page-heading">
-        <span className="eyebrow">Account</span>
-        <h1>Profile, privacy and alerts</h1>
-        <p>Control what is public and choose which notifications are worth sending.</p>
+        <h1>Account</h1>
         {viewer.isAdmin ? (
           <Link className="button secondary" href="/manage">
             Manage featured products
@@ -123,7 +121,6 @@ export default async function AccountPage() {
       </header>
       <div className="account-settings">
         <section className="settings-section alert-status">
-          <span className="eyebrow">Alert status</span>
           <h2>Target price email</h2>
           <ul>
             <li>
@@ -135,11 +132,6 @@ export default async function AccountPage() {
             </li>
             <li>{describeLatestAlert(latestAlert)}</li>
           </ul>
-          <p className="hint">
-            Before your own sending domain is verified, mail can only go to the Resend
-            account address. A weekly note is queued on the first check from Wednesday
-            onward, Sydney time.
-          </p>
         </section>
       </div>
       <AccountSettings initial={initial} />

@@ -1,5 +1,6 @@
 'use client';
 
+import InfoTip from './InfoTip';
 import { useEffect, useMemo, useState } from 'react';
 
 import type { PriceInsightResponse } from '@/lib/priceInsightTypes';
@@ -157,12 +158,12 @@ export default function PriceChart({ productId, days = 180 }: { productId: strin
           <span className="price-chart-meta pc-target-key">Target {formatMoney(product.targetPrice)}</span>
         ) : null}
         {periodGeo ? (
-          <span className="price-chart-meta">{periodGeo.coverage}</span>
+          <InfoTip label="How often we checked">{periodGeo.coverage}</InfoTip>
         ) : (
           <span className="price-chart-meta">Last {range.days} days</span>
         )}
         {periodGeo?.hasUnchecked ? <span className="price-chart-meta pc-hatch-key">Not checked</span> : null}
-        {geo?.hasGap ? <span className="price-chart-meta pc-gap-key">Dotted: not checked for over a week</span> : null}
+        {geo?.hasGap ? <span className="price-chart-meta pc-gap-key">Not checked</span> : null}
       </figcaption>
 
       {periodGeo ? (
