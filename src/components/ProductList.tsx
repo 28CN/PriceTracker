@@ -1,7 +1,7 @@
 'use client';
 
 import { AnimatePresence, motion } from 'framer-motion';
-import { CheckCircle2, ChevronDown, ExternalLink, Pencil, Target } from 'lucide-react';
+import { CheckCircle2, ChevronDown, ExternalLink, Pencil } from 'lucide-react';
 import { useState } from 'react';
 
 import EditProductForm from '@/components/EditProductForm';
@@ -32,6 +32,13 @@ function ProductCard({ product, readOnly }: { product: ProductView; readOnly: bo
       link.latestPrice !== null &&
       (link.retailer === product.lowestRetailer || link.latestPrice === product.lowestPrice)
   );
+  const livePrices = activeLinks
+    .filter((link) => !link.priceStale && link.latestPrice !== null)
+    .map((link) => link.latestPrice as number);
+  const saving =
+    product.lowestPrice !== null && livePrices.length > 1 && Math.max(...livePrices) - product.lowestPrice >= 0.01
+      ? Math.max(...livePrices) - product.lowestPrice
+      : null;
   const staleLink = cheapestStaleLink(product.links);
   const headlineStale = !allUnavailable && !bestLink && staleLink !== null;
   const headlineLink = allUnavailable
@@ -115,13 +122,11 @@ function ProductCard({ product, readOnly }: { product: ProductView; readOnly: bo
           <div className="card-meta-row">
             <div className="card-meta-left">
               {hitsTarget ? (
-                <span className="hit"><CheckCircle2 size={13} /> Under target</span>
+                <span className="hit"><CheckCircle2 size={13} /> Below goal</span>
               ) : null}
-              {product.targetPrice !== null ? (
-                <span className="price-note"><Target size={13} /> Target {formatMoney(product.targetPrice)}</span>
-              ) : (
-                <span className="price-note muted-empty">No target</span>
-              )}
+              {saving !== null ? (
+                <span className="save-pill">Save {formatMoney(saving)}</span>
+              ) : null}
             </div>
 
             <div className="price-block">
@@ -179,11 +184,16 @@ function ProductCard({ product, readOnly }: { product: ProductView; readOnly: bo
           {product.links.length > 0 ? <PriceChart productId={product.id} /> : null}
 
           {product.links.map((link) => (
-            <div key={link.id} className={`row ${link.isActive ? '' : 'inactive'}`}>
+            <div key={link.id} className={`row ${link.isActive ? '' : 'inactive'}${
+              saving !== null && !link.priceStale && link.latestPrice === product.lowestPrice ? ' is-best' : ''
+            }`}>
               <div className="row-main">
                 <div className="row-shop">
                   <RetailerLogo retailer={link.retailer} url={link.url} />
                   <span>{link.retailer}</span>
+                  {saving !== null && !link.priceStale && link.latestPrice === product.lowestPrice ? (
+                    <span className="best-tag">Cheapest</span>
+                  ) : null}
                   {!hasCrawlerSupport(link.url || link.retailer) ? (
                     <span
                       className="pending-support"

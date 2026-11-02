@@ -70,7 +70,7 @@ export default function FeaturedShowcase({ products }: { products: ProductView[]
           <div className="showcase-copy">
             <h3>{item.name}</h3>
             {item.targetPrice !== null ? (
-              <p className="showcase-target">Target {formatMoney(item.targetPrice)}</p>
+              <p className="showcase-target">Goal {formatMoney(item.targetPrice)}</p>
             ) : null}
             <div className="showcase-offers">
               {item.offers.map((offer) => (

@@ -67,7 +67,7 @@ export default function DashboardHero({
               <BadgeDollarSign size={20} aria-hidden="true" />
             </span>
             <span className="target-summary-copy">
-              <strong>{deals.length} at target</strong>
+              <strong>{deals.length} below goal</strong>
               <span>{deals.length > 0 ? 'View ready-to-buy items' : 'No matches yet'}</span>
             </span>
             <ChevronRight className="target-summary-arrow" size={18} aria-hidden="true" />
@@ -109,14 +109,14 @@ export default function DashboardHero({
               <header className="deal-dialog-head">
                 <div>
                   <span className="eyebrow"><CheckCircle2 size={14} /> Ready to buy</span>
-                  <h2 id="deal-dialog-title">Items at your target</h2>
-                  <p>{deals.length} {deals.length === 1 ? 'product is' : 'products are'} at or below target.</p>
+                  <h2 id="deal-dialog-title">Below your goal</h2>
+                  <p>{deals.length} {deals.length === 1 ? 'product is' : 'products are'} at or below your goal.</p>
                 </div>
                 <button
                   type="button"
                   className="icon-button"
                   onClick={() => setIsOpen(false)}
-                  aria-label="Close target-price items"
+                  aria-label="Close"
                   title="Close"
                   autoFocus
                 >
@@ -142,7 +142,7 @@ export default function DashboardHero({
                       <div className="deal-row-main">
                         <strong>{product.name}</strong>
                         <span>{product.categoryName || 'Uncategorised'} · {product.lowestRetailer}</span>
-                        <small>Target {formatMoney(product.targetPrice)}</small>
+                        <small>Goal {formatMoney(product.targetPrice)}</small>
                       </div>
                       <div className="deal-row-price">
                         <strong>{formatMoney(product.lowestPrice)}</strong>
@@ -159,8 +159,7 @@ export default function DashboardHero({
                 {deals.length === 0 ? (
                   <div className="deal-empty">
                     <BadgeDollarSign size={30} aria-hidden="true" />
-                    <strong>No target matches yet</strong>
-                    <p>We will surface products here as soon as a tracked price reaches its target.</p>
+                    <strong>Nothing below goal yet</strong>
                   </div>
                 ) : null}
               </div>

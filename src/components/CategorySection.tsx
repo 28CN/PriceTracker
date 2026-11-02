@@ -98,7 +98,7 @@ export default function CategorySection({
             {dealCount > 0 && !isReordering ? (
               <span className="category-deals">
                 <Sparkles size={12} aria-hidden="true" />
-                {dealCount} under target
+                {dealCount} below goal
               </span>
             ) : null}
           </span>
@@ -120,7 +120,7 @@ export default function CategorySection({
 
       {hasOpened ? (
         <div className="category-body" hidden={!showBody}>
-          <ProductList products={products} readOnly={readOnly} />
+          <ProductList products={[...products].sort((a, b) => Number(hitsTarget(b)) - Number(hitsTarget(a)))} readOnly={readOnly} />
         </div>
       ) : null}
     </section>
