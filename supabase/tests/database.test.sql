@@ -85,7 +85,8 @@ select is(
   -- so count any outbox row queued for alice rather than one specific kind.
   (select count(*)::int from public.email_outbox
    where user_id = '11111111-1111-4111-8111-111111111111'),
-  1,
+  -- Weekly notes only queue from Wednesday onward, Sydney time.
+  case when extract(isodow from timezone('Australia/Sydney', now())) < 3 then 0 else 1 end,
   'email on: the target-price alert is queued'
 );
 
