@@ -74,8 +74,8 @@ export default function PriceChart({ productId, days = 180 }: { productId: strin
     let lo = Math.min(...prices);
     let hi = Math.max(...prices);
     const span = hi - lo || hi * 0.1 || 1;
-    lo -= span * 0.15;
-    hi += span * 0.15;
+    lo -= span * 0.35;
+    hi += span * 0.3;
     const x = (t: number) => PAD.left + ((t - t0) / Math.max(t1 - t0, 1)) * (W - PAD.left - PAD.right);
     const y = (p: number) => PAD.top + (1 - (p - lo) / (hi - lo)) * (H - PAD.top - PAD.bottom);
     const lowest = seen.reduce((a, b) => (b.minPrice < a.minPrice ? b : a));
@@ -84,8 +84,26 @@ export default function PriceChart({ productId, days = 180 }: { productId: strin
     const dataLo = Math.min(...prices);
     const dataHi = Math.max(...prices);
     const ticks = dataHi - dataLo < 0.01 ? [dataLo] : [dataHi, (dataHi + dataLo) / 2, dataLo];
+    // One continuous step line: solid across checked weeks, dashed across unchecked ones.
+    let solid = '';
+    let dashed = '';
+    let prev: { x: number; y: number } | null = null;
+    let prevEnd = -1;
+    periods.forEach((p, i) => {
+      if (p.minPrice === null) return;
+      const xs = x(p.startMs);
+      const xe = x(p.endMs);
+      const yy = y(p.minPrice);
+      if (prev) {
+        if (prevEnd === i - 1) solid += `V${yy.toFixed(1)}`;
+        else dashed += `M${prev.x.toFixed(1)},${prev.y.toFixed(1)}H${xs.toFixed(1)}V${yy.toFixed(1)}`;
+      }
+      solid += `${prev && prevEnd === i - 1 ? '' : `M${xs.toFixed(1)},${yy.toFixed(1)}`}H${xe.toFixed(1)}`;
+      prev = { x: xe, y: yy };
+      prevEnd = i;
+    });
     return {
-      x, y, periods, ticks, lowest, latest, now,
+      x, y, periods, ticks, lowest, latest, now, solid, dashed,
       hasUnchecked: merged.coverage.observed < merged.coverage.total,
       coverage: coverageText(merged.coverage, merged.cycleDays),
       from: periods[0].start
@@ -155,7 +173,7 @@ export default function PriceChart({ productId, days = 180 }: { productId: strin
           <span className="price-chart-meta">Normally {formatMoney(insight.median90d)}</span>
         ) : null}
         {product.targetPrice !== null ? (
-          <span className="price-chart-meta pc-target-key">Target {formatMoney(product.targetPrice)}</span>
+          <span className="price-chart-meta pc-target-key">Goal {formatMoney(product.targetPrice)}</span>
         ) : null}
         {periodGeo ? (
           <InfoTip label="How often we checked">{periodGeo.coverage}</InfoTip>
@@ -204,6 +222,8 @@ export default function PriceChart({ productId, days = 180 }: { productId: strin
                   <line x1={PAD.left} x2={W - PAD.right} y1={periodGeo.y(product.targetPrice)} y2={periodGeo.y(product.targetPrice)} />
                 </g>
               ) : null}
+              {periodGeo.dashed ? <path d={periodGeo.dashed} className="pc-step pc-step-gap" /> : null}
+              <path d={periodGeo.solid} className="pc-step" />
               {periodGeo.periods.map((p) =>
                 p.minPrice === null ? null : (
                   <line
