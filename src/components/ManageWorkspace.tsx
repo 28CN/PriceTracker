@@ -1,6 +1,6 @@
 'use client';
 
-import { LayoutDashboard, PackagePlus, Search } from 'lucide-react';
+import { Link2, LayoutDashboard, PackagePlus, Search } from 'lucide-react';
 import { useState } from 'react';
 
 import AddProductForm from '@/components/AddProductForm';
@@ -18,6 +18,7 @@ export default function ManageWorkspace({
   products: ProductView[];
 }) {
   const [tab, setTab] = useState<Tab>('products');
+  const [addMode, setAddMode] = useState<'search' | 'paste'>('search');
   const trackedUrls = products.flatMap((product) => product.links.map((link) => link.url));
 
   return (
@@ -51,15 +52,33 @@ export default function ManageWorkspace({
         </section>
       ) : (
         <section className="manage-add-panel" aria-label="Add products">
-          <div className="manage-add-heading">
-            <Search size={15} aria-hidden="true" />
-            <h2>Search or paste a shop link</h2>
+          <div className="add-mode-tabs" role="tablist" aria-label="How to add">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={addMode === 'search'}
+              className={addMode === 'search' ? 'is-active' : undefined}
+              onClick={() => setAddMode('search')}
+            >
+              <Search size={15} aria-hidden="true" />
+              Search
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={addMode === 'paste'}
+              className={addMode === 'paste' ? 'is-active' : undefined}
+              onClick={() => setAddMode('paste')}
+            >
+              <Link2 size={15} aria-hidden="true" />
+              Paste link
+            </button>
           </div>
-          <ProductSearch trackedUrls={trackedUrls} />
-          <h2 className="section-title">
-            <PackagePlus size={15} /> Paste links
-          </h2>
-          <AddProductForm categories={categories} />
+          {addMode === 'search' ? (
+            <ProductSearch trackedUrls={trackedUrls} />
+          ) : (
+            <AddProductForm categories={categories} />
+          )}
         </section>
       )}
     </div>

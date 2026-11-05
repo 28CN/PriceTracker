@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 
 import { detectRetailer, isValidHttpUrl } from '@/lib/retailer';
 import { getWritableApiAuth } from '@/lib/demoGuard';
+import { cleanHttpUrl } from '@/lib/productUrl';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,6 +39,19 @@ export async function POST(request: Request) {
     }
 
     const { supabase, userId } = auth;
+
+    if (cleanedLinks.length > 0) {
+      const candidates = cleanedLinks.flatMap((link) => [link.url, cleanHttpUrl(link.url) || link.url]);
+      const { data: duplicate } = await supabase
+        .from('tracked_links')
+        .select('id, products!inner(owner_id)')
+        .eq('products.owner_id', userId)
+        .in('url', candidates)
+        .limit(1);
+      if (duplicate && duplicate.length > 0) {
+        return NextResponse.json({ error: "You're already tracking this.", code: 'duplicate' }, { status: 409 });
+      }
+    }
 
     let categoryId = body.categoryId || null;
     const newCategoryName = (body.newCategoryName || '').trim();

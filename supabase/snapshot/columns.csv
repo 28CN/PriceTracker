@@ -140,3 +140,9 @@ user_security,last_password_change_at,timestamp with time zone,YES
 user_security,must_change_password,boolean,NO
 user_security,updated_at,timestamp with time zone,NO
 user_security,user_id,uuid,NO
+product_search_cache,fetched_at,timestamp with time zone,NO
+product_search_cache,query_key,text,NO
+product_search_cache,results,jsonb,NO
+product_search_usage,calls,integer,NO
+product_search_usage,day,date,NO
+product_search_usage,user_id,uuid,NO
