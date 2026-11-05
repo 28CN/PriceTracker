@@ -13,6 +13,8 @@ describe('isSupportedShopName', () => {
     expect(isSupportedShopName('BIG W')).toBe(true);
     expect(isSupportedShopName('Coles Supermarkets')).toBe(true);
     expect(isSupportedShopName('Kogan.com')).toBe(false);
+    expect(isSupportedShopName('Mr Toys Toyworld')).toBe(true);
+    expect(isSupportedShopName('Cash Converters')).toBe(false);
   });
 });
 

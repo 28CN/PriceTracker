@@ -46,8 +46,15 @@ function norm(value: string): string {
 /** Google shows names like "BIG W" or "Coles Supermarkets"; match them to shops we crawl. */
 export function isSupportedShopName(shop: string): boolean {
   if (hasCrawlerSupport(shop)) return true;
-  const needle = norm(shop);
-  return SUPPORTED_RETAILERS.some(({ name }) => needle.startsWith(norm(name)));
+  // Match on whole words anywhere, so "Mr Toys Toyworld" finds Toyworld.
+  const words = shop.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+  const runs = new Set<string>();
+  for (let start = 0; start < words.length; start += 1) {
+    for (let end = start + 1; end <= Math.min(words.length, start + 4); end += 1) {
+      runs.add(words.slice(start, end).join(''));
+    }
+  }
+  return SUPPORTED_RETAILERS.some(({ name }) => runs.has(norm(name)) || norm(shop).startsWith(norm(name)));
 }
 
 function httpsOrNull(raw: unknown): string | null {
