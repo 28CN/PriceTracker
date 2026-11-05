@@ -99,6 +99,14 @@ export default function ProductSearch({
 
       {result?.limited ? <p className="hint">{LIMIT_TEXT[result.limited]}</p> : null}
 
+      {searching && shops.length === 0 ? (
+        <div className="product-search-results" aria-hidden="true">
+          {[0, 1, 2].map((n) => (
+            <div key={n} className="product-search-skel" />
+          ))}
+        </div>
+      ) : null}
+
       {shops.length > 0 ? (
         <div className="product-search-results">
           {shops.map((hit) => (
