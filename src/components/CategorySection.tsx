@@ -58,6 +58,26 @@ export default function CategorySection({
     setHasOpened(true);
   }
 
+  // "/#p-<id>" from search: open this group, then bring the card into view.
+  useEffect(() => {
+    function reveal() {
+      const id = window.location.hash.match(/^#p-([\w-]+)$/)?.[1];
+      if (!id || !products.some((product) => product.id === id)) return;
+      setIsOpen(true);
+      window.setTimeout(() => {
+        const card = document.getElementById(`p-${id}`);
+        if (!card) return;
+        const calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        card.scrollIntoView({ behavior: calm ? 'auto' : 'smooth', block: 'center' });
+        card.classList.add('is-highlight');
+        window.setTimeout(() => card.classList.remove('is-highlight'), 1800);
+      }, 350);
+    }
+    reveal();
+    window.addEventListener('hashchange', reveal);
+    return () => window.removeEventListener('hashchange', reveal);
+  }, [products]);
+
   useEffect(() => {
     if (isPinned && !wasPinned.current) {
       setIsOpen(true);
