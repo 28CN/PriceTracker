@@ -178,7 +178,7 @@ function SearchHitCard({
         {doneId ? (
           <span className="product-search-done" role="status">
             <Check size={15} aria-hidden="true" /> Tracking
-            <a href={`#p-${doneId}`}>View on my list</a>
+            <a href={`/#p-${doneId}`}>View on my list</a>
           </span>
         ) : (
           <button

@@ -4683,3 +4683,7 @@ textarea:disabled {
   .target-summary { grid-template-columns: auto minmax(0, 1fr) auto; }
   .target-summary-arrow { grid-column: 3; grid-row: 1; justify-self: end; align-self: center; }
 }
+
+@keyframes card-glow { 0%, 60% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 45%, transparent), var(--shadow-soft); } 100% { box-shadow: var(--shadow-soft); } }
+.product-card.is-highlight { animation: card-glow 1800ms ease-out; }
+@media (prefers-reduced-motion: reduce) { .product-card.is-highlight { animation: none; outline: 3px solid var(--brand); outline-offset: 2px; } }
