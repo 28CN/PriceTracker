@@ -4676,3 +4676,10 @@ textarea:disabled {
   }
   .card:not(.product-search):hover, .target-summary:hover, .product-search-row:hover, .button:hover { transform: none !important; }
 }
+
+.product-search-done a { margin-left: 8px; color: var(--brand); font-weight: 600; text-decoration: underline; }
+.product-card { scroll-margin-top: 96px; }
+@media (max-width: 640px) {
+  .target-summary { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .target-summary-arrow { grid-column: 3; grid-row: 1; justify-self: end; align-self: center; }
+}
