@@ -4,64 +4,98 @@ import { NextRequest } from 'next/server';
 import { DEMO_USER_ID } from '@/lib/demo';
 
 const getApiAuth = vi.fn();
-const search = vi.fn();
-vi.mock('@/lib/auth', () => ({ getApiAuth: () => getApiAuth(), assertSameOrigin: () => true }));
-vi.mock('@/lib/productSearch', () => ({
-  createProductSearch: () => ({ search }),
-  allowProductSearch: async () => true
-}));
+const fetchShopHits = vi.fn();
+const readCache = vi.fn();
+const writeCache = vi.fn();
+const consumeSearchQuota = vi.fn();
+let ownProducts: { id: string; name: string }[] = [];
 
-/** profiles lookup returns is_demo for the given flag. */
-function db(isDemo: boolean) {
+vi.mock('@/lib/auth', () => ({ getApiAuth: () => getApiAuth(), assertSameOrigin: () => true }));
+vi.mock('@/lib/productSearch', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/productSearch')>();
+  return {
+    ...actual,
+    fetchShopHits: (q: string) => fetchShopHits(q),
+    readCache: (k: string) => readCache(k),
+    writeCache: (k: string, v: unknown) => writeCache(k, v),
+    consumeSearchQuota: (u: string) => consumeSearchQuota(u),
+    serpApiKey: () => 'k'
+  };
+});
+
+function db(isDemo = false) {
   const b: Record<string, unknown> = {};
-  for (const op of ['select', 'eq']) b[op] = () => b;
+  for (const op of ['select', 'eq', 'ilike']) b[op] = () => b;
+  b.limit = async () => ({ data: ownProducts, error: null });
   b.maybeSingle = async () => ({ data: { is_demo: isDemo }, error: null });
   return { from: () => b };
 }
 
-async function post(query = 'kettle') {
+async function post(query = 'Hot  Wheels!') {
   const { POST } = await import('./route');
-  return POST(
+  const res = await POST(
     new NextRequest('http://localhost/api/search', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ query })
     })
   );
+  return { status: res.status, body: await res.json() };
 }
+
+const hit = { id: '1', name: 'Car', price: 2, imageUrl: null, shop: 'Kmart', token: 't', supported: true };
 
 describe('POST /api/search', () => {
   beforeEach(() => {
-    getApiAuth.mockReset();
-    search.mockReset();
-    search.mockResolvedValue([]);
+    ownProducts = [];
+    for (const fn of [getApiAuth, fetchShopHits, readCache, writeCache, consumeSearchQuota]) fn.mockReset();
+    readCache.mockResolvedValue(null);
+    consumeSearchQuota.mockResolvedValue('ok');
+    fetchShopHits.mockResolvedValue([hit]);
+    getApiAuth.mockResolvedValue({ supabase: db(), userId: 'u-1', isAdmin: false });
   });
 
   it('401 when signed out', async () => {
     getApiAuth.mockResolvedValue(null);
     expect((await post()).status).toBe(401);
-    expect(search).not.toHaveBeenCalled();
+    expect(fetchShopHits).not.toHaveBeenCalled();
   });
 
-  it('403 demo_read_only for the demo account, without calling the provider', async () => {
-    getApiAuth.mockResolvedValue({ supabase: db(false), userId: DEMO_USER_ID, isAdmin: false });
-    const res = await post();
-    expect(res.status).toBe(403);
-    expect(await res.json()).toMatchObject({ code: 'demo_read_only' });
-    expect(search).not.toHaveBeenCalled();
+  it('live call with a normalised query, then caches it', async () => {
+    const { body } = await post();
+    expect(fetchShopHits).toHaveBeenCalledWith('hot wheels');
+    expect(writeCache).toHaveBeenCalledWith('q:hot wheels', [hit]);
+    expect(body.shops).toEqual([hit]);
   });
 
-  it('403 for any profile flagged is_demo', async () => {
-    getApiAuth.mockResolvedValue({ supabase: db(true), userId: 'u-other', isAdmin: false });
-    expect((await post()).status).toBe(403);
-    expect(search).not.toHaveBeenCalled();
+  it('uses the shared cache without spending quota', async () => {
+    readCache.mockResolvedValue([hit]);
+    const { body } = await post();
+    expect(body).toMatchObject({ cached: true, shops: [hit] });
+    expect(consumeSearchQuota).not.toHaveBeenCalled();
+    expect(fetchShopHits).not.toHaveBeenCalled();
   });
 
-  it('a regular user can search', async () => {
-    getApiAuth.mockResolvedValue({ supabase: db(false), userId: 'u-1', isAdmin: false });
-    const res = await post();
-    expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ configured: true, results: [] });
-    expect(search).toHaveBeenCalledWith('kettle');
+  it('skips shops when enough tracked products match', async () => {
+    ownProducts = [1, 2, 3].map((n) => ({ id: `p${n}`, name: `Hot Wheels ${n}` }));
+    const { body } = await post();
+    expect(body.tracked).toHaveLength(3);
+    expect(readCache).not.toHaveBeenCalled();
+    expect(fetchShopHits).not.toHaveBeenCalled();
+  });
+
+  it('demo account gets cache only', async () => {
+    getApiAuth.mockResolvedValue({ supabase: db(), userId: DEMO_USER_ID, isAdmin: false });
+    const { body } = await post();
+    expect(body.limited).toBe('demo');
+    expect(consumeSearchQuota).not.toHaveBeenCalled();
+    expect(fetchShopHits).not.toHaveBeenCalled();
+  });
+
+  it('reports the cap instead of calling the provider', async () => {
+    consumeSearchQuota.mockResolvedValue('site_day');
+    const { body } = await post();
+    expect(body.limited).toBe('site_day');
+    expect(fetchShopHits).not.toHaveBeenCalled();
   });
 });
