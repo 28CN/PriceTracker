@@ -26,11 +26,6 @@ export default function DashboardHero({
   accountHref: string | null;
   title?: string;
 }) {
-  const stores = new Set(
-    products.flatMap((product) =>
-      product.links.filter((link) => link.isActive).map((link) => link.retailer)
-    )
-  ).size;
   const deals = products.filter(
     (product) =>
       product.targetPrice !== null &&
@@ -53,7 +48,6 @@ export default function DashboardHero({
       <section className="dashboard-overview">
         <div className="overview-copy">
           <h1>{title}</h1>
-          <p>{products.length} products across {stores} retailers</p>
       </div>
 
         <div className="overview-actions">
@@ -68,7 +62,6 @@ export default function DashboardHero({
             </span>
             <span className="target-summary-copy">
               <strong>{deals.length} below goal</strong>
-              <span>{deals.length > 0 ? 'View ready-to-buy items' : 'No matches yet'}</span>
             </span>
             <ChevronRight className="target-summary-arrow" size={18} aria-hidden="true" />
           </button>
