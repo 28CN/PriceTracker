@@ -79,6 +79,7 @@ function ProductCard({ product, readOnly }: { product: ProductView; readOnly: bo
 
   return (
     <motion.article
+      id={`p-${product.id}`}
       className={`card product-card ${isEditing ? 'is-editing' : ''}`}
       initial={{ opacity: 0, y: 14 }}
       whileInView={{ opacity: 1, y: 0 }}
@@ -150,7 +151,7 @@ function ProductCard({ product, readOnly }: { product: ProductView; readOnly: bo
                   <span className="shop-name">{shopLabel}</span>
                 )}
               </span>
-              <span className="price-note">Checked {formatCheckedAt(checkedAt)}</span>
+              <span className="price-note">{checkedAt ? `Checked ${formatCheckedAt(checkedAt)}` : 'Checking soon'}</span>
             </div>
           </div>
         </button>

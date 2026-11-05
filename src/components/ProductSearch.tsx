@@ -46,7 +46,7 @@ export default function ProductSearch({
   const [searching, setSearching] = useState(false);
   const [result, setResult] = useState<SearchResponse | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
-  const [doneIds, setDoneIds] = useState<Set<string>>(() => new Set());
+  const [doneIds, setDoneIds] = useState<Map<string, string>>(() => new Map());
 
   async function search(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -114,12 +114,12 @@ export default function ProductSearch({
               key={hit.id}
               hit={hit}
               open={openId === hit.id}
-              done={doneIds.has(hit.id)}
+              doneId={doneIds.get(hit.id) ?? null}
               isDemo={isDemo}
               tracked={tracked}
               onToggle={() => setOpenId((current) => (current === hit.id ? null : hit.id))}
-              onDone={() => {
-                setDoneIds((current) => new Set(current).add(hit.id));
+              onDone={(productId) => {
+                setDoneIds((current) => new Map(current).set(hit.id, productId));
                 setOpenId(null);
               }}
             />
@@ -144,7 +144,7 @@ export default function ProductSearch({
 function SearchHitCard({
   hit,
   open,
-  done,
+  doneId,
   isDemo,
   tracked,
   onToggle,
@@ -152,11 +152,11 @@ function SearchHitCard({
 }: {
   hit: ShopHit;
   open: boolean;
-  done: boolean;
+  doneId: string | null;
   isDemo: boolean;
   tracked: Set<string>;
   onToggle: () => void;
-  onDone: () => void;
+  onDone: (productId: string) => void;
 }) {
   return (
     <article className={`product-search-hit${open ? ' is-open' : ''}`}>
@@ -175,9 +175,10 @@ function SearchHitCard({
           </span>
         </div>
         <b className="product-search-price">{money(hit.price)}</b>
-        {done ? (
-          <span className="product-search-done">
+        {doneId ? (
+          <span className="product-search-done" role="status">
             <Check size={15} aria-hidden="true" /> Tracking
+            <a href={`#p-${doneId}`}>View on my list</a>
           </span>
         ) : (
           <button
@@ -206,7 +207,7 @@ function TrackPanel({
   hit: ShopHit;
   isDemo: boolean;
   tracked: Set<string>;
-  onDone: () => void;
+  onDone: (productId: string) => void;
 }) {
   const router = useRouter();
   const [offers, setOffers] = useState<ShopOffer[] | null>(null);
@@ -249,18 +250,30 @@ function TrackPanel({
       body: JSON.stringify({
         name: hit.name,
         targetPrice: goal || null,
+        imageUrl: hit.imageUrl,
         links: offers
           .filter((offer) => picked.has(offer.url))
           .map((offer) => ({ url: offer.url, retailer: offer.shop }))
       })
     }).catch(() => null);
-    const data = (await response?.json().catch(() => null)) as { error?: string } | null;
+    const data = (await response?.json().catch(() => null)) as {
+      error?: string;
+      productId?: string;
+    } | null;
     setSaving(false);
     if (!response?.ok) {
       setError(data?.error || 'Could not add it. Please try again.');
       return;
     }
-    onDone();
+    const productId = data?.productId || '';
+    onDone(productId);
+    if (productId) {
+      void fetch('/api/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productId })
+      }).catch(() => null);
+    }
     router.refresh();
   }
 

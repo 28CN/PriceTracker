@@ -43,7 +43,7 @@ export function formatWhen(iso: string | null | undefined): string {
 // Price checks are weekly, so the weekday and date matter more than "3d ago".
 export function formatCheckedAt(iso: string | null | undefined): string {
   if (!iso) {
-    return 'not checked yet';
+    return 'checking soon';
   }
 
   const date = new Date(iso);

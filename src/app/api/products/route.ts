@@ -19,6 +19,7 @@ export async function POST(request: Request) {
       newCategoryName?: string | null;
       targetPrice?: string | number | null;
       links?: IncomingLink[];
+      imageUrl?: string | null;
     };
 
     const name = (body.name || '').trim();
@@ -101,9 +102,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Target price must be a number.' }, { status: 400 });
     }
 
+    const rawImage = (body.imageUrl || '').trim();
+    const imageUrl =
+      rawImage.startsWith('https://') && rawImage.length < 2000 && isValidHttpUrl(rawImage) ? rawImage : null;
+
     const { data: product, error: productError } = await supabase
       .from('products')
-      .insert({ name, category_id: categoryId, target_price: targetPrice, owner_id: userId })
+      .insert({
+        name,
+        category_id: categoryId,
+        target_price: targetPrice,
+        owner_id: userId,
+        ...(imageUrl ? { image_url: imageUrl } : {})
+      })
       .select('id')
       .single();
 
