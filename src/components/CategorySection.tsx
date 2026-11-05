@@ -119,8 +119,10 @@ export default function CategorySection({
       </div>
 
       {hasOpened ? (
-        <div className="category-body" hidden={!showBody}>
-          <ProductList products={[...products].sort((a, b) => Number(hitsTarget(b)) - Number(hitsTarget(a)))} readOnly={readOnly} />
+        <div className={`category-body${showBody ? ' is-open' : ''}`} inert={!showBody} aria-hidden={!showBody}>
+          <div className="category-body-inner">
+            <ProductList products={[...products].sort((a, b) => Number(hitsTarget(b)) - Number(hitsTarget(a)))} readOnly={readOnly} />
+          </div>
         </div>
       ) : null}
     </section>

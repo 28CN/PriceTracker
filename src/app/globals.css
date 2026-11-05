@@ -4609,3 +4609,70 @@ textarea:disabled {
   .price { font-size: 26px; }
 }
 .search-fallback { display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; }
+
+/* Motion and polish */
+@keyframes rise-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes soft-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pop-in { 0% { opacity: 0; transform: scale(0.85); } 100% { opacity: 1; transform: none; } }
+
+.dashboard-overview, .product-search, .category-section, .guest-hero, .guest-retailers, .guest-featured, .manage-hero {
+  animation: rise-in 360ms ease-out both;
+}
+.category-section:nth-child(2), .guest-retailers { animation-delay: 60ms; }
+.category-section:nth-child(3), .guest-featured { animation-delay: 120ms; }
+.category-section:nth-child(n + 4) { animation-delay: 180ms; }
+
+.category-body { display: grid; grid-template-rows: 0fr; padding: 0; opacity: 0; transition: grid-template-rows 300ms ease-out, opacity 240ms ease-out; }
+.category-body.is-open { grid-template-rows: 1fr; opacity: 1; }
+.category-body-inner { min-height: 0; overflow: hidden; }
+.category-body.is-open .category-body-inner { padding: 0 13px 13px; }
+.category-chevron, .card-chevron { transition: transform 240ms ease-out; }
+
+.card, .target-summary, .product-search-row, .featured-card {
+  transition: transform 200ms ease-out, box-shadow 200ms ease-out, border-color 200ms ease-out;
+}
+@media (hover: hover) {
+  .card:not(.product-search):hover, .target-summary:hover, .product-search-row:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); }
+  .button:not(:disabled):hover { transform: translateY(-1px); }
+}
+.button { transition: transform 160ms ease-out, background-color 200ms ease-out, border-color 200ms ease-out, box-shadow 200ms ease-out, color 200ms ease-out; }
+.button:not(:disabled):active { transform: scale(0.97); }
+.pill, .badge, [class*='-badge'], [class*='-pill'] { transition: background-color 240ms ease-out, color 240ms ease-out, opacity 240ms ease-out; }
+
+.price, .product-search-price { animation: soft-fade 400ms ease-out both; font-variant-numeric: tabular-nums; }
+
+.product-search-results > * { animation: rise-in 300ms ease-out both; }
+.product-search-results > :nth-child(2) { animation-delay: 50ms; }
+.product-search-results > :nth-child(3) { animation-delay: 100ms; }
+.product-search-results > :nth-child(4) { animation-delay: 150ms; }
+.product-search-results > :nth-child(n + 5) { animation-delay: 200ms; }
+.product-search-skel {
+  height: 88px; border-radius: 16px;
+  background: linear-gradient(90deg, var(--line) 25%, var(--surface-strong) 50%, var(--line) 75%);
+  background-size: 200% 100%; animation: pc-shimmer 1.2s linear infinite; opacity: 0.7;
+}
+.product-search-done { animation: pop-in 300ms ease-out both; color: var(--success); }
+
+.guest-hero { position: relative; overflow: hidden; }
+.guest-hero::before {
+  content: ''; position: absolute; inset: -40% -10% auto auto; width: 60%; aspect-ratio: 1; z-index: -1;
+  background: radial-gradient(circle, color-mix(in srgb, var(--brand) 22%, transparent), transparent 65%);
+  pointer-events: none;
+}
+.guest-hero h1 { font-size: clamp(42px, 6vw, 72px); }
+.guest-hero h1 em { background: linear-gradient(90deg, var(--brand), var(--accent-cyan)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+@view-transition { navigation: auto; }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: 240ms; animation-timing-function: ease-out; }
+
+@media (max-width: 640px) {
+  .product-search form .button { flex-shrink: 0; padding-inline: 16px; }
+  .product-search-input { font-size: 16px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after, ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) {
+    animation: none !important; transition: none !important;
+  }
+  .card:not(.product-search):hover, .target-summary:hover, .product-search-row:hover, .button:hover { transform: none !important; }
+}
