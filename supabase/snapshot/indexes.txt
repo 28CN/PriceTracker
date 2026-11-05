@@ -38,3 +38,6 @@ tracked_links | tracked_links_product_id_idx | CREATE INDEX tracked_links_produc
 user_preferences | user_preferences_pkey | CREATE UNIQUE INDEX user_preferences_pkey ON public.user_preferences USING btree (user_id, key)
 user_roles | user_roles_pkey | CREATE UNIQUE INDEX user_roles_pkey ON public.user_roles USING btree (user_id, role)
 user_security | user_security_pkey | CREATE UNIQUE INDEX user_security_pkey ON public.user_security USING btree (user_id)
+product_search_cache | product_search_cache_pkey | CREATE UNIQUE INDEX product_search_cache_pkey ON public.product_search_cache USING btree (query_key)
+product_search_usage | product_search_usage_day | CREATE INDEX product_search_usage_day ON public.product_search_usage USING btree (day)
+product_search_usage | product_search_usage_pkey | CREATE UNIQUE INDEX product_search_usage_pkey ON public.product_search_usage USING btree (user_id, day)

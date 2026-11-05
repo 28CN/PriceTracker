@@ -21,3 +21,4 @@ email_enabled() | definer | anon=false | authenticated=false | service_role=true
 email_outbox_insert_gate() | definer | anon=false | authenticated=false | service_role=true
 is_demo_user() | definer | anon=true | authenticated=true | service_role=true
 protect_profile_demo_flag() | invoker | anon=true | authenticated=true | service_role=true
+consume_search_quota(uuid,integer,integer,integer) | definer | anon=false | authenticated=false | service_role=true
