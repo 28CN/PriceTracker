@@ -4,10 +4,19 @@ PriceTracker 本地定时任务说明
 
 任务名称：PriceTracker - Weekly
 执行时间：每周一、每周三 早上 06:00
-作用：自动爬取 Big W、Kmart、Target 的价格（这三家 GitHub CI 爬不到）
+作用：本机全量爬价（含 GitHub CI 爬不到的店）
 日志位置：d:\Programming\Practice for job\PriceTracker\logs\crawl-YYYYMMDD.log
 
-注意：如果当时电脑没开机，下次开机后会自动补跑一次。
+漏跑补跑（开机/唤醒后）：
+  - 仍会补跑，但不会在开机瞬间抢 CPU/内存
+  - 系统空闲约 8 分钟后才允许启动
+  - 脚本再等开机满约 20 分钟才打开 Chrome
+  - 以 Idle / 最低计划优先级运行，可边用电脑边爬
+  - 允许最长跑 2 小时
+
+紧急调试（跳过开机等待）：
+  $env:CRAWL_BOOT_GRACE_MINUTES = "0"
+  powershell -ExecutionPolicy Bypass -File scripts\crawl-background.ps1
 
 
 ==============================
@@ -52,7 +61,7 @@ PriceTracker 本地定时任务说明
 方法二：PowerShell 命令（复制粘贴到 PowerShell 回车即可）
   Unregister-ScheduledTask -TaskName "PriceTracker - Weekly" -Confirm:$false
 
-删除后如果想重新注册，运行：
+删除后如果想重新注册，以管理员身份运行：
   powershell -ExecutionPolicy Bypass -File scripts\register-tasks.ps1
 
 

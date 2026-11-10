@@ -1,30 +1,49 @@
-# 以管理员身份运行此脚本来注册定时任务
-# 右键 -> 用 PowerShell 运行，或在管理员 PowerShell 里执行
-# 任务会跑 scripts\crawl-background.ps1：本机全量爬虫（含 GitHub 已覆盖的店）
+# Run as Administrator to register the weekly local crawl.
+# Right-click -> Run with PowerShell, or from an elevated PowerShell:
+#   powershell -ExecutionPolicy Bypass -File scripts\register-tasks.ps1
+#
+# The task still catches up after a missed Mon/Wed 06:00 run, but:
+#   - only when the PC has been idle for a few minutes
+#   - the script itself waits ~20 minutes after boot before opening Chrome
+#   - Task Scheduler priority is lowest; the script runs at Idle process priority
+# So the first minutes after opening the laptop stay usable.
 
 $scriptPath = Join-Path (Split-Path $PSScriptRoot -Parent) "scripts\crawl-background.ps1"
 $pwsh       = "powershell.exe"
 $action     = New-ScheduledTaskAction -Execute $pwsh `
                   -Argument "-WindowStyle Hidden -ExecutionPolicy Bypass -File `"$scriptPath`""
 
-# 每周一、周三 早上 6:00
-# StartWhenAvailable = 错过时开机后补跑一次
+# Weekly Mon + Wed 06:00. StartWhenAvailable = catch up after missed runs.
 $triggerMon = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday    -At "06:00"
 $triggerWed = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Wednesday -At "06:00"
 
 $settings = New-ScheduledTaskSettingsSet `
-    -ExecutionTimeLimit (New-TimeSpan -Hours 1) `
+    -ExecutionTimeLimit (New-TimeSpan -Hours 2) `
     -RunOnlyIfNetworkAvailable `
-    -StartWhenAvailable
+    -StartWhenAvailable `
+    -MultipleInstances IgnoreNew `
+    -Priority 10 `
+    -RunOnlyIfIdle `
+    -IdleDuration (New-TimeSpan -Minutes 8) `
+    -IdleWaitTimeout (New-TimeSpan -Hours 4) `
+    -DontStopOnIdleEnd
 
-# 清理旧的开机自启任务（如果之前注册过）
+# Drop the old on-boot task if it is still around.
 Unregister-ScheduledTask -TaskName "PriceTracker - On Startup" -Confirm:$false -ErrorAction SilentlyContinue
 
-Register-ScheduledTask -TaskName "PriceTracker - Weekly" `
-    -Action $action -Trigger $triggerMon, $triggerWed `
-    -Settings $settings -RunLevel Highest -Force | Out-Null
+try {
+    Register-ScheduledTask -TaskName "PriceTracker - Weekly" `
+        -Action $action -Trigger $triggerMon, $triggerWed `
+        -Settings $settings -RunLevel Highest -Force | Out-Null
+} catch {
+    Write-Host "FAILED: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "Re-run this script from an elevated PowerShell (Run as administrator)." -ForegroundColor Yellow
+    exit 1
+}
 
 Write-Host "OK" -ForegroundColor Green
-Write-Host "  PriceTracker - Weekly: Mon + Wed 06:00, missed runs catch up on next boot" -ForegroundColor Cyan
+Write-Host "  PriceTracker - Weekly: Mon + Wed 06:00" -ForegroundColor Cyan
+Write-Host "  Missed runs catch up only after idle + ~20 min boot grace (see crawl-background.ps1)" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Log folder: $(Split-Path $PSScriptRoot -Parent)\logs\" -ForegroundColor Gray
+

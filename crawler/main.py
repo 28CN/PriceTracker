@@ -1161,7 +1161,17 @@ CDP_ARGS = [
     "--disable-session-crashed-bubble",
     "--lang=en-AU",
     "--window-size=1366,900",
+    # Keep the boot/catch-up crawl from spawning a Chrome process storm.
+    "--renderer-process-limit=3",
+    "--disable-background-networking",
+    "--disable-component-update",
+    "--disable-sync",
+    "--mute-audio",
 ]
+
+# Windows: children of the scheduled crawl inherit Idle priority; still mark
+# the browser itself Below Normal in case someone starts it from a normal shell.
+_BELOW_NORMAL_PRIORITY_CLASS = 0x00004000
 
 # Ordered best to worst. The last entry is the trap: with no channel Playwright
 # >= 1.49 starts chrome-headless-shell, the old headless build, and Akamai
@@ -1473,10 +1483,15 @@ def start_browser_process(port: int) -> Optional[subprocess.Popen]:
 
     command.append("about:blank")
 
+    popen_kwargs: dict = {
+        "stdout": subprocess.DEVNULL,
+        "stderr": subprocess.DEVNULL,
+    }
+    if os.name == "nt":
+        popen_kwargs["creationflags"] = _BELOW_NORMAL_PRIORITY_CLASS
+
     try:
-        process = subprocess.Popen(
-            command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-        )
+        process = subprocess.Popen(command, **popen_kwargs)
     except Exception as error:
         print(f"[BROWSER] cdp mode: could not start {executable}: {error}")
         return None
