@@ -14,6 +14,13 @@ PriceTracker 本地定时任务说明
   - 以 Idle / 最低计划优先级运行，可边用电脑边爬
   - 允许最长跑 2 小时
 
+关于 Task Manager 里的 node.exe：
+  - 本机爬虫用 Playwright，它自带 node.exe 驱动浏览器
+  - 所以不开 Cursor 也会看到 Node，这通常不是 Next.js
+  - 只有命令行含 next\dist\server\lib\start-server.js 才是网站开发服务器
+  - 每次爬取日志会记录当时所有 node.exe 的命令行，便于核对
+  - 另：NVIDIA GeForce 的 NvNode 开机也会起 Node，与本项目无关
+
 紧急调试（跳过开机等待）：
   $env:CRAWL_BOOT_GRACE_MINUTES = "0"
   powershell -ExecutionPolicy Bypass -File scripts\crawl-background.ps1
