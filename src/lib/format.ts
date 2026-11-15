@@ -40,22 +40,26 @@ export function formatWhen(iso: string | null | undefined): string {
   return new Date(then).toLocaleDateString('en-AU');
 }
 
-// Price checks are weekly, so the weekday and date matter more than "3d ago".
+// Price checks are weekly. Show the calendar date in Sydney, with the year,
+// so an old check is not mistaken for this week. No date is not a promise
+// that a check is queued — callers decide that from crawl job status.
 export function formatCheckedAt(iso: string | null | undefined): string {
   if (!iso) {
-    return 'checking soon';
+    return '';
   }
 
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) {
-    return 'unknown';
+    return '';
   }
 
-  return date.toLocaleDateString('en-AU', {
+  return new Intl.DateTimeFormat('en-AU', {
     weekday: 'short',
     day: 'numeric',
-    month: 'short'
-  });
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'Australia/Sydney'
+  }).format(date);
 }
 
 export function latestTimestamp(values: (string | null)[]): string | null {

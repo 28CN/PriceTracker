@@ -70,6 +70,7 @@ export default function CategorySection({
         const calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         card.scrollIntoView({ behavior: calm ? 'auto' : 'smooth', block: 'center' });
         card.classList.add('is-highlight');
+        card.focus({ preventScroll: true });
         window.setTimeout(() => card.classList.remove('is-highlight'), 1800);
       }, 350);
     }

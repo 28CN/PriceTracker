@@ -172,9 +172,6 @@ export default function PriceChart({ productId, days = 180 }: { productId: strin
         {insight.median90d !== null ? (
           <span className="price-chart-meta">Normally {formatMoney(insight.median90d)}</span>
         ) : null}
-        {product.targetPrice !== null ? (
-          <span className="price-chart-meta pc-target-key">Goal {formatMoney(product.targetPrice)}</span>
-        ) : null}
         {periodGeo ? (
           <InfoTip label="How often we checked">{periodGeo.coverage}</InfoTip>
         ) : (

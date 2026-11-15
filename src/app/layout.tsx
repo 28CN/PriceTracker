@@ -19,7 +19,8 @@ const criticalFallbackCss = `
   :where(.topbar-inner){justify-content:space-between;padding:12px 16px}
   :where(.topbar-actions,.brand-link){gap:8px}
   :where(.page){padding:20px 16px 56px}
-  :where(.dashboard-hero,.dashboard-overview,.manage-hero,.category-section,.card){overflow:hidden;border:1px solid #dfe3eb;border-radius:18px;background:#fff}
+  :where(.dashboard-hero,.dashboard-overview,.manage-hero,.category-section){overflow:hidden;border:1px solid #dfe3eb;border-radius:18px;background:#fff}
+  :where(.card){border:1px solid #dfe3eb;border-radius:18px;background:#fff}
   :where(.dashboard-hero,.manage-hero){position:relative;padding:28px;margin-bottom:18px}
   :where(.dashboard-overview){display:flex;align-items:center;justify-content:space-between;gap:18px;padding:18px 22px;margin-bottom:18px}
   :where(.overview-actions,.target-summary,.account-slot){display:flex;align-items:center;gap:10px}

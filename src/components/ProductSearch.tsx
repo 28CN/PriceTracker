@@ -48,6 +48,39 @@ export default function ProductSearch({
   const [openId, setOpenId] = useState<string | null>(null);
   const [doneIds, setDoneIds] = useState<Map<string, string>>(() => new Map());
 
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem('pricetracker.search');
+      if (!saved) return;
+      const parsed = JSON.parse(saved) as { query?: string; result?: SearchResponse };
+      if (!parsed.query || !parsed.result) return;
+      setQuery(parsed.query);
+      setResult(parsed.result);
+    } catch {
+      // A bad saved search should not block a new one.
+    }
+  }, []);
+
+  function remember(nextQuery: string, nextResult: SearchResponse) {
+    setResult(nextResult);
+    try {
+      sessionStorage.setItem('pricetracker.search', JSON.stringify({ query: nextQuery, result: nextResult }));
+    } catch {
+      // Private to this browser tab. If storage is full, the screen still updates.
+    }
+  }
+
+  function clearSearch() {
+    setQuery('');
+    setResult(null);
+    setOpenId(null);
+    try {
+      sessionStorage.removeItem('pricetracker.search');
+    } catch {
+      // ignore
+    }
+  }
+
   async function search(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const nextQuery = query.trim();
@@ -61,7 +94,20 @@ export default function ProductSearch({
     }).catch(() => null);
     const data = (await response?.json().catch(() => null)) as SearchResponse | null;
     setSearching(false);
-    setResult(response?.ok && data ? { ...data, query: nextQuery } : { query: nextQuery, limited: 'error' });
+    if (response?.ok && data) {
+      remember(nextQuery, { ...data, query: nextQuery });
+      return;
+    }
+    // Keep the last list on a failed request so a blip does not wipe it.
+    setResult((current) => {
+      const next = { ...(current || {}), query: nextQuery, limited: 'error' as const };
+      try {
+        sessionStorage.setItem('pricetracker.search', JSON.stringify({ query: nextQuery, result: next }));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
   }
 
   const shops = result?.shops || [];
@@ -69,7 +115,7 @@ export default function ProductSearch({
   const showFallback = Boolean(result && (result.limited || (shops.length === 0 && ownMatches.length === 0)));
 
   return (
-    <section className="product-search card" aria-label="Search shops">
+    <section className="product-search card" aria-label="Search shops" aria-busy={searching}>
       <form onSubmit={search} role="search">
         <Search className="product-search-icon" size={18} aria-hidden="true" />
         <input
@@ -83,21 +129,33 @@ export default function ProductSearch({
         />
         <button className="button primary" type="submit" disabled={searching || !query.trim()}>
           {searching ? <LoaderCircle className="spin" size={16} aria-hidden="true" /> : null}
-          Search
+          {searching ? 'Searching…' : 'Search'}
         </button>
       </form>
+
+      <div className="product-search-status" role="status" aria-live="polite">
+        {searching ? <span className="visually-hidden">Searching…</span> : null}
+        {!searching && result?.limited ? LIMIT_TEXT[result.limited] : null}
+        {!searching && !result?.limited && shops.length > 0
+          ? `${shops.length} shop${shops.length === 1 ? '' : 's'}`
+          : null}
+      </div>
+      {result && !searching ? (
+        <button className="button" type="button" onClick={clearSearch}>
+          Clear
+        </button>
+      ) : null}
 
       {ownMatches.length > 0 ? (
         <ul className="product-search-own" aria-label="Already on your list">
           {ownMatches.map((item) => (
             <li key={item.id}>
-              <Check size={14} aria-hidden="true" /> {item.name}
+              <Check size={14} aria-hidden="true" />
+              <a href={`#p-${item.id}`}>{item.name}</a>
             </li>
           ))}
         </ul>
       ) : null}
-
-      {result?.limited ? <p className="hint">{LIMIT_TEXT[result.limited]}</p> : null}
 
       {searching && shops.length === 0 ? (
         <div className="product-search-results" aria-hidden="true">
@@ -174,20 +232,24 @@ function SearchHitCard({
             {hit.shop}
           </span>
         </div>
-        <b className="product-search-price">{money(hit.price)}</b>
+        <b className="product-search-price">
+          {hit.price === null ? 'No price yet' : money(hit.price)}
+          <small>Listed price</small>
+        </b>
         {doneId ? (
           <span className="product-search-done" role="status">
-            <Check size={15} aria-hidden="true" /> Tracking
-            <a href={`/#p-${doneId}`}>View on my list</a>
+            <Check size={15} aria-hidden="true" /> Tracked
+            <a href={`#p-${doneId}`}>View on my list</a>
           </span>
         ) : (
           <button
-            className={`button ${hit.supported ? 'primary' : 'secondary'}`}
+            className={`button ${hit.supported ? 'primary' : ''}`}
             type="button"
             aria-expanded={open}
             onClick={onToggle}
           >
-            {open ? <X size={15} aria-label="Close" /> : hit.supported ? 'Track' : 'Shops'}
+            {open ? 'Close' : hit.supported ? 'Track' : 'View shops'}
+            {open ? <X size={15} aria-hidden="true" /> : null}
           </button>
         )}
       </div>
@@ -352,7 +414,7 @@ function TrackPanel({
           </label>
           <button className="button primary" type="button" disabled={saving || picked.size === 0} onClick={save}>
             {saving ? <LoaderCircle className="spin" size={16} aria-hidden="true" /> : null}
-            Start tracking
+            {saving ? 'Adding…' : 'Start tracking'}
           </button>
         </div>
       ) : null}

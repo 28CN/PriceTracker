@@ -8,7 +8,6 @@ import { getViewer } from '@/lib/auth';
 import { fetchCategoryLayout, type CategoryLayout } from '@/lib/categoryLayout';
 import { sortProducts } from '@/lib/productSort';
 import { fetchProducts } from '@/lib/queries';
-import { createAdminSupabaseClient } from '@/lib/supabase/admin';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import type { ProductView } from '@/lib/types';
 
@@ -21,17 +20,7 @@ export const fetchCache = 'force-no-store';
 export default async function HomePage() {
   const viewer = await getViewer();
   if (!viewer) {
-    const admin = createAdminSupabaseClient();
-    const { data: adminRole } = await admin
-      .from('user_roles')
-      .select('user_id')
-      .eq('role', 'admin')
-      .limit(1)
-      .maybeSingle();
-    const featured = adminRole?.user_id
-      ? await fetchProducts(admin, adminRole.user_id)
-      : [];
-    return <GuestLanding featured={featured} />;
+    return <GuestLanding />;
   }
 
   let products: ProductView[] = [];
