@@ -11,6 +11,7 @@ crawl_events | crawl_events_created_idx | CREATE INDEX crawl_events_created_idx 
 crawl_events | crawl_events_pkey | CREATE UNIQUE INDEX crawl_events_pkey ON public.crawl_events USING btree (id)
 crawl_events | crawl_events_unread_idx | CREATE INDEX crawl_events_unread_idx ON public.crawl_events USING btree (is_read, created_at DESC)
 crawl_jobs | crawl_jobs_pending_idx | CREATE INDEX crawl_jobs_pending_idx ON public.crawl_jobs USING btree (created_at) WHERE (status = 'pending'::text)
+crawl_jobs | crawl_jobs_product_open_idx | CREATE INDEX crawl_jobs_product_open_idx ON public.crawl_jobs USING btree (product_id) WHERE ((status = 'pending'::text) OR (status = 'running'::text))
 crawl_jobs | crawl_jobs_pkey | CREATE UNIQUE INDEX crawl_jobs_pkey ON public.crawl_jobs USING btree (id)
 email_delivery_events | email_delivery_events_pkey | CREATE UNIQUE INDEX email_delivery_events_pkey ON public.email_delivery_events USING btree (id)
 email_outbox | email_outbox_dedupe_key_key | CREATE UNIQUE INDEX email_outbox_dedupe_key_key ON public.email_outbox USING btree (dedupe_key)

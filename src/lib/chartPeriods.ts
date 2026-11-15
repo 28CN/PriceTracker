@@ -42,6 +42,20 @@ export function mergePeriods(links: LinkPeriods[]): MergedPeriods | null {
   };
 }
 
+/**
+ * Where the drawn line actually stops: the last sale period that has a price,
+ * at that period's price. An earlier dip is not "now".
+ */
+export function lineEnd(
+  periods: { minPrice: number | null; endMs: number }[]
+): { price: number; atMs: number } | null {
+  for (let i = periods.length - 1; i >= 0; i -= 1) {
+    const price = periods[i].minPrice;
+    if (price !== null) return { price, atMs: periods[i].endMs };
+  }
+  return null;
+}
+
 /** Plain-words coverage, e.g. 'Checked 6 of 8 sale weeks'. */
 export function coverageText(c: PromoCoverage, cycleDays: number): string {
   const unit = cycleDays === 7 ? 'sale week' : cycleDays === 14 ? 'sale fortnight' : 'sale period';

@@ -1141,18 +1141,20 @@ button {
 .stale-price {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   border: 1px dashed color-mix(in srgb, var(--warn) 65%, var(--border));
   background: var(--warn-soft);
   color: var(--warn);
-  border-radius: 999px;
-  padding: 1px 8px;
+  border-radius: 10px;
+  padding: 8px 10px;
+  min-height: 44px;
   font: inherit;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
+  line-height: 1.2;
+  text-align: center;
+  white-space: normal;
   cursor: pointer;
-  line-height: 1.6;
 }
 
 button.stale-price {
@@ -4451,7 +4453,7 @@ textarea:disabled {
 .pc-tick, .pc-label { position: absolute; font-size: 11px; line-height: 1; font-variant-numeric: tabular-nums; white-space: nowrap; pointer-events: none; }
 .pc-tick { left: 2px; transform: translateY(-120%); color: var(--muted); }
 .pc-label { padding: 3px 6px; border-radius: 6px; font-weight: 650; background: var(--surface-strong); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08); }
-.pc-label-now { right: 0; transform: translateY(-150%); color: var(--brand); }
+.pc-label-now { transform: translate(-100%, -140%); color: var(--brand); }
 .pc-label-atl { transform: translate(-50%, 45%); color: var(--success); }
 .pc-skel-head { display: flex; gap: 8px; margin-bottom: 10px; }
 .pc-skel-head .pc-skel { width: 84px; height: 20px; border-radius: 999px; }
@@ -4659,8 +4661,7 @@ textarea:disabled {
   background: radial-gradient(circle, color-mix(in srgb, var(--brand) 22%, transparent), transparent 65%);
   pointer-events: none;
 }
-.guest-hero h1 { font-size: clamp(42px, 6vw, 72px); }
-.guest-hero h1 em { background: linear-gradient(90deg, var(--brand), var(--accent-cyan)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.guest-hero h1 { font-size: clamp(34px, 5vw, 56px); }
 
 @view-transition { navigation: auto; }
 ::view-transition-old(root), ::view-transition-new(root) { animation-duration: 240ms; animation-timing-function: ease-out; }
@@ -4687,3 +4688,259 @@ textarea:disabled {
 @keyframes card-glow { 0%, 60% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 45%, transparent), var(--shadow-soft); } 100% { box-shadow: var(--shadow-soft); } }
 .product-card.is-highlight { animation: card-glow 1800ms ease-out; }
 @media (prefers-reduced-motion: reduce) { .product-card.is-highlight { animation: none; outline: 3px solid var(--brand); outline-offset: 2px; } }
+
+/* Product cards: a shared price column. Text wraps; the card grows. */
+.product-card {
+  container-type: inline-size;
+  container-name: product;
+  overflow: visible;
+}
+.card-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+.card-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: start;
+  min-width: 0;
+}
+.card-open {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.card-open:focus-visible,
+.card-edit-btn:focus-visible,
+.price-rail :focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--brand) 55%, transparent);
+  outline-offset: 2px;
+}
+.card-open .card-chevron {
+  position: static;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.card-edit-btn {
+  position: static;
+  min-height: 44px;
+  min-width: 44px;
+}
+.goal-line {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 650;
+}
+.price-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  min-width: 0;
+  text-align: right;
+}
+.price-state,
+.rail-shop,
+.rail-shop-name,
+.rail-when {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+.price-state {
+  color: var(--muted);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+.rail-shop {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 650;
+}
+.rail-when {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+.stale-revealed {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+.shop-gap {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 650;
+}
+.product-card .rows { overflow: visible; }
+.category-body.is-open .category-body-inner { overflow: visible; }
+.row-side { flex-shrink: 1; min-width: 0; justify-content: flex-end; }
+.row-price.none,
+.row-price.unavailable { white-space: normal; text-align: right; }
+@container product (min-width: 560px) {
+  .card-layout {
+    grid-template-columns: minmax(0, 1fr) 12.5rem;
+    column-gap: 18px;
+  }
+  .price-rail { width: 12.5rem; }
+}
+
+/* Landing example. Sample only — not a live price. */
+.guest-hero.glass-surface { overflow: visible; }
+.guest-hero-actions .button { min-height: 44px; }
+.example-card {
+  margin: 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface-strong);
+}
+.example-card figcaption {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 700;
+}
+.example-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.example-card-top strong {
+  display: block;
+  font-size: 16px;
+}
+.example-card-top > b {
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+  color: var(--brand);
+}
+.example-trend {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 8px 0 4px;
+}
+.example-trend polyline {
+  fill: none;
+  stroke: var(--brand);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.example-card ul {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.example-card li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  font-size: 14px;
+}
+.example-card li b { font-variant-numeric: tabular-nums; }
+
+/* Search results: full titles, listed price, clear follow-up. */
+.product-search-text strong {
+  display: block;
+  overflow: visible;
+  -webkit-line-clamp: unset;
+}
+.product-search-price {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  text-align: right;
+}
+.product-search-price small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 650;
+}
+.product-search-status {
+  min-height: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+.product-search-own a { color: inherit; }
+@media (max-width: 640px) {
+  .product-search-row { grid-template-columns: 56px minmax(0, 1fr); }
+  .product-search-price {
+    grid-column: 2;
+    justify-self: start;
+    align-items: flex-start;
+    text-align: left;
+  }
+}
+
+/* Deal dialog: native dialog, short fade, no layout jump. */
+dialog.deal-dialog {
+  margin: auto;
+  padding: 0;
+  color: var(--text);
+  overflow: auto;
+  overscroll-behavior: contain;
+  opacity: 0;
+  transform: translateY(8px);
+  transition-property: opacity, transform, overlay, display;
+  transition-duration: 180ms;
+  transition-timing-function: ease-out;
+  transition-behavior: allow-discrete;
+}
+dialog.deal-dialog[open] { opacity: 1; transform: none; }
+@starting-style {
+  dialog.deal-dialog[open] { opacity: 0; transform: translateY(8px); }
+}
+dialog.deal-dialog::backdrop {
+  overflow: hidden;
+  overscroll-behavior: contain;
+  background-color: rgba(11, 15, 24, 0);
+  transition-property: background-color, overlay, display;
+  transition-duration: 180ms;
+  transition-behavior: allow-discrete;
+}
+dialog.deal-dialog[open]::backdrop { background-color: rgba(11, 15, 24, 0.44); }
+@starting-style {
+  dialog.deal-dialog[open]::backdrop { background-color: rgba(11, 15, 24, 0); }
+}
+
+.squeeze-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-start;
+}
+.squeeze-280 { width: min(100%, 280px); }
+.squeeze-360 { width: min(100%, 360px); }
+.squeeze-520 { width: min(100%, 520px); }

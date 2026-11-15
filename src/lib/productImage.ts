@@ -9,6 +9,18 @@ function urlVersion(url: string): string {
   return hash.toString(36);
 }
 
+// These shops refuse both our server and a normal page load, so an <img>
+// pointed at them only produces a failed request in the console.
+const BLOCKED_IMAGE_HOST = /(^|\.)woolworths\.media$|(^|\.)woolworths\.com\.au$|(^|\.)bigw\.com\.au$/i;
+
+export function browserCanLoadImage(url: string): boolean {
+  try {
+    return !BLOCKED_IMAGE_HOST.test(new URL(url).hostname.toLowerCase());
+  } catch {
+    return false;
+  }
+}
+
 export type ThumbSource = {
   /** Resized, trimmed copy served by /api/thumb. */
   proxied: string;

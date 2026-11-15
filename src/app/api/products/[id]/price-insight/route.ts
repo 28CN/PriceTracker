@@ -74,7 +74,7 @@ export async function GET(request: Request, { params }: RouteContext) {
     .order('created_at', { ascending: true });
   if (linksError) return NextResponse.json({ error: 'Could not load links.' }, { status: 500 });
 
-  const linkIds = (links ?? []).map((l) => l.id as string);
+  const linkIds = (links ?? []).map((l: { id: string }) => l.id as string);
   const now = new Date();
   // History for the verdict needs 90 days even when the chart asks for less.
   const historyFrom = new Date(now.getTime() - Math.max(days, 90) * DAY_MS).toISOString();
@@ -150,7 +150,7 @@ export async function GET(request: Request, { params }: RouteContext) {
     product: { id: product.id, name: product.name, targetPrice: num(product.target_price) },
     range: { days, from: chartFrom, to: toIso },
     lowest: lowestAll.filter(inChart),
-    links: (links ?? []).map((l) => {
+    links: (links ?? []).map((l: { id: string; retailer: string | null; url: string | null; stock_status: string | null }) => {
       const s = statsByLink.get(l.id);
       const promo = resolveCycle(l.retailer ?? '', cycleRows);
       const { periods, coverage } = buildPromoPeriods(rawByLink.get(l.id) ?? [], promo, chartFrom, toIso);
@@ -185,7 +185,9 @@ export async function GET(request: Request, { params }: RouteContext) {
     }),
     insight
   };
-  return NextResponse.json(body);
+  return NextResponse.json(body, {
+    headers: { 'Cache-Control': 'private, max-age=60' }
+  });
 }
 
 type DailyRow = { link_id: string; day: string; min_price: number | string; last_at: string };

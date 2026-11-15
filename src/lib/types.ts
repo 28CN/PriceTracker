@@ -26,6 +26,8 @@ export type ProductView = {
   links: LinkView[];
   lowestPrice: number | null;
   lowestRetailer: string | null;
+  /** Set only when a crawl job for this product is waiting or running. */
+  checkState?: 'queued' | 'checking';
 };
 
 export type CategoryView = {

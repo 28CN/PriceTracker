@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { coverageText, mergePeriods, sydneyDate } from './chartPeriods';
+import { coverageText, lineEnd, mergePeriods, sydneyDate } from './chartPeriods';
 
 const wk = (start: string, end: string, minPrice: number | null) => ({ start, end, minPrice, observed: minPrice !== null });
 const A = '2026-10-14T00:00:00+11:00';
@@ -20,6 +20,22 @@ describe('mergePeriods', () => {
   it('returns null without periods', () => {
     expect(mergePeriods([])).toBeNull();
     expect(mergePeriods([{ promo: { cycleDays: 7 }, periods: [] }])).toBeNull();
+  });
+});
+
+describe('lineEnd', () => {
+  it('uses the last priced period, not an earlier dip', () => {
+    const end = lineEnd([
+      { minPrice: 6, endMs: 1 },
+      { minPrice: 3, endMs: 2 },
+      { minPrice: null, endMs: 3 },
+      { minPrice: 5.99, endMs: 4 }
+    ]);
+    expect(end).toEqual({ price: 5.99, atMs: 4 });
+  });
+
+  it('returns null when nothing was priced', () => {
+    expect(lineEnd([{ minPrice: null, endMs: 1 }])).toBeNull();
   });
 });
 

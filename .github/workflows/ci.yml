@@ -55,7 +55,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          # A pinned release avoids the GitHub "latest" lookup, which fails
+          # when the unauthenticated API rate limit is spent.
+          version: 3.1.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Start local database (applies all migrations)
         run: supabase db start
       - name: Check migrations are idempotent and match the live snapshot

@@ -1,7 +1,9 @@
 import { createHash } from 'node:crypto';
+import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import type { NextRequest } from 'next/server';
 
+import { cookieFingerprint, inflight } from './inflight';
 import { createAdminSupabaseClient } from './supabase/admin';
 import { createServerSupabaseClient } from './supabase/server';
 import { normalizeUsername, validateUsername } from './username';
@@ -20,11 +22,26 @@ export type Viewer = {
   isDemo: boolean;
 };
 
-export async function getApiAuth() {
-  const supabase = await createServerSupabaseClient();
+async function verifiedUserId(supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>): Promise<string | null> {
+  // Middleware already checked the session and set this. Trusting it avoids a
+  // second getClaims()/getUser() on the same request. A missing marker means
+  // middleware did not run, so check here.
+  try {
+    const marker = (await headers()).get('x-pt-auth');
+    if (marker === 'anon') return null;
+    if (marker) return marker;
+  } catch {
+    // headers() is only available during a request.
+  }
   const { data, error } = await supabase.auth.getClaims();
   const userId = data?.claims?.sub;
-  if (error || typeof userId !== 'string') return null;
+  return error || typeof userId !== 'string' ? null : userId;
+}
+
+export async function getApiAuth() {
+  const supabase = await createServerSupabaseClient();
+  const userId = await verifiedUserId(supabase);
+  if (!userId) return null;
 
   const { data: adminResult } = await supabase.rpc('is_admin');
   return { supabase, userId, isAdmin: adminResult === true };
@@ -78,17 +95,34 @@ export async function consumeAuthRateLimit(
   return data === true;
 }
 
+// Shares one read when the top bar and the page ask together.
+// The promise is dropped as soon as it finishes. See inflight.
+const viewerPromises = new Map<string, Promise<Viewer | null>>();
+
 export async function getViewer(): Promise<Viewer | null> {
   const supabase = await createServerSupabaseClient();
-  const { data, error } = await supabase.auth.getClaims();
-  const userId = data?.claims?.sub;
-  if (error || typeof userId !== 'string') return null;
+  const cookieStore = await cookies();
+  const key = cookieFingerprint(cookieStore.getAll());
+  return inflight(viewerPromises, key, () => loadViewer(supabase));
+}
 
-  const profileResult = await supabase
-    .from('profiles')
-    .select('username, display_name, avatar_path, public_slug, watchlist_visibility, is_demo')
-    .eq('id', userId)
-    .maybeSingle();
+async function loadViewer(supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>): Promise<Viewer | null> {
+  const userId = await verifiedUserId(supabase);
+  if (!userId) return null;
+
+  const [profileResult, rolesResult, securityResult] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select('username, display_name, avatar_path, public_slug, watchlist_visibility, is_demo')
+      .eq('id', userId)
+      .maybeSingle(),
+    supabase.from('user_roles').select('role').eq('user_id', userId),
+    supabase
+      .from('user_security')
+      .select('must_change_password')
+      .eq('user_id', userId)
+      .maybeSingle()
+  ]);
   const profileQuery =
     profileResult.error && /public_slug/.test(profileResult.error.message)
       ? await supabase
@@ -98,14 +132,8 @@ export async function getViewer(): Promise<Viewer | null> {
           .maybeSingle()
       : profileResult;
 
-  const [{ data: roles }, { data: security }] = await Promise.all([
-    supabase.from('user_roles').select('role').eq('user_id', userId),
-    supabase
-      .from('user_security')
-      .select('must_change_password')
-      .eq('user_id', userId)
-      .maybeSingle()
-  ]);
+  const roles = rolesResult.data;
+  const security = securityResult.data;
 
   const profile = profileQuery.data as {
     username: string;
@@ -123,7 +151,7 @@ export async function getViewer(): Promise<Viewer | null> {
     avatarPath: profile.avatar_path,
     publicSlug: typeof profile.public_slug === 'string' ? profile.public_slug : null,
     watchlistPublic: profile.watchlist_visibility === 'public',
-    isAdmin: (roles || []).some((row) => row.role === 'admin'),
+    isAdmin: (roles || []).some((row: { role: string }) => row.role === 'admin'),
     mustChangePassword: security?.must_change_password === true,
     isDemo: profile.is_demo === true
   };

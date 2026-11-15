@@ -4,7 +4,7 @@ import { useState } from 'react';
 
 import { formatMoney } from '@/lib/format';
 
-const HINT = 'Last price check was more than 7 days ago. Show the saved price.';
+const HINT = 'The last check was more than a week ago. This shows the saved price.';
 
 export default function ExpiredPrice({
   price,
@@ -19,7 +19,12 @@ export default function ExpiredPrice({
   const [shown, setShown] = useState(false);
 
   if (shown) {
-    return <span className={revealedClassName}>{formatMoney(price)}</span>;
+    return (
+      <span className="stale-revealed">
+        <span className={revealedClassName}>{formatMoney(price)}</span>
+        <span className="rail-when">Last saved price</span>
+      </span>
+    );
   }
 
   function reveal(event: React.MouseEvent | React.KeyboardEvent) {
@@ -41,14 +46,14 @@ export default function ExpiredPrice({
           if (event.key === 'Enter' || event.key === ' ') reveal(event);
         }}
       >
-        Expired
+        Show last price
       </span>
     );
   }
 
   return (
-    <button type="button" className="stale-price" title={HINT} onClick={reveal}>
-      Expired
+    <button type="button" className="stale-price" aria-label={`Show last price. ${HINT}`} onClick={reveal}>
+      Show last price
     </button>
   );
 }

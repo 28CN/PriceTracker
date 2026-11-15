@@ -111,6 +111,10 @@ async function fetchLinks(
   return byProduct;
 }
 
+// Open crawl jobs older than this are ignored so a stuck job does not
+// say "Checking soon" forever. Crawls are asked for by the hour, not the month.
+const OPEN_CHECK_MS = 36 * 60 * 60 * 1000;
+
 async function fetchLatestPrices(
   supabase: SupabaseClient,
   linkIds: string[]
@@ -119,6 +123,19 @@ async function fetchLatestPrices(
 
   if (linkIds.length === 0) {
     return latest;
+  }
+
+  // One indexed read of the newest row per link. Falls back to a bounded scan
+  // if the migration is not applied yet. Neither path deletes history.
+  const viaRpc = await supabase.rpc('latest_link_prices', { link_ids: linkIds });
+  if (!viaRpc.error) {
+    for (const row of (viaRpc.data || []) as RawPrice[]) {
+      if (!latest.has(row.link_id)) latest.set(row.link_id, row);
+    }
+    return latest;
+  }
+  if (!/latest_link_prices|does not exist|42883|PGRST202/i.test(viaRpc.error.message)) {
+    console.error('[queries] could not read latest prices:', viaRpc.error.message);
   }
 
   const { data, error } = await supabase
@@ -140,6 +157,40 @@ async function fetchLatestPrices(
   }
 
   return latest;
+}
+
+async function fetchCheckStates(
+  supabase: SupabaseClient,
+  productIds: string[]
+): Promise<Map<string, 'queued' | 'checking'>> {
+  const states = new Map<string, 'queued' | 'checking'>();
+  if (productIds.length === 0) return states;
+
+  const since = new Date(Date.now() - OPEN_CHECK_MS).toISOString();
+  // Column grant is only id, product_id, link_id, status, created_at.
+  // requested_by, runner and last_error are not readable here.
+  const { data, error } = await supabase
+    .from('crawl_jobs')
+    .select('id, product_id, link_id, status, created_at')
+    .in('product_id', productIds)
+    .in('status', ['pending', 'running'])
+    .gte('created_at', since);
+
+  if (error) {
+    // Missing grant or table (migration not applied) just means we cannot
+    // tell a queued check from "no price yet". Do not pretend one is queued.
+    if (!/crawl_jobs|permission denied|42501|42P01/i.test(error.message)) {
+      console.error('[queries] could not read crawl_jobs:', error.message);
+    }
+    return states;
+  }
+
+  for (const row of (data || []) as { product_id: string | null; status: string }[]) {
+    if (!row.product_id) continue;
+    if (row.status === 'running') states.set(row.product_id, 'checking');
+    else if (states.get(row.product_id) !== 'checking') states.set(row.product_id, 'queued');
+  }
+  return states;
 }
 
 function offerRank(link: LinkView): number {
@@ -226,14 +277,19 @@ export async function fetchProducts(
   );
 
   const allLinks = [...linksByProduct.values()].flat();
-  const latestPrices = await fetchLatestPrices(
-    supabase,
-    allLinks.map((link) => link.id)
-  );
-  const unavailableEvents = await fetchUnavailableEvents(
-    supabase,
-    allLinks.map((link) => link.id)
-  );
+  const linkIds = allLinks.map((link) => link.id);
+  // Stock already stored on the link does not need a text search of crawl events.
+  const unknownStockIds = allLinks
+    .filter((link) => parseStockStatus(link.stock_status) === 'unknown')
+    .map((link) => link.id);
+  const [latestPrices, unavailableEvents, checkStates] = await Promise.all([
+    fetchLatestPrices(supabase, linkIds),
+    fetchUnavailableEvents(supabase, unknownStockIds),
+    fetchCheckStates(
+      supabase,
+      products.map((product) => product.id)
+    )
+  ]);
 
   return products.map((product) => {
     const links: LinkView[] = (linksByProduct.get(product.id) || []).map((link) => {
@@ -288,7 +344,8 @@ export async function fetchProducts(
       imageUrl: product.image_url || null,
       links,
       lowestPrice: cheapest?.latestPrice ?? null,
-      lowestRetailer: cheapest?.retailer ?? null
+      lowestRetailer: cheapest?.retailer ?? null,
+      checkState: checkStates.get(product.id)
     } satisfies ProductView;
   });
 }

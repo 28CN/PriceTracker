@@ -24,7 +24,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: INVALID_CREDENTIALS }, { status: 401 });
   }
 
-  const allowed = await consumeAuthRateLimit(request, 'login', username, 10);
+  const admin = createAdminSupabaseClient();
+  // The rate limit and the username lookup do not depend on each other.
+  const [allowed, profileResult] = await Promise.all([
+    consumeAuthRateLimit(request, 'login', username, 10),
+    admin.from('profiles').select('id').eq('username', username).maybeSingle()
+  ]);
   if (!allowed) {
     return NextResponse.json(
       { error: 'Too many attempts. Try again in 15 minutes.' },
@@ -32,21 +37,21 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const admin = createAdminSupabaseClient();
-  const { data: profile } = await admin
-    .from('profiles')
-    .select('id')
-    .eq('username', username)
-    .maybeSingle();
+  const profile = profileResult.data;
 
   let authEmail: string | null = null;
+  let mustChangePassword = false;
   if (profile?.id) {
-    const { data: account } = await admin
-      .from('account_private')
-      .select('auth_email')
-      .eq('user_id', profile.id)
-      .maybeSingle();
+    const [{ data: account }, { data: security }] = await Promise.all([
+      admin.from('account_private').select('auth_email').eq('user_id', profile.id).maybeSingle(),
+      admin
+        .from('user_security')
+        .select('must_change_password')
+        .eq('user_id', profile.id)
+        .maybeSingle()
+    ]);
     authEmail = account?.auth_email || null;
+    mustChangePassword = security?.must_change_password === true;
   }
 
   if (!authEmail || !profile?.id) {
@@ -62,18 +67,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: INVALID_CREDENTIALS }, { status: 401 });
   }
 
-  const { data: security } = await admin
-    .from('user_security')
-    .select('must_change_password')
-    .eq('user_id', profile.id)
-    .maybeSingle();
-
   return NextResponse.json(
     {
       ok: true,
       username,
       redirectTo:
-        security?.must_change_password === true ? '/account?security=required' : '/'
+        mustChangePassword ? '/account?security=required' : '/'
     },
     { headers: { 'Cache-Control': 'private, no-store' } }
   );
