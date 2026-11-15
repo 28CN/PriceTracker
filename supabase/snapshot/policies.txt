@@ -15,6 +15,7 @@ crawl_events | demo users cannot insert | INSERT | RESTRICTIVE | authenticated |
 crawl_events | demo users cannot update | UPDATE | RESTRICTIVE | authenticated | (NOT ( SELECT is_demo_user() AS is_demo_user)) | -
 crawl_events | users mark own crawl events read | UPDATE | PERMISSIVE | authenticated | ((link_id IS NOT NULL) AND (EXISTS ( SELECT 1 FROM tracked_links l WHERE ((l.id = crawl_events.link_id) AND owns_product(l.product_id))))) | ((link_id IS NOT NULL) AND (EXISTS ( SELECT 1 FROM tracked_links l WHERE ((l.id = crawl_events.link_id) AND owns_product(l.product_id)))))
 crawl_events | users read own crawl events | SELECT | PERMISSIVE | authenticated | ((link_id IS NOT NULL) AND (EXISTS ( SELECT 1 FROM tracked_links l WHERE ((l.id = crawl_events.link_id) AND owns_product(l.product_id))))) | -
+crawl_jobs | owners read own crawl jobs | SELECT | PERMISSIVE | authenticated | ((product_id IS NOT NULL) AND owns_product(product_id)) | -
 notification_preferences | demo users cannot delete | DELETE | RESTRICTIVE | authenticated | (NOT ( SELECT is_demo_user() AS is_demo_user)) | -
 notification_preferences | demo users cannot insert | INSERT | RESTRICTIVE | authenticated | - | (NOT ( SELECT is_demo_user() AS is_demo_user))
 notification_preferences | demo users cannot update | UPDATE | RESTRICTIVE | authenticated | (NOT ( SELECT is_demo_user() AS is_demo_user)) | -

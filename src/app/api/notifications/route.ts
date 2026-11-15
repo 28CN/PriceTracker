@@ -102,7 +102,14 @@ export async function GET() {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    const events: CrawlEventView[] = (data || []).map((row) => ({
+    const events: CrawlEventView[] = (data || []).map((row: {
+      id: unknown;
+      link_id: unknown;
+      level: unknown;
+      message: unknown;
+      is_read: unknown;
+      created_at: unknown;
+    }) => ({
       id: row.id as string,
       linkId: (row.link_id as string | null) ?? null,
       level: (row.level as string) || 'info',

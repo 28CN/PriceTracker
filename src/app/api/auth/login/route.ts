@@ -40,13 +40,18 @@ export async function POST(request: NextRequest) {
     .maybeSingle();
 
   let authEmail: string | null = null;
+  let mustChangePassword = false;
   if (profile?.id) {
-    const { data: account } = await admin
-      .from('account_private')
-      .select('auth_email')
-      .eq('user_id', profile.id)
-      .maybeSingle();
+    const [{ data: account }, { data: security }] = await Promise.all([
+      admin.from('account_private').select('auth_email').eq('user_id', profile.id).maybeSingle(),
+      admin
+        .from('user_security')
+        .select('must_change_password')
+        .eq('user_id', profile.id)
+        .maybeSingle()
+    ]);
     authEmail = account?.auth_email || null;
+    mustChangePassword = security?.must_change_password === true;
   }
 
   if (!authEmail || !profile?.id) {
@@ -62,18 +67,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: INVALID_CREDENTIALS }, { status: 401 });
   }
 
-  const { data: security } = await admin
-    .from('user_security')
-    .select('must_change_password')
-    .eq('user_id', profile.id)
-    .maybeSingle();
-
   return NextResponse.json(
     {
       ok: true,
       username,
       redirectTo:
-        security?.must_change_password === true ? '/account?security=required' : '/'
+        mustChangePassword ? '/account?security=required' : '/'
     },
     { headers: { 'Cache-Control': 'private, no-store' } }
   );

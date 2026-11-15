@@ -37,7 +37,13 @@ export async function middleware(request: NextRequest) {
     await supabase.auth.signOut({ scope: 'local' });
     response.headers.set('X-Demo-Session', 'expired');
   }
-  response.headers.set('Cache-Control', 'private, no-store');
+  // Chart JSON is still private to this browser. A minute of reuse avoids
+  // hitting the database again when the same person reopens a card.
+  // It is not a shared cache: no public or s-maxage directive.
+  const chartGet =
+    request.method === 'GET' &&
+    /^\/api\/products\/[^/]+\/price-insight\/?$/.test(request.nextUrl.pathname);
+  response.headers.set('Cache-Control', chartGet ? 'private, max-age=60' : 'private, no-store');
   return response;
 }
 
