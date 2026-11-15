@@ -28,6 +28,26 @@ export function headlineFor(input: {
   return { kind: 'none' };
 }
 
+/** How much more the dearest current shop is, compared with the cheapest. Not the goal. */
+export function shopGapLabel(
+  offers: { retailer: string; price: number }[],
+  money: (value: number) => string
+): string | null {
+  const priced = offers.filter((offer) => Number.isFinite(offer.price));
+  if (priced.length < 2) return null;
+  let low = priced[0];
+  let high = priced[0];
+  for (const offer of priced) {
+    if (offer.price < low.price) low = offer;
+    if (offer.price > high.price) high = offer;
+  }
+  const gap = high.price - low.price;
+  if (gap < 0.01) return null;
+  const amount = money(gap);
+  if (priced.length === 2) return `${high.retailer} is ${amount} more`;
+  return `The highest shop is ${amount} more`;
+}
+
 export function headlineText(headline: Headline, money: (value: number) => string): string {
   switch (headline.kind) {
     case 'unavailable':

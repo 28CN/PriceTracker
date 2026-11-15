@@ -3,7 +3,7 @@
 import { Package } from 'lucide-react';
 import { useState } from 'react';
 
-import type { ThumbSource } from '@/lib/productImage';
+import { browserCanLoadImage, type ThumbSource } from '@/lib/productImage';
 
 type Resolved = { src: string } | 'gone';
 
@@ -18,7 +18,7 @@ export default function ProductThumb({ source }: { source: ThumbSource }) {
     known === 'gone' ? 'gone' : known ? 'ready' : 'pending'
   );
 
-  if (status === 'gone') {
+  if (!browserCanLoadImage(source.raw) || status === 'gone') {
     return <ProductPlaceholder />;
   }
 

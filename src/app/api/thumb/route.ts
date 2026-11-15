@@ -75,8 +75,10 @@ export async function GET(request: NextRequest) {
   }
 
   const host = new URL(imageUrl).hostname.toLowerCase();
+  // A redirect sends the browser to a host that answers with an error page.
+  // That shows up as a failed image. The card uses a placeholder instead.
   if (BROWSER_ONLY_HOSTS.some((pattern) => pattern.test(host))) {
-    return redirectToSource(imageUrl);
+    return new NextResponse('Not found', { status: 404 });
   }
 
   let input: Buffer;

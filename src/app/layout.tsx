@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from 'next';
 import { Figtree } from 'next/font/google';
 
 import AmbientBackground from '@/components/AmbientBackground';
-import SiteFooter from '@/components/SiteFooter';
 import TopBar from '@/components/TopBar';
 
 import './globals.css';
@@ -88,7 +87,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <AmbientBackground />
           <TopBar />
           <div className="page">{children}</div>
-          <SiteFooter />
         </div>
       </body>
     </html>

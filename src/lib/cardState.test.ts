@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { headlineFor, headlineText } from './cardState';
+import { headlineFor, headlineText, shopGapLabel } from './cardState';
 
 const money = (value: number) => `$${value.toFixed(2)}`;
 
@@ -43,5 +43,36 @@ describe('headlineFor', () => {
 
   it('shows unavailable without inventing a price', () => {
     expect(headlineText(headlineFor({ allUnavailable: true, price: 10, stalePrice: null }), money)).toBe('Unavailable');
+  });
+});
+
+describe('shopGapLabel', () => {
+  it('names the other shop when there are two prices', () => {
+    expect(
+      shopGapLabel(
+        [
+          { retailer: 'Coles', price: 14 },
+          { retailer: 'Kmart', price: 15 }
+        ],
+        money
+      )
+    ).toBe('Kmart is $1.00 more');
+  });
+
+  it('does not describe the gap as money off a goal', () => {
+    expect(
+      shopGapLabel(
+        [
+          { retailer: 'Coles', price: 14 },
+          { retailer: 'Kmart', price: 15 },
+          { retailer: 'Big W', price: 14.5 }
+        ],
+        money
+      )
+    ).toBe('The highest shop is $1.00 more');
+  });
+
+  it('says nothing when there is only one price', () => {
+    expect(shopGapLabel([{ retailer: 'Coles', price: 14 }], money)).toBeNull();
   });
 });

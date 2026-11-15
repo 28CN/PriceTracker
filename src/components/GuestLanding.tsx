@@ -50,8 +50,8 @@ export default function GuestLanding() {
           </svg>
           <ul>
             <li>
-              <RetailerLogo retailer="Auto Barn" url="https://autobarn.com.au" />
-              <span>Auto Barn</span>
+              <RetailerLogo retailer="Coles" url="https://coles.com.au" />
+              <span>Coles</span>
               <b>$22.99</b>
             </li>
             <li>

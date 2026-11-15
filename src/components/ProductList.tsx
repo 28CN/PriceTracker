@@ -8,7 +8,7 @@ import EditProductForm from '@/components/EditProductForm';
 import ExpiredPrice from '@/components/ExpiredPrice';
 import ProductVisual from '@/components/ProductVisual';
 import RetailerLogo from '@/components/RetailerLogo';
-import { headlineFor } from '@/lib/cardState';
+import { headlineFor, shopGapLabel } from '@/lib/cardState';
 import { formatCheckedAt, formatMoney, latestTimestamp } from '@/lib/format';
 import { cheapestStaleLink } from '@/lib/priceAge';
 import { productThumb } from '@/lib/productImage';
@@ -52,13 +52,11 @@ function ProductCard({ product, readOnly }: { product: ProductView; readOnly: bo
       link.latestPrice !== null &&
       (link.retailer === product.lowestRetailer || link.latestPrice === product.lowestPrice)
   );
-  const livePrices = activeLinks
+  const liveOffers = activeLinks
     .filter((link) => !link.priceStale && link.latestPrice !== null)
-    .map((link) => link.latestPrice as number);
-  const saving =
-    product.lowestPrice !== null && livePrices.length > 1 && Math.max(...livePrices) - product.lowestPrice >= 0.01
-      ? Math.max(...livePrices) - product.lowestPrice
-      : null;
+    .map((link) => ({ retailer: link.retailer, price: link.latestPrice as number }));
+  const shopGap = shopGapLabel(liveOffers, formatMoney);
+  const saving = shopGap !== null;
   const staleLink = cheapestStaleLink(product.links);
   const headlineLink = allUnavailable
     ? activeLinks.length === 1
@@ -112,7 +110,6 @@ function ProductCard({ product, readOnly }: { product: ProductView; readOnly: bo
                   {hitsTarget ? 'Below goal' : 'Goal'} {formatMoney(product.targetPrice)}
                 </span>
               ) : null}
-              {saving !== null ? <span className="save-pill">Save {formatMoney(saving)}</span> : null}
             </span>
             <ChevronDown className={`card-chevron${isOpen ? ' is-open' : ''}`} size={17} aria-hidden="true" />
           </button>
@@ -145,6 +142,7 @@ function ProductCard({ product, readOnly }: { product: ProductView; readOnly: bo
             </span>
           ) : null}
           {shopUnsupported ? <span className="shop-gap">Not checked here</span> : null}
+          {shopGap ? <span className="rail-when">{shopGap}</span> : null}
           {showChecked && checkedAt ? <CheckedOn iso={checkedAt} /> : null}
         </div>
       </div>
