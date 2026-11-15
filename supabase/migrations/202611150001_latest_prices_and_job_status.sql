@@ -21,7 +21,11 @@ as $$
     ph.created_at
   from public.price_history ph
   where ph.link_id = any (link_ids)
-  order by ph.link_id, ph.created_at desc nulls last, ph.id desc;
+    and ph.created_at is not null
+  -- created_at is nullable. The existing index is (link_id, created_at DESC),
+  -- and DESC means NULLS FIRST. Filtering nulls out, then ordering the same
+  -- way, matches that index. Do not add NULLS LAST or a second index.
+  order by ph.link_id, ph.created_at desc;
 $$;
 
 revoke all on function public.latest_link_prices(uuid[]) from public, anon, authenticated;
@@ -37,7 +41,12 @@ for select
 to authenticated
 using ((product_id is not null) and owns_product(product_id));
 
-grant select on public.crawl_jobs to authenticated;
+-- Table-level select would also expose requested_by, runner and last_error.
+-- Signed-in users only get the columns the card needs. Re-applying this
+-- file drops a wider grant if an earlier draft of it was applied.
+revoke select on table public.crawl_jobs from authenticated;
+grant select (id, product_id, link_id, status, created_at)
+  on table public.crawl_jobs to authenticated;
 
 create index if not exists crawl_jobs_product_open_idx
   on public.crawl_jobs (product_id)

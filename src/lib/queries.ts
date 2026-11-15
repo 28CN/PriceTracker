@@ -167,9 +167,11 @@ async function fetchCheckStates(
   if (productIds.length === 0) return states;
 
   const since = new Date(Date.now() - OPEN_CHECK_MS).toISOString();
+  // Column grant is only id, product_id, link_id, status, created_at.
+  // requested_by, runner and last_error are not readable here.
   const { data, error } = await supabase
     .from('crawl_jobs')
-    .select('product_id, status')
+    .select('id, product_id, link_id, status, created_at')
     .in('product_id', productIds)
     .in('status', ['pending', 'running'])
     .gte('created_at', since);

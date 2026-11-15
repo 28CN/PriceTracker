@@ -38,7 +38,7 @@ See [PERFORMANCE.md](PERFORMANCE.md). Production `/` and `/login` were timed. A 
 
 ## Data
 
-The new migration grants `SELECT` on `crawl_jobs` to `authenticated` and `EXECUTE` on `latest_link_prices` to `anon`, `authenticated`, and `service_role`. It does not grant `TRUNCATE`. It does not delete `price_history`. Apply it to production before merge. Schema snapshots were updated to the expected policy, index, and privilege lines. If CI's drift check disagrees with the exact Postgres text, fix the snapshot in that check. Not run locally: `supabase test db` (no local database in this environment).
+The new migration grants `SELECT` on five `crawl_jobs` columns (`id`, `product_id`, `link_id`, `status`, `created_at`) to `authenticated`, not the whole table, and `EXECUTE` on `latest_link_prices` to `anon`, `authenticated`, and `service_role`. It does not grant `TRUNCATE`. It does not delete `price_history`. Apply it to production before merge. Schema snapshots were updated to the expected policy, index, and privilege lines. If CI's drift check disagrees with the exact Postgres text, fix the snapshot in that check. Not run locally: `supabase test db` (no local database in this environment).
 
 ## Demo and data checks (from the previous list)
 

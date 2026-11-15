@@ -18,7 +18,7 @@ The chart (`GET /api/products/:id/price-insight`) still reads the daily view, th
 
 ## Checks
 
-`crawl_jobs` records a requested crawl (`pending`, `running`, `done`, `failed`). Until this migration, signed-in users could not read it, so the card guessed "Checking soon" whenever a date was missing. Owners can now `SELECT` jobs whose `product_id` they own (`owns_product`, which is `security definer` and compares `owner_id` to `(select auth.uid())`). They cannot write jobs through that policy. Jobs with no product (an administrator refreshing every account) stay hidden. The card ignores open jobs older than 36 hours so a stuck row does not say "Checking soon" forever.
+`crawl_jobs` records a requested crawl (`pending`, `running`, `done`, `failed`). Until this migration, signed-in users could not read it, so the card guessed "Checking soon" whenever a date was missing. Owners can now read `id`, `product_id`, `link_id`, `status` and `created_at` for jobs whose `product_id` they own (`owns_product`, which is `security definer` and compares `owner_id` to `(select auth.uid())`). `requested_by`, `runner` and `last_error` are not granted. They cannot write jobs through that policy. Jobs with no product (an administrator refreshing every account) stay hidden. The card ignores open jobs older than 36 hours so a stuck row does not say "Checking soon" forever.
 
 A partial index `crawl_jobs_product_open_idx` covers `product_id` where status is `pending` or `running`.
 
