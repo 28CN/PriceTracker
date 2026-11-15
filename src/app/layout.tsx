@@ -6,6 +6,10 @@ import TopBar from '@/components/TopBar';
 
 import './globals.css';
 
+// The database is in Tokyo. Functions stay there so each query is not a
+// Pacific round trip. See docs/PERFORMANCE.md.
+export const preferredRegion = 'hnd1';
+
 const criticalFallbackCss = `
   :where(*){box-sizing:border-box}
   :where(html,body){margin:0;min-height:100%;background:#f3f5f8;color:#1d2433}

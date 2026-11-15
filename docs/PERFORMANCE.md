@@ -19,6 +19,25 @@ Headless Chrome, 390px wide, production `/`, 10 loads: no Largest Contentful Pai
 
 There is no CrUX field data here. The 2.5s / 200ms / 0.1 targets are aspirations for the field, not a score this sample can claim. Lighthouse TBT was not used as a stand-in for INP.
 
+## Sign-in to the list
+
+On the preview, a signed-in check from the owner's browser took about 19.6 seconds from pressing Sign in until the product list appeared. That timing is theirs (rough, one pass, and the function may have been cold). This environment has no password for that account, so it was not repeated here.
+
+The database host `db.yvvreaqbxzcemvgimbpa.supabase.co` is IPv6 `2406:da14:25a:5800:9418:94ee:4e2:78c8`. ipinfo places that address in Tokyo (Amazon). There was no region in the project config, so Vercel was running the functions in its default US East region. SQL from those functions goes to Tokyo. Sign-in does several of those queries one after another: the rate limit and the username lookup (now together), then the email and the password flag together, then the password check. The list page then checks the session, reads the account, and loads products, links, and the latest prices. A cold start sits on top. This VM is in Ashburn and has no IPv6 route, so the Tokyo hop itself was not timed. Unauthenticated requests to the project API from here came back from Cloudflare in Ashburn (`cf-ray` ending `IAD`) in 43–134 ms, and they were rejected before any SQL, so that is not the database cost.
+
+`getClaims()` calls the auth server, the same kind of request as `getUser()`, when the session token has no asymmetric key id. The library does that for the older shared secret and when WebCrypto is missing. A real token was not inspected here, so that extra trip is possible rather than confirmed. Before this change the sign-in POST made one such call before the password check, and the list page made one in middleware and another while loading the account.
+
+What changed:
+
+- Functions are pinned to Tokyo (`hnd1` in `vercel.json`, and `preferredRegion` on the root layout), next to the database.
+- The sign-in POST no longer checks for an existing session first. The rate limit and the username lookup run together.
+- Middleware records who is signed in and how long that check took. The list page reuses that instead of calling `getClaims()` again, and starts the account read together with the product query.
+- The list response sends a `Server-Timing` header. The name is `Server-Timing`. The three durations are `auth` (the session check in middleware), `list` (waiting on the product query and the account read), and `render` (the rest of the page function, before React writes HTML). It does not include the browser. In the network panel, open the document request for `/` and read that header. The signed-in durations after this change are for that measurement. They are not invented here.
+
+The public home page timings in the next section are a different journey (no sign-in, no product list).
+
+On this same machine, after `next build` and `next start`, with a placeholder Supabase URL and no real database, eight requests to signed-out `/` all returned `Server-Timing`. `list` was 0 every time. `auth` was 4, 0, 1, 0, 1, 0, 1, 0 ms. `render` was 4, 1, 1, 1, 1, 0, 0, 0 ms. That checks the header. It is not the signed-in preview, and the signed-in number after this change is still open.
+
 ## What changed
 
 1. The public page no longer reads a private catalogue. The sample card is static.
