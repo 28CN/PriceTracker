@@ -4,7 +4,7 @@ import InfoTip from './InfoTip';
 import { useEffect, useMemo, useState } from 'react';
 
 import type { PriceInsightResponse } from '@/lib/priceInsightTypes';
-import { coverageText, mergePeriods, sydneyDate, type ChartPeriod } from '@/lib/chartPeriods';
+import { coverageText, lineEnd, mergePeriods, sydneyDate, type ChartPeriod } from '@/lib/chartPeriods';
 import { formatMoney } from '@/lib/format';
 import type { PricePoint, Verdict } from '@/lib/priceInsight';
 
@@ -62,7 +62,7 @@ export default function PriceChart({ productId, days = 180 }: { productId: strin
 
   const periodGeo = useMemo(() => {
     if (state.status !== 'ready') return null;
-    const { links, product, insight } = state.data;
+    const { links, product } = state.data;
     const merged = mergePeriods(links ?? []);
     if (!merged || merged.coverage.observed === 0) return null;
     const { periods } = merged;
@@ -79,8 +79,10 @@ export default function PriceChart({ productId, days = 180 }: { productId: strin
     const x = (t: number) => PAD.left + ((t - t0) / Math.max(t1 - t0, 1)) * (W - PAD.left - PAD.right);
     const y = (p: number) => PAD.top + (1 - (p - lo) / (hi - lo)) * (H - PAD.top - PAD.bottom);
     const lowest = seen.reduce((a, b) => (b.minPrice < a.minPrice ? b : a));
-    const latest = seen[seen.length - 1];
-    const now = insight.currentPrice ?? latest.minPrice;
+    // "Now" is the end of the line, not an earlier low and not a price from another series.
+    const end = lineEnd(periods);
+    const now = end?.price ?? null;
+    const nowAt = end?.atMs ?? null;
     const dataLo = Math.min(...prices);
     const dataHi = Math.max(...prices);
     const ticks = dataHi - dataLo < 0.01 ? [dataLo] : [dataHi, (dataHi + dataLo) / 2, dataLo];
@@ -103,7 +105,7 @@ export default function PriceChart({ productId, days = 180 }: { productId: strin
       prevEnd = i;
     });
     return {
-      x, y, periods, ticks, lowest, latest, now, solid, dashed,
+      x, y, periods, ticks, lowest, now, nowAt, solid, dashed,
       hasUnchecked: merged.coverage.observed < merged.coverage.total,
       coverage: coverageText(merged.coverage, merged.cycleDays),
       from: periods[0].start
@@ -241,7 +243,7 @@ export default function PriceChart({ productId, days = 180 }: { productId: strin
                 {formatMoney(t)}
               </span>
             ))}
-            {periodGeo.lowest.minPrice < periodGeo.now ? (
+            {periodGeo.now !== null && periodGeo.lowest.minPrice < periodGeo.now ? (
               <span
                 className="pc-label pc-label-atl"
                 style={{
@@ -253,9 +255,18 @@ export default function PriceChart({ productId, days = 180 }: { productId: strin
                 Lowest {formatMoney(periodGeo.lowest.minPrice)}
               </span>
             ) : null}
-            <span className="pc-label pc-label-now" style={{ top: `${(periodGeo.y(periodGeo.now) / H) * 100}%` }} aria-hidden="true">
-              Now {formatMoney(periodGeo.now)}
-            </span>
+            {periodGeo.now !== null && periodGeo.nowAt !== null ? (
+              <span
+                className="pc-label pc-label-now"
+                style={{
+                  top: `${(periodGeo.y(periodGeo.now) / H) * 100}%`,
+                  left: `${(periodGeo.x(periodGeo.nowAt) / W) * 100}%`
+                }}
+                aria-hidden="true"
+              >
+                Now {formatMoney(periodGeo.now)}
+              </span>
+            ) : null}
           </div>
           <div className="pc-axis-labels" aria-hidden="true">
             <span>{sydneyDate(periodGeo.from)}</span>
@@ -315,7 +326,14 @@ export default function PriceChart({ productId, days = 180 }: { productId: strin
             Lowest {formatMoney(geo.atl.price)}
           </span>
         ) : null}
-        <span className="pc-label pc-label-now" style={{ top: `${(geo.y(geo.last.price) / H) * 100}%` }} aria-hidden="true">
+        <span
+          className="pc-label pc-label-now"
+          style={{
+            top: `${(geo.y(geo.last.price) / H) * 100}%`,
+            left: `${(geo.x(Date.parse(geo.last.at)) / W) * 100}%`
+          }}
+          aria-hidden="true"
+        >
           Now {formatMoney(geo.last.price)}
         </span>
         </div>

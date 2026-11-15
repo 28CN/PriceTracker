@@ -4453,7 +4453,7 @@ textarea:disabled {
 .pc-tick, .pc-label { position: absolute; font-size: 11px; line-height: 1; font-variant-numeric: tabular-nums; white-space: nowrap; pointer-events: none; }
 .pc-tick { left: 2px; transform: translateY(-120%); color: var(--muted); }
 .pc-label { padding: 3px 6px; border-radius: 6px; font-weight: 650; background: var(--surface-strong); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08); }
-.pc-label-now { right: 0; transform: translateY(-150%); color: var(--brand); }
+.pc-label-now { transform: translate(-100%, -140%); color: var(--brand); }
 .pc-label-atl { transform: translate(-50%, 45%); color: var(--success); }
 .pc-skel-head { display: flex; gap: 8px; margin-bottom: 10px; }
 .pc-skel-head .pc-skel { width: 84px; height: 20px; border-radius: 999px; }

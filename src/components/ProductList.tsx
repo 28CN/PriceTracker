@@ -161,14 +161,14 @@ function ProductCard({ product, readOnly }: { product: ProductView; readOnly: bo
             <div
               key={link.id}
               className={`row ${link.isActive ? '' : 'inactive'}${
-                saving !== null && !link.priceStale && link.latestPrice === product.lowestPrice ? ' is-best' : ''
+                saving && !link.priceStale && link.latestPrice === product.lowestPrice ? ' is-best' : ''
               }`}
             >
               <div className="row-main">
                 <div className="row-shop">
                   <RetailerLogo retailer={link.retailer} url={link.url} />
                   <span>{link.retailer}</span>
-                  {saving !== null && !link.priceStale && link.latestPrice === product.lowestPrice ? (
+                  {saving && !link.priceStale && link.latestPrice === product.lowestPrice ? (
                     <span className="best-tag">Cheapest</span>
                   ) : null}
                   {!hasCrawlerSupport(link.url || link.retailer) ? (
