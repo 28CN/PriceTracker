@@ -57,3 +57,42 @@ Text is a last resort, not the default.
 - [ ] Destructive or irreversible actions show their consequence and ask to confirm.
 - [ ] No technical jargon; a first-time user can tell what to do next.
 - [ ] Checked at 390 px in light and dark themes.
+
+## What the product is for
+
+A person tracks a few products across Australian shops and wants the cheapest current price, the shop name, and the date of the last real check. The goal price is the number they hope to pay. It is called **Goal** everywhere, because Target is also a shop.
+
+## Cards
+
+Reading order: name, then price or state, then shop, then the last successful check, then Edit. The price sits in a column that is the same width on every card in the row (`12.5rem` once the card is at least 560px wide). Narrower cards, including a 280px column, stack that column underneath and keep it right-aligned, so the prices still share a right edge. Shop names, states, and dates wrap. The card grows. Nothing is cut off with an ellipsis.
+
+One state at a time:
+
+| What is true | What the card says |
+| --- | --- |
+| A fresh price | The price, the shop, and `Checked` plus the date |
+| The last price is more than a week old | **Show last price**, then the saved amount labelled **Last saved price** |
+| Every shop is unavailable | **Unavailable** |
+| A check is queued and there is no price | **Checking soon** |
+| A check is running and there is no price | **Checking…** |
+| No price and nothing is queued | **No price yet** |
+| The shop is not one we check | **Not checked here**, and a link to the shop |
+
+**Checking soon** is not a synonym for "we have no price". A missing date is not a promise. The date is the last successful observation, formatted in Sydney time with the year, and stored in a `<time datetime>` as well. The goal amount is written once on the card. The chart can still draw the goal as a line.
+
+Edit is its own button. It does not sit on top of the price. A missing photo keeps a fixed box so the price does not jump when an image arrives.
+
+## Landing
+
+One headline, then **Start tracking**, **View example**, and **Sign in**. The sample card is labelled **Example** and is not anyone's list. The looping kangaroo was removed: it kept animating and competed with the button. A single price line explains the idea without moving.
+
+## Motion
+
+Cards and the deal dialog fade in briefly. The dialog is a native `<dialog>` opened with `showModal()`, so Escape, focus, and the backdrop come from the browser. Scroll gestures inside it do not chain to the page. `prefers-reduced-motion: reduce` turns the animation off.
+
+## Rejected
+
+- Truncating shop names to 140px, or hiding them on a phone. The name is the point of the card.
+- Saying **Checking soon** whenever a date is missing.
+- Putting the owner's real list on the public home page and calling it popular.
+- A shared cache of private pages. A faster page that shows the wrong person's prices is not faster in any sense that matters.

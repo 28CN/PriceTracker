@@ -5,24 +5,28 @@
 [![Send queued emails](https://github.com/28CN/PriceTracker/actions/workflows/send-emails.yml/badge.svg?branch=main)](https://github.com/28CN/PriceTracker/actions/workflows/send-emails.yml)
 ![Node 22](https://img.shields.io/badge/node-22.x-339933?logo=node.js&logoColor=white)
 
-A small price matrix for Australian shops. You save a product once, paste the links
-for each shop that stocks it, and a scheduled crawler fills in the prices. The site
-shows the cheapest shop up front and the full list when you tap a product.
+A watchlist for Australian shop prices. Save a product, paste the shop links, and a scheduled crawler fills in the prices. The cheapest shop is on the card. The other shops are one tap away.
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/media/landing-dark.png">
-  <img alt="PriceTracker landing page with the kangaroo price-tag animation" src="docs/media/landing-light.png">
-</picture>
+Live site: [pricetracker-au.vercel.app](https://pricetracker-au.vercel.app). **View example** opens a read-only sample list. No account needed.
 
-![Demo watchlist: cheapest shop per product, target prices and read-only banner](docs/media/demo-dashboard.png)
+## Case study
 
-## See an example
+Someone keeping an eye on a few products should be able to see the price, the shop, and when it was last checked, without the words being cut off and without waiting several seconds after signing in.
 
-Open [pricetracker-au.vercel.app](https://pricetracker-au.vercel.app) and press **See an example**. No sign-up needed.
+The list was doing too much work before it could draw. The public home page loaded one person's whole catalogue with the service-role key, which was slow and showed a private list to everyone. Signing in then loaded the same heavy read twice (the top bar and the page each asked who you are). Prices were found by pulling up to 2,000 history rows and keeping the newest per link. History itself was never the problem. The way it was read was.
 
-- You land in a sample watchlist with real retailer prices, categories and target prices.
-- The demo account is **read-only**: adding, editing and deleting are blocked, and a banner says so.
-- The account is reset to a clean state every time someone starts the demo, so what you see is always the same.
+What changed:
+
+- Cards share one price column. Shop names, "No price yet", and the checked date wrap. "Checking soon" appears only when a check is actually queued, and "Checking…" only while it is running.
+- The public page is a short headline, **Start tracking**, **View example**, and **Sign in**, plus one labelled sample. It does not read anyone's list.
+- The newest price per link is one indexed query (`latest_link_prices`). The top bar and the page share that sign-in read while it is in flight, then forget it. Nothing is cached across people.
+- Search still waits for an explicit submit. A failed search keeps the last results. Adding a product says **Adding…**, then **Tracked**, and **View on my list** moves to that card.
+
+The measured wait, and what was not measured, is in [docs/PERFORMANCE.md](docs/PERFORMANCE.md). Design choices are in [docs/DESIGN.md](docs/DESIGN.md). How the pieces fit is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). What was tested is in [docs/TESTING.md](docs/TESTING.md).
+
+The pass used published agent-skill guidance as a checklist, not as a visual template: Chrome's modern-web-guidance (native `dialog`, top-layer animation, scroll not chaining through the backdrop), Vercel's React guidance (parallel reads, defer the chart), Supabase's Postgres guidance (index the lookup, keep `auth.uid()` out of a per-row call, RLS on the new read), and Anthropic's frontend-design note against decorative filler. React 18 in this repo does not export `cache()`, so the shared sign-in read is an in-flight promise keyed by a hash of the caller's own cookies, dropped as soon as it finishes. That is a deliberate substitute, written up in the performance note.
+
+![Demo watchlist: cheapest shop per product, goal prices and read-only banner](docs/media/demo-dashboard.png)
 
 ## Architecture
 
@@ -199,14 +203,14 @@ Redeploy after adding them so the new values are picked up.
 
 - **Home** lists every tracked product with its cheapest current price and the shop
   that has it. Tap a product to see all shops. Pin a category to keep it at the top
-  and expanded. Products currently at or under their target price sort first.
+  and expanded. Products currently at or under their goal price sort first.
 - **Manage** is where you create a category, add a product, and paste up to five shop
   links. The shop name is filled in from the URL. You can come back later to add more
   links, pause one, or delete it.
-- A tiny **pending support** label appears on shops the crawler does not have a
-  dedicated parser for yet. Unknown shops still go through JSON-LD, Shopify product
-  JSON, and generic price CSS. Failures are written to
-  `crawler/pending-retailers.json` so the next code update can add them.
+- Shops the crawler does not check show the words **Not checked here**, with a link
+  to the shop. Unknown shops still go through JSON-LD, Shopify product JSON, and
+  generic price CSS. Failures are written to `crawler/pending-retailers.json` so the
+  next code update can add them.
 - The **flag button** in the top right collects crawler notices, such as a link that
   has gone dead or a page where no price could be found.
 - The **refresh button** next to it queues an immediate crawl through GitHub Actions.
