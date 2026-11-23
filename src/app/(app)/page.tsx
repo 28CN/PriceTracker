@@ -1,10 +1,7 @@
-import Link from 'next/link';
 import { headers } from 'next/headers';
 
-import CategoryList from '@/components/CategoryList';
-import DashboardHero from '@/components/DashboardHero';
+import DashboardWorkspace from '@/components/DashboardWorkspace';
 import GuestLanding from '@/components/GuestLanding';
-import ProductSearch from '@/components/ProductSearch';
 import { getViewer } from '@/lib/auth';
 import { fetchCategoryLayout, type CategoryLayout } from '@/lib/categoryLayout';
 import { sortProducts } from '@/lib/productSort';
@@ -92,33 +89,13 @@ export default async function HomePage() {
   }));
 
   return (
-    <main>
-      <DashboardHero products={products} accountHref={viewer.isDemo ? null : '/account'} />
-      <ProductSearch
-        isDemo={viewer.isDemo}
-        trackedUrls={products.flatMap((product) => product.links.map((link) => link.url))}
-      />
-
-      {loadError ? (
-        <div className="alert">
-          Could not load products from Supabase: {loadError}
-        </div>
-      ) : null}
-
-      {!loadError && products.length === 0 ? (
-        <div className="card empty">
-          <svg className="empty-illustration" viewBox="0 0 180 120" aria-hidden="true">
-            <path d="M34 94 52 45h76l18 49" fill="var(--brand-soft)" stroke="var(--line)" strokeWidth="2" />
-            <path d="M62 45c0-17 11-29 28-29s28 12 28 29" fill="none" stroke="var(--brand)" strokeWidth="5" strokeLinecap="round" />
-            <circle cx="65" cy="76" r="6" fill="var(--brand)" opacity=".35" />
-            <circle cx="115" cy="76" r="6" fill="var(--brand)" opacity=".35" />
-          </svg>
-          <h2>Nothing tracked yet</h2>
-          <Link className="button" href="/manage">Add a product</Link>
-        </div>
-      ) : null}
-
-      <CategoryList groups={groups} savedLayout={layout} readOnly={viewer.isDemo} />
-    </main>
+    <DashboardWorkspace
+      products={products}
+      groups={groups}
+      savedLayout={layout}
+      isDemo={viewer.isDemo}
+      accountHref={viewer.isDemo ? null : '/account'}
+      loadError={loadError}
+    />
   );
 }

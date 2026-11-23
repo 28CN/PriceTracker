@@ -67,10 +67,11 @@ export async function middleware(request: NextRequest) {
   const demoHeader = response.headers.get('X-Demo-Session');
   if (demoHeader) forwarded.headers.set('X-Demo-Session', demoHeader);
 
-  const chartGet =
+  const privateCachedGet =
     request.method === 'GET' &&
-    /^\/api\/products\/[^/]+\/price-insight\/?$/.test(request.nextUrl.pathname);
-  forwarded.headers.set('Cache-Control', chartGet ? 'private, max-age=60' : 'private, no-store');
+    (/^\/api\/products\/[^/]+\/price-insight\/?$/.test(request.nextUrl.pathname) ||
+      /^\/api\/overview\/?$/.test(request.nextUrl.pathname));
+  forwarded.headers.set('Cache-Control', privateCachedGet ? 'private, max-age=60' : 'private, no-store');
   return forwarded;
 }
 

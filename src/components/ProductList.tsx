@@ -1,16 +1,17 @@
 'use client';
 
-import { ChevronDown, ExternalLink, Pencil } from 'lucide-react';
+import { ChevronDown, Pencil } from 'lucide-react';
 import dynamic from 'next/dynamic';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 import EditProductForm from '@/components/EditProductForm';
+import ProductOfferRows from '@/components/ProductOfferRows';
 import ProductVisual from '@/components/ProductVisual';
 import RetailerLogo from '@/components/RetailerLogo';
 import { resolveCardPrice, shopGapLabel } from '@/lib/cardState';
 import { formatCheckedAt, formatLastSeen, formatMoney, latestTimestamp } from '@/lib/format';
 import { productThumb } from '@/lib/productImage';
-import { hasCrawlerSupport } from '@/lib/retailer';
+import { hasCrawlerSupport, retailerKey } from '@/lib/retailer';
 import type { ProductView } from '@/lib/types';
 
 const PriceChart = dynamic(() => import('@/components/PriceChart'), {
@@ -43,9 +44,23 @@ function LastSeen({ iso }: { iso: string | null | undefined }) {
   );
 }
 
-function ProductCard({ product, readOnly }: { product: ProductView; readOnly: boolean }) {
+function ProductCard({
+  product,
+  readOnly,
+  sidePanelActive,
+  isSelected,
+  onToggleSelect
+}: {
+  product: ProductView;
+  readOnly: boolean;
+  sidePanelActive: boolean;
+  isSelected: boolean;
+  onToggleSelect?: (productId: string, triggerEl: HTMLElement | null) => void;
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const openBtnRef = useRef<HTMLButtonElement>(null);
+
   const activeLinks = product.links.filter((link) => link.isActive);
   const cardPrice = resolveCardPrice({
     links: product.links,
@@ -58,7 +73,6 @@ function ProductCard({ product, readOnly }: { product: ProductView; readOnly: bo
     lowestFreshPrice !== null &&
     lowestFreshPrice <= product.targetPrice;
   const shopGap = shopGapLabel(freshOffers, formatMoney);
-  const saving = shopGap !== null;
   const headlineLink = allUnavailable
     ? activeLinks.length === 1
       ? activeLinks[0]
@@ -70,6 +84,7 @@ function ProductCard({ product, readOnly }: { product: ProductView; readOnly: bo
   const shopSource = headlineLink ?? (activeLinks.length === 1 ? activeLinks[0] : null);
   const shopRetailer = shopSource?.retailer ?? null;
   const shopUrl = shopSource?.url;
+  const shopSlug = shopSource ? retailerKey(shopSource.url || shopSource.retailer) : null;
   const thumb = productThumb(product, shopSource?.id);
   const shopLabel = shopRetailer
     ? shopRetailer
@@ -79,16 +94,34 @@ function ProductCard({ product, readOnly }: { product: ProductView; readOnly: bo
   const shopUnsupported = Boolean(shopSource && !hasCrawlerSupport(shopSource.url || shopSource.retailer));
   const showChecked = Boolean(checkedAt) && (headline.kind === 'price' || headline.kind === 'unavailable');
 
+  const expanded = sidePanelActive ? isSelected : isOpen;
+  const showInlineDetails = !sidePanelActive && !isEditing && isOpen;
+
   return (
-    <article id={`p-${product.id}`} tabIndex={-1} className={`card product-card ${isEditing ? 'is-editing' : ''}`}>
+    <article
+      id={`p-${product.id}`}
+      tabIndex={-1}
+      data-shop={shopSlug ?? undefined}
+      className={`card product-card${shopSource ? ' has-shop-accent' : ''}${
+        isEditing ? ' is-editing' : ''
+      }${sidePanelActive && isSelected ? ' is-selected' : ''}${
+        showInlineDetails ? ' is-expanded-inline' : ''
+      }`}
+    >
       <div className="card-layout">
         <div className="card-main">
           <button
+            ref={openBtnRef}
             type="button"
             className="card-open"
-            aria-expanded={isOpen}
+            aria-expanded={expanded}
             onClick={() => {
-              if (!isEditing) setIsOpen((current) => !current);
+              if (isEditing) return;
+              if (sidePanelActive && onToggleSelect) {
+                onToggleSelect(product.id, openBtnRef.current);
+              } else {
+                setIsOpen((current) => !current);
+              }
             }}
           >
             <ProductVisual
@@ -106,7 +139,11 @@ function ProductCard({ product, readOnly }: { product: ProductView; readOnly: bo
                 </span>
               ) : null}
             </span>
-            <ChevronDown className={`card-chevron${isOpen ? ' is-open' : ''}`} size={17} aria-hidden="true" />
+            <ChevronDown
+              className={`card-chevron${expanded ? ' is-open' : ''}`}
+              size={16}
+              aria-hidden="true"
+            />
           </button>
           {!readOnly ? (
             <button
@@ -117,7 +154,7 @@ function ProductCard({ product, readOnly }: { product: ProductView; readOnly: bo
                 setIsOpen(true);
               }}
             >
-              <Pencil size={13} aria-hidden="true" />
+              <Pencil size={16} aria-hidden="true" />
               Edit
             </button>
           ) : null}
@@ -147,85 +184,10 @@ function ProductCard({ product, readOnly }: { product: ProductView; readOnly: bo
 
       {isEditing ? <EditProductForm product={product} onClose={() => setIsEditing(false)} /> : null}
 
-      {!isEditing && isOpen ? (
+      {showInlineDetails ? (
         <div className="rows">
-          {product.links.length === 0 ? (
-            <p className="hint">{readOnly ? 'No shop links are available.' : 'No shop links yet.'}</p>
-          ) : (
-            <PriceChart productId={product.id} />
-          )}
-
-          {product.links.map((link) => {
-            const isStalePrice =
-              link.priceStale && link.stockStatus !== 'unavailable' && link.latestPrice !== null;
-            const isCheapestFresh =
-              link.isActive &&
-              !link.priceStale &&
-              link.stockStatus !== 'unavailable' &&
-              lowestFreshPrice !== null &&
-              link.latestPrice === lowestFreshPrice;
-            const showCheapestTag = saving && isCheapestFresh;
-
-            return (
-              <div
-                key={link.id}
-                className={`row ${link.isActive ? '' : 'inactive'}${showCheapestTag ? ' is-best' : ''}`}
-              >
-                <div className="row-main">
-                  <div className="row-shop">
-                    <RetailerLogo retailer={link.retailer} url={link.url} />
-                    <span>{link.retailer}</span>
-                    {showCheapestTag ? <span className="best-tag">Cheapest</span> : null}
-                    {!hasCrawlerSupport(link.url || link.retailer) ? (
-                      <span className="shop-gap">Not checked here</span>
-                    ) : null}
-                  </div>
-                  {!link.isActive ? (
-                    <div className="row-meta">Paused</div>
-                  ) : isStalePrice ? null : (
-                    <div className="row-meta">
-                      {link.latestAt && formatCheckedAt(link.latestAt) ? (
-                        <CheckedOn iso={link.latestAt} />
-                      ) : (
-                        'Not checked yet'
-                      )}
-                    </div>
-                  )}
-                </div>
-                <div className="row-side">
-                  {isStalePrice ? (
-                    <span className="row-price-stale">
-                      <span className="row-price is-stale">{formatMoney(link.latestPrice)}</span>
-                      <LastSeen iso={link.latestAt} />
-                    </span>
-                  ) : (
-                    <span
-                      className={`row-price ${
-                        link.stockStatus === 'unavailable'
-                          ? 'unavailable'
-                          : link.latestPrice === null
-                            ? 'none'
-                            : isCheapestFresh
-                              ? 'best'
-                              : ''
-                      }`}
-                    >
-                      {link.stockStatus === 'unavailable'
-                        ? 'Unavailable'
-                        : link.latestPrice === null
-                          ? 'No price yet'
-                          : formatMoney(link.latestPrice)}
-                    </span>
-                  )}
-                  {link.url ? (
-                    <a className="open-link" href={link.url} target="_blank" rel="noreferrer">
-                      Open shop <ExternalLink size={13} aria-hidden="true" />
-                    </a>
-                  ) : null}
-                </div>
-              </div>
-            );
-          })}
+          {product.links.length > 0 ? <PriceChart productId={product.id} /> : null}
+          <ProductOfferRows product={product} readOnly={readOnly} />
         </div>
       ) : null}
     </article>
@@ -234,10 +196,16 @@ function ProductCard({ product, readOnly }: { product: ProductView; readOnly: bo
 
 export default function ProductList({
   products,
-  readOnly = false
+  readOnly = false,
+  sidePanelActive = false,
+  selectedProductId = null,
+  onToggleSelect
 }: {
   products: ProductView[];
   readOnly?: boolean;
+  sidePanelActive?: boolean;
+  selectedProductId?: string | null;
+  onToggleSelect?: (productId: string, triggerEl: HTMLElement | null) => void;
 }) {
   if (products.length === 0) {
     return (
@@ -248,10 +216,19 @@ export default function ProductList({
   }
 
   return (
-    <div className="stack">
-      {products.map((product) => (
-        <ProductCard key={product.id} product={product} readOnly={readOnly} />
-      ))}
+    <div className="product-list-container">
+      <div className="stack product-grid">
+        {products.map((product) => (
+          <ProductCard
+            key={product.id}
+            product={product}
+            readOnly={readOnly}
+            sidePanelActive={sidePanelActive}
+            isSelected={selectedProductId === product.id}
+            onToggleSelect={onToggleSelect}
+          />
+        ))}
+      </div>
     </div>
   );
 }

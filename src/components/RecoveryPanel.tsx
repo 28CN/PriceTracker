@@ -80,13 +80,21 @@ export default function RecoveryPanel({
             <>
               <label className="field">
                 <span>New password</span>
-                <input name="password" type="password" minLength={8} maxLength={72} required />
+                <input
+                  name="password"
+                  type="password"
+                  autoComplete="new-password"
+                  minLength={8}
+                  maxLength={72}
+                  required
+                />
               </label>
               <label className="field">
                 <span>Confirm new password</span>
                 <input
                   name="confirmPassword"
                   type="password"
+                  autoComplete="new-password"
                   minLength={8}
                   maxLength={72}
                   required

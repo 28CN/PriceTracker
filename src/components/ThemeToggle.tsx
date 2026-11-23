@@ -16,12 +16,20 @@ function nextTheme(theme: Theme): Theme {
 function applyTheme(theme: Theme) {
   const root = document.documentElement;
   root.dataset.theme = theme;
-  root.style.colorScheme =
+  const resolved =
     theme === 'system'
       ? window.matchMedia('(prefers-color-scheme: dark)').matches
         ? 'dark'
         : 'light'
       : theme;
+  root.style.colorScheme = resolved;
+  let meta = document.querySelector<HTMLMetaElement>('meta[name="color-scheme"]');
+  if (!meta) {
+    meta = document.createElement('meta');
+    meta.name = 'color-scheme';
+    document.head.appendChild(meta);
+  }
+  meta.content = theme === 'system' ? 'light dark' : theme;
   window.localStorage.setItem('pricetracker.theme', theme);
 }
 

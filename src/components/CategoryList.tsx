@@ -109,11 +109,19 @@ function toneClassFor(name: string): string {
 export default function CategoryList({
   groups,
   savedLayout,
-  readOnly = false
+  readOnly = false,
+  singleColumnBoard = false,
+  sidePanelActive = false,
+  selectedProductId = null,
+  onToggleSelect
 }: {
   groups: CategoryGroup[];
   savedLayout: CategoryLayout | null;
   readOnly?: boolean;
+  singleColumnBoard?: boolean;
+  sidePanelActive?: boolean;
+  selectedProductId?: string | null;
+  onToggleSelect?: (productId: string, triggerEl: HTMLElement | null) => void;
 }) {
   const [pinned, setPinned] = useState<string[]>(savedLayout?.pinned ?? []);
   const [otherOrder, setOtherOrder] = useState<string[]>(savedLayout?.otherOrder ?? []);
@@ -473,6 +481,9 @@ export default function CategoryList({
         isReordering={isReordering}
         isDragging={dragging === group.category}
         readOnly={readOnly}
+        sidePanelActive={sidePanelActive}
+        selectedProductId={selectedProductId}
+        onToggleSelect={onToggleSelect}
         dragHandleProps={readOnly ? undefined : {
           onPointerDown: (event) => startPress(group.category, zone, event),
           onClickCapture: (event) => {
@@ -487,7 +498,9 @@ export default function CategoryList({
     );
   }
 
-  const boardClass = `category-board${isReordering ? ' is-reordering' : ''}`;
+  const boardClass = `category-board${isReordering ? ' is-reordering' : ''}${
+    singleColumnBoard ? ' is-single-column' : ''
+  }`;
   const stackClass = `category-stack${isReordering ? ' is-reordering' : ''}`;
 
   const ghostLayer = ghost ? (

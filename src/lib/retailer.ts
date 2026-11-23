@@ -1,35 +1,37 @@
 export type RetailerEntry = {
   match: RegExp;
   name: string;
+  /** Canonical CSS token slug (matches --shop-<key> in globals.css). */
+  key: string;
   /** Hostname used for favicon lookup (no www). */
   domain: string;
 };
 
 const RETAILERS: RetailerEntry[] = [
-  { match: /(^|\.)kmart\.com\.au$/, name: 'Kmart', domain: 'kmart.com.au' },
-  { match: /(^|\.)target\.com\.au$/, name: 'Target', domain: 'target.com.au' },
-  { match: /(^|\.)bigw\.com\.au$/, name: 'Big W', domain: 'bigw.com.au' },
-  { match: /(^|\.)coles\.com\.au$/, name: 'Coles', domain: 'coles.com.au' },
-  { match: /(^|\.)woolworths\.com\.au$/, name: 'Woolworths', domain: 'woolworths.com.au' },
-  { match: /(^|\.)therejectshop\.com\.au$/, name: 'The Reject Shop', domain: 'therejectshop.com.au' },
-  { match: /(^|\.)rejectshop\.com\.au$/, name: 'The Reject Shop', domain: 'therejectshop.com.au' },
-  { match: /(^|\.)amazon\.com\.au$/, name: 'Amazon AU', domain: 'amazon.com.au' },
-  { match: /(^|\.)ebay\.com\.au$/, name: 'eBay AU', domain: 'ebay.com.au' },
-  { match: /(^|\.)myer\.com\.au$/, name: 'Myer', domain: 'myer.com.au' },
-  { match: /(^|\.)davidjones\.com$/, name: 'David Jones', domain: 'davidjones.com' },
-  { match: /(^|\.)catch\.com\.au$/, name: 'Catch', domain: 'catch.com.au' },
-  { match: /(^|\.)toysrus\.com\.au$/, name: 'Toys R Us', domain: 'toysrus.com.au' },
-  { match: /(^|\.)toymate\.com\.au$/, name: 'Toymate', domain: 'toymate.com.au' },
-  { match: /(^|\.)toyworld\.com\.au$/, name: 'Toyworld', domain: 'toyworld.com.au' },
-  { match: /(^|\.)toyworld\.co\.nz$/, name: 'Toyworld', domain: 'toyworld.com.au' },
-  { match: /(^|\.)bunnings\.com\.au$/, name: 'Bunnings', domain: 'bunnings.com.au' },
-  { match: /(^|\.)bestandless\.com\.au$/, name: 'Best & Less', domain: 'bestandless.com.au' },
-  { match: /(^|\.)chemistwarehouse\.com\.au$/, name: 'Chemist Warehouse', domain: 'chemistwarehouse.com.au' },
-  { match: /(^|\.)priceline\.com\.au$/, name: 'Priceline', domain: 'priceline.com.au' },
-  { match: /(^|\.)terrywhitechemmart\.com\.au$/, name: 'Terry White', domain: 'terrywhitechemmart.com.au' },
-  { match: /(^|\.)repco\.com\.au$/, name: 'Repco', domain: 'repco.com.au' },
-  { match: /(^|\.)supercheapauto\.com\.au$/, name: 'Supercheap Auto', domain: 'supercheapauto.com.au' },
-  { match: /(^|\.)autobarn\.com\.au$/, name: 'Auto Barn', domain: 'autobarn.com.au' }
+  { match: /(^|\.)kmart\.com\.au$/, name: 'Kmart', key: 'kmart', domain: 'kmart.com.au' },
+  { match: /(^|\.)target\.com\.au$/, name: 'Target', key: 'target', domain: 'target.com.au' },
+  { match: /(^|\.)bigw\.com\.au$/, name: 'Big W', key: 'bigw', domain: 'bigw.com.au' },
+  { match: /(^|\.)coles\.com\.au$/, name: 'Coles', key: 'coles', domain: 'coles.com.au' },
+  { match: /(^|\.)woolworths\.com\.au$/, name: 'Woolworths', key: 'woolworths', domain: 'woolworths.com.au' },
+  { match: /(^|\.)therejectshop\.com\.au$/, name: 'The Reject Shop', key: 'therejectshop', domain: 'therejectshop.com.au' },
+  { match: /(^|\.)rejectshop\.com\.au$/, name: 'The Reject Shop', key: 'therejectshop', domain: 'therejectshop.com.au' },
+  { match: /(^|\.)amazon\.com\.au$/, name: 'Amazon AU', key: 'amazon', domain: 'amazon.com.au' },
+  { match: /(^|\.)ebay\.com\.au$/, name: 'eBay AU', key: 'ebay', domain: 'ebay.com.au' },
+  { match: /(^|\.)myer\.com\.au$/, name: 'Myer', key: 'myer', domain: 'myer.com.au' },
+  { match: /(^|\.)davidjones\.com$/, name: 'David Jones', key: 'davidjones', domain: 'davidjones.com' },
+  { match: /(^|\.)catch\.com\.au$/, name: 'Catch', key: 'catch', domain: 'catch.com.au' },
+  { match: /(^|\.)toysrus\.com\.au$/, name: 'Toys R Us', key: 'toysrus', domain: 'toysrus.com.au' },
+  { match: /(^|\.)toymate\.com\.au$/, name: 'Toymate', key: 'toymate', domain: 'toymate.com.au' },
+  { match: /(^|\.)toyworld\.com\.au$/, name: 'Toyworld', key: 'toyworld', domain: 'toyworld.com.au' },
+  { match: /(^|\.)toyworld\.co\.nz$/, name: 'Toyworld', key: 'toyworld', domain: 'toyworld.com.au' },
+  { match: /(^|\.)bunnings\.com\.au$/, name: 'Bunnings', key: 'bunnings', domain: 'bunnings.com.au' },
+  { match: /(^|\.)bestandless\.com\.au$/, name: 'Best & Less', key: 'bestandless', domain: 'bestandless.com.au' },
+  { match: /(^|\.)chemistwarehouse\.com\.au$/, name: 'Chemist Warehouse', key: 'chemistwarehouse', domain: 'chemistwarehouse.com.au' },
+  { match: /(^|\.)priceline\.com\.au$/, name: 'Priceline', key: 'priceline', domain: 'priceline.com.au' },
+  { match: /(^|\.)terrywhitechemmart\.com\.au$/, name: 'Terry White', key: 'terrywhite', domain: 'terrywhitechemmart.com.au' },
+  { match: /(^|\.)repco\.com\.au$/, name: 'Repco', key: 'repco', domain: 'repco.com.au' },
+  { match: /(^|\.)supercheapauto\.com\.au$/, name: 'Supercheap Auto', key: 'supercheapauto', domain: 'supercheapauto.com.au' },
+  { match: /(^|\.)autobarn\.com\.au$/, name: 'Auto Barn', key: 'autobarn', domain: 'autobarn.com.au' }
 ];
 
 const DEDICATED_RETAILER_DOMAINS = new Set([
@@ -199,4 +201,24 @@ export function isValidHttpUrl(rawUrl: string): boolean {
   } catch {
     return false;
   }
+}
+
+/** Canonical slug for per-shop CSS colour tokens, or null for unknown shops. */
+export function retailerKey(retailerOrUrl: string | null | undefined): string | null {
+  const raw = (retailerOrUrl ?? '').trim();
+  if (!raw) return null;
+
+  try {
+    if (/^https?:\/\//i.test(raw)) {
+      const hostname = new URL(raw).hostname.toLowerCase();
+      const match = findRetailer(hostname);
+      if (match) return match.key;
+    }
+  } catch {
+    // Fall through to name match.
+  }
+
+  const needle = normalisedName(raw);
+  const byName = RETAILERS.find((entry) => normalisedName(entry.name) === needle);
+  return byName?.key ?? null;
 }
