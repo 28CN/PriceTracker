@@ -618,6 +618,13 @@ button {
   box-shadow: var(--shadow-soft);
 }
 
+/* Long lists: the browser skips layout and paint for groups below the fold.
+   The section already clips its contents, so nothing visible changes. */
+.category-section:nth-of-type(n + 3) {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 480px;
+}
+
 .category-head {
   display: flex;
   align-items: stretch;
@@ -1497,21 +1504,12 @@ select {
 button,
 .button,
 .icon-button {
-  transition:
-    transform 160ms ease,
-    opacity 160ms ease,
-    box-shadow 160ms ease,
-    border-color 160ms ease,
-    background-color 160ms ease,
-    color 160ms ease;
+  transition: transform 160ms ease, opacity 160ms ease;
 }
 
 .card,
 .category-section {
-  transition:
-    transform 180ms ease,
-    opacity 180ms ease,
-    box-shadow 180ms ease;
+  transition: transform 180ms ease, opacity 180ms ease;
 }
 
 button:active,
@@ -1936,7 +1934,7 @@ html[data-theme='dark'] .button.primary:hover {
   padding: var(--space-3);
   color: var(--text);
   text-decoration: none;
-  transition: transform 180ms ease, opacity 180ms ease, box-shadow 180ms ease;
+  transition: transform 180ms ease, opacity 180ms ease;
 }
 
 .account-slot:hover {
@@ -4680,29 +4678,29 @@ textarea:disabled {
 @keyframes soft-fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes pop-in { 0% { opacity: 0; transform: scale(0.85); } 100% { opacity: 1; transform: none; } }
 
-.dashboard-overview, .product-search, .category-section, .guest-hero, .guest-example, .guest-retailers, .guest-featured, .manage-hero {
+.product-search, .category-section, .guest-example, .guest-retailers, .guest-featured, .manage-hero {
   animation: rise-in 260ms ease-out both;
 }
 .category-section:nth-child(2), .guest-example { animation-delay: 40ms; }
 .category-section:nth-child(3), .guest-retailers, .guest-featured { animation-delay: 80ms; }
 .category-section:nth-child(n + 4) { animation-delay: 120ms; }
 
-.category-body { display: grid; grid-template-rows: 0fr; padding: 0; opacity: 0; transition: grid-template-rows 240ms ease-out, opacity 200ms ease-out; }
+.category-body { display: grid; grid-template-rows: 0fr; padding: 0; opacity: 0; transition: opacity 200ms ease-out; }
 .category-body.is-open { grid-template-rows: 1fr; opacity: 1; }
 .category-body-inner { min-height: 0; overflow: hidden; }
 .category-body.is-open .category-body-inner { padding: 0 var(--space-4) var(--space-4); }
 .category-chevron, .card-chevron { transition: transform 180ms ease-out; }
 
 .card, .target-summary, .product-search-row, .featured-card {
-  transition: transform 180ms ease-out, opacity 180ms ease-out, box-shadow 180ms ease-out;
+  transition: transform 180ms ease-out, opacity 180ms ease-out;
 }
 @media (hover: hover) {
   .card:not(.product-search):hover, .target-summary:hover { transform: translateY(-1px); box-shadow: var(--shadow-2); }
   .button:not(:disabled):hover { transform: translateY(-1px); }
 }
-.button { transition: transform 160ms ease-out, opacity 160ms ease-out, background-color 160ms ease-out, border-color 160ms ease-out, box-shadow 160ms ease-out, color 160ms ease-out; }
+.button { transition: transform 160ms ease-out, opacity 160ms ease-out; }
 .button:not(:disabled):active { transform: scale(0.98); }
-.pill, .badge, [class*='-badge'], [class*='-pill'] { transition: background-color 180ms ease-out, color 180ms ease-out, opacity 180ms ease-out; }
+.pill, .badge, [class*='-badge'], [class*='-pill'] { transition: opacity 180ms ease-out; }
 
 .price, .product-search-price { animation: soft-fade 240ms ease-out both; font-variant-numeric: tabular-nums; }
 
@@ -5001,14 +4999,15 @@ dialog.deal-dialog[open] { opacity: 1; transform: none; }
 dialog.deal-dialog::backdrop {
   overflow: hidden;
   overscroll-behavior: contain;
-  background-color: rgba(11, 15, 24, 0);
-  transition-property: background-color, overlay, display;
+  background-color: rgba(11, 15, 24, 0.44);
+  opacity: 0;
+  transition-property: opacity, overlay, display;
   transition-duration: 180ms;
   transition-behavior: allow-discrete;
 }
-dialog.deal-dialog[open]::backdrop { background-color: rgba(11, 15, 24, 0.44); }
+dialog.deal-dialog[open]::backdrop { opacity: 1; }
 @starting-style {
-  dialog.deal-dialog[open]::backdrop { background-color: rgba(11, 15, 24, 0); }
+  dialog.deal-dialog[open]::backdrop { opacity: 0; }
 }
 
 .squeeze-row {
@@ -5186,7 +5185,7 @@ html[data-theme='dark'] {
   line-height: var(--lh-sm);
   font-weight: 600;
   text-decoration: none;
-  transition: transform 160ms ease, opacity 160ms ease, box-shadow 160ms ease, background-color 160ms ease, border-color 160ms ease;
+  transition: transform 160ms ease, opacity 160ms ease;
 }
 
 .account-pill svg {
@@ -5219,7 +5218,7 @@ html[data-theme='dark'] {
   background: var(--surface-2);
   color: inherit;
   text-align: left;
-  transition: transform 180ms ease, opacity 180ms ease, box-shadow 180ms ease;
+  transition: transform 180ms ease, opacity 180ms ease;
 }
 
 .summary-tile.is-interactive {
@@ -5657,7 +5656,7 @@ html[data-theme='dark'] {
   background: var(--surface-2);
   color: inherit;
   text-decoration: none;
-  transition: transform 180ms ease, opacity 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+  transition: transform 180ms ease, opacity 180ms ease;
 }
 
 .tw-row:hover {
@@ -5755,6 +5754,10 @@ html[data-theme='dark'] {
   display: grid;
   gap: var(--space-2);
 }
+
+/* Desktop: hold roughly the height of a filled panel while it loads, so the
+   side column does not jump when the data arrives. */
+.dashboard-aside .tw-skel-stack { min-height: 420px; align-content: start; }
 
 .tw-skel-row {
   display: block;
@@ -6010,7 +6013,6 @@ html[data-theme='dark'] {
   font-size: var(--fs-sm);
   line-height: var(--lh-sm);
   cursor: pointer;
-  transition: background-color 150ms ease-out, border-color 150ms ease-out;
 }
 
 .product-search-recent-item svg {
@@ -6042,7 +6044,6 @@ html[data-theme='dark'] {
   border-radius: var(--radius-md);
   background: var(--surface-2);
   cursor: pointer;
-  transition: border-color 150ms ease-out, background-color 150ms ease-out, box-shadow 150ms ease-out;
 }
 
 .product-search-own-row:hover {

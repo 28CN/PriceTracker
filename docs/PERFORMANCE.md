@@ -86,6 +86,36 @@ Reproduce both tables below locally with `node scripts/bench-search.mjs` (runs `
 
 Real production network and Postgres round-trip times for `GET /api/search` and `POST /api/search` were not measured in this environment.
 
+## Smoothness (landing kangaroo, art style, dashboard)
+
+Measured on 23 Nov 2026 on a local production build (`npm run build`, `next start`, placeholder Supabase env as in CI), headless Chrome driven by Playwright with 4x CPU throttling, median of 7 page loads per row. "Before" is `main` at `a574f01`; "after" is this branch. Both builds had the same small change to `/preview/dashboard`: `?overview=fetch` skips the built-in sample data so the page fetches **This week** after paint, like the signed-in page. The test answered `/api/overview` with the same sample data after an 800 ms delay.
+
+- CLS: sum of `layout-shift` entries without recent input.
+- LCP: last `largest-contentful-paint` entry.
+- Blocking: sum of (long task - 50 ms) during load.
+- Typing: 14 keys typed into search with a 30 ms gap, wall time minus the 400 ms settle wait; blocking is long-task time while typing.
+- Card click: time from `click()` on the first card to the next frame, at 1440 px (side panel).
+
+| Page | Width | CLS before / after | LCP before / after | Blocking before / after | Typing before / after | Card click before / after |
+| --- | --- | --- | --- | --- | --- | --- |
+| `/` | 390 | 0 / 0 | 148 / 184 ms | 58 / 95 ms | - | - |
+| `/` | 1440 | 0 / 0 | 168 / 180 ms | 55 / 115 ms | - | - |
+| `/preview/dashboard?overview=fetch` | 1440 | 0 / 0 | 240 / 192 ms | 96 / 82 ms | 681 / 565 ms, 0 / 0 ms blocking | 19 / 18 ms |
+| `/preview/dashboard?overview=fetch` | 390 | 0 / 0 | 200 / 176 ms | 91 / 82 ms | 587 / 566 ms, 0 / 0 ms blocking | - |
+
+First Load JS for `/` is 136 kB before and after (`next build` output). The kangaroo's script is a separate chunk loaded after hydration (`next/dynamic`, `ssr: false`); the shelf and price tickets are server-rendered markup, and a 6 KB still frame holds the kangaroo's place until then. The 246 KB GIF is only requested once the scene is on screen and the browser is idle, and never with reduced motion.
+
+What the numbers say, honestly:
+
+- Layout shift was already 0 on `main`, so reserving space did not move CLS. The side column did move, though, because it is sticky and nothing sits below it: it grew from 240 px to 542 px when **This week** arrived. The loading placeholder now holds 420 px, so it goes from 511 px to 556 px (measured the same way, at 700 ms and 2.7 s).
+- The landing page blocks the main thread longer than before (roughly +40 to +60 ms at 4x throttle) because the kangaroo is back: its chunk, the GIF decode and the ticket motion. It pauses when off-screen or in a hidden tab.
+- An early LCP regression on this branch was traced to the hero fading in: the still frame and, on the dashboard, the summary heading started at opacity 0, so the reported LCP moved to whatever painted later (on the dashboard, a **This week** row after the 800 ms fetch). The first panel on each page now appears without the rise-in animation; lower panels keep it.
+- Typing in search did not cause long tasks before or after. The list ranking now uses `useDeferredValue`, cards are memoised, and the select handler is stable, so opening one card does not re-render the rest. The typing and click times above are within run-to-run noise; they are not a claimed speed-up.
+- Groups from the third one down use `content-visibility: auto`. With the 8 sample products there is nothing to measure; it matters for long lists.
+- Transitions are limited to `transform` and `opacity`. The accordion now fades instead of animating its row height.
+
+These are lab numbers on one machine, not field data from production.
+
 ## What would be a bad shortcut
 
 - Deleting or truncating `price_history` to make the list faster.

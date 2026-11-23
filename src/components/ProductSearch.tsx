@@ -9,6 +9,7 @@ import {
   useCallback,
   useEffect,
   useId,
+  useDeferredValue,
   useMemo,
   useRef,
   useState
@@ -196,12 +197,14 @@ export default function ProductSearch({
   );
 
   const trimmed = query.trim();
+  // The input updates on every key; the list ranking can lag a frame behind.
+  const deferredTrimmed = useDeferredValue(trimmed);
 
   // 1. Instant client-side filter of the user's own tracked items (no network).
   const ownMatches = useMemo(() => {
-    if (!trimmed) return [];
-    return rankPreparedItems(trimmed, preparedTracked, MAX_OWN_RESULTS).map((entry) => entry.item);
-  }, [trimmed, preparedTracked]);
+    if (!deferredTrimmed) return [];
+    return rankPreparedItems(deferredTrimmed, preparedTracked, MAX_OWN_RESULTS).map((entry) => entry.item);
+  }, [deferredTrimmed, preparedTracked]);
 
   const recordRecent = useCallback((term: string) => {
     const clean = term.trim();

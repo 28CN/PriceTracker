@@ -2,7 +2,7 @@
 
 import { ChevronDown, Pencil } from 'lucide-react';
 import dynamic from 'next/dynamic';
-import { useRef, useState } from 'react';
+import { memo, useRef, useState } from 'react';
 
 import EditProductForm from '@/components/EditProductForm';
 import ProductOfferRows from '@/components/ProductOfferRows';
@@ -44,7 +44,8 @@ function LastSeen({ iso }: { iso: string | null | undefined }) {
   );
 }
 
-function ProductCard({
+// Memoised: selecting one card or typing in search does not re-render the others.
+const ProductCard = memo(function ProductCard({
   product,
   readOnly,
   sidePanelActive,
@@ -194,7 +195,7 @@ function ProductCard({
       ) : null}
     </article>
   );
-}
+});
 
 export default function ProductList({
   products,

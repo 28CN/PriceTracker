@@ -7,7 +7,14 @@ function StillKangaroo() {
   return (
     <div className="roo-travel is-static">
       {/* eslint-disable-next-line @next/next/no-img-element -- 6 KB still frame */}
-      <img className="roo roo-gif" src="/illustrations/kangaroo-still.webp" width={160} height={160} decoding="async" alt="" />
+      <img
+        className="roo roo-gif"
+        src="/illustrations/kangaroo-still.webp"
+        width={160}
+        height={160}
+        fetchPriority="high"
+        alt=""
+      />
     </div>
   );
 }
