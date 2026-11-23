@@ -112,7 +112,7 @@ The shared cache only holds what someone has searched live before. On 23 Nov 202
 
 ## Landing
 
-One headline, then **Start tracking**, **View example**, and **Sign in**. The sample card is labelled **Example** and is not anyone's list. The looping kangaroo was removed: it kept animating and competed with the button. A single price line explains the idea without moving.
+One headline, then **Start tracking**, **View example**, and **Sign in**, alongside the kangaroo aisle hero. The hero renders a static still frame first and swaps to the hopping GIF only once the scene is in view and the browser is idle. Both the route animation and the ticket-swing loop pause whenever the scene is off-screen or the tab is hidden, and `prefers-reduced-motion: reduce` keeps the still frame static in the aisle with no hopping or ticket motion. The sample card — labelled **Example** and not anyone's list — sits in its own section below the hero, followed by **Shops we check** and the CC BY 4.0 credit for the kangaroo animation at the bottom of the landing page.
 
 ## Motion
 
