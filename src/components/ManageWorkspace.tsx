@@ -1,11 +1,12 @@
 'use client';
 
 import { Link2, LayoutDashboard, PackagePlus, Search } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import AddProductForm from '@/components/AddProductForm';
 import ManageProducts from '@/components/ManageProducts';
 import ProductSearch from '@/components/ProductSearch';
+import { toTrackedSearchItems } from '@/lib/trackedSearch';
 import type { CategoryView, ProductView } from '@/lib/types';
 
 type Tab = 'products' | 'add';
@@ -19,7 +20,11 @@ export default function ManageWorkspace({
 }) {
   const [tab, setTab] = useState<Tab>('products');
   const [addMode, setAddMode] = useState<'search' | 'paste'>('search');
-  const trackedUrls = products.flatMap((product) => product.links.map((link) => link.url));
+  const trackedItems = useMemo(() => toTrackedSearchItems(products), [products]);
+  const trackedUrls = useMemo(
+    () => products.flatMap((product) => product.links.map((link) => link.url)),
+    [products]
+  );
 
   return (
     <div className="manage-workspace">
@@ -75,7 +80,7 @@ export default function ManageWorkspace({
             </button>
           </div>
           {addMode === 'search' ? (
-            <ProductSearch trackedUrls={trackedUrls} />
+            <ProductSearch trackedItems={trackedItems} trackedUrls={trackedUrls} />
           ) : (
             <AddProductForm categories={categories} />
           )}

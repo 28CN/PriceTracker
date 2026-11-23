@@ -8,13 +8,25 @@ npx tsc --noEmit
 npm run lint
 ```
 
-On 15 November 2026, in this pass: Vitest 132 tests passed, `tsc --noEmit` passed, and ESLint passed on the files that changed. `next build` completed.
+On 15 November 2026, in the previous pass: Vitest 132 tests passed, `tsc --noEmit` passed, and ESLint passed on the files that changed. `next build` completed.
 
-Card states are pure functions in `src/lib/cardState.test.ts`. The in-flight share is in `src/lib/inflight.test.ts` (same key shares one promise and is forgotten afterwards; different keys do not share).
+Vitest modules added or expanded in this pass (24 files / 200 tests total):
 
-## Card layout
+- `src/lib/usualPrice.test.ts` — per-shop baseline mode/median, asymmetric upward/downward level-shift rules, schedule-jitter allowance, and short promotional dips.
+- `src/lib/overview.test.ts` — 8-week sparklines, biggest drops, newly below goal, and confirmed usual-price rises.
+- `src/lib/searchMatch.test.ts` — normalisation, compact space-free matching, plural/singular folding, Damerau-Levenshtein fuzzy tolerance, short-token false-positive guards, ranking (`exact > prefix > fuzzy`, `name > shop`), near-identical name detection, and recent-search list updates.
+- `src/lib/trackedSearch.test.ts` — mapping tracked products to client-side search items (cheapest fresh price vs stale price with `lastSeenAt`, thumbnail via `productThumb`).
+- `src/lib/cardState.test.ts` and `src/lib/format.test.ts` — stale-price headline selection (fresh always beats stale; newest stale leads when none are fresh) and `Last seen` Sydney calendar formatting.
+- `src/lib/productSearch.test.ts` — compact cache keys (`q:<compact>`) and fuzzy matching/deduplication across fresh and stale cache rows.
+- Route tests: `src/app/api/overview/route.test.ts`, `src/app/api/search/route.test.ts` (`GET` free cache + `POST` live search/quota/fallback), and `src/app/api/products/[id]/price-insight/route.test.ts`.
+- Existing core tests: `src/lib/inflight.test.ts`, `src/lib/priceInsight.test.ts`, `src/lib/promoPeriods.test.ts`, `src/lib/chartPeriods.test.ts`, `src/lib/demo.test.ts`, `src/lib/demoSession.test.ts`, `src/lib/emailFeature.test.ts`, `src/lib/net/safeFetch.test.ts`, `src/lib/github/dispatch.test.ts`, `src/lib/retailer.test.ts`, `src/lib/siteUrl.test.ts`, `src/lib/serverTiming.test.ts`, `src/app/demo/route.test.ts`, and `src/app/demo/exit/route.test.ts`.
 
-Fixture page: `/preview/cards` (not linked from the nav, `noindex`). Sample products only.
+## Card and dashboard layout
+
+Fixture pages (not linked from the nav, `noindex`, static sample data only, no Supabase calls):
+
+- `/preview/cards` — individual card states and narrow columns (280, 360, 520 px).
+- `/preview/dashboard` (local and Vercel preview deployments only; returns 404 in production) — full signed-in `DashboardWorkspace` with summary strip, **This week** panel (including the Matchbox $3.50 → $4.00 usual-price rise), search combobox, card grid, and side panel across 8 sample products.
 
 Checked in headless Chrome, light and dark, viewport widths 320, 375, 768, 1024, and 1440. At each width the price column's right edge was the same on the first six cards (spread 0px), shop and state text did not overflow its box, and the page did not scroll sideways. Screenshots at 390 and 1440, light and dark, are in the pull request.
 

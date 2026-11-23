@@ -121,7 +121,7 @@ export function lowestPriceSeries(series: LinkSeries[], { collapse = true } = {}
 /** Lowest price ever seen; the earliest occurrence wins ties. */
 export function allTimeLow(points: PricePoint[]): PricePoint | null {
   let best: PricePoint | null = null;
-  for (const p of [...points].sort(byTime)) {
+  for (const p of points.toSorted(byTime)) {
     if (!validPoint(p)) continue;
     if (!best || p.price < best.price) best = p;
   }
@@ -129,7 +129,7 @@ export function allTimeLow(points: PricePoint[]): PricePoint | null {
 }
 
 export function median(values: number[]): number | null {
-  const v = values.filter(Number.isFinite).sort((a, b) => a - b);
+  const v = values.filter(Number.isFinite).toSorted((a, b) => a - b);
   if (v.length === 0) return null;
   const mid = Math.floor(v.length / 2);
   return v.length % 2 ? v[mid] : (v[mid - 1] + v[mid]) / 2;
@@ -141,7 +141,7 @@ export function median(values: number[]): number | null {
  */
 export function dailyCloses(points: PricePoint[]): PricePoint[] {
   const byDay = new Map<string, PricePoint>();
-  for (const p of [...points].sort(byTime)) {
+  for (const p of points.toSorted(byTime)) {
     if (!validPoint(p)) continue;
     byDay.set(new Date(p.at).toISOString().slice(0, 10), p);
   }
@@ -150,7 +150,7 @@ export function dailyCloses(points: PricePoint[]): PricePoint[] {
 
 /** The most recent observation that was lower than the one before it. */
 export function lastDrop(points: PricePoint[]): { at: string; from: number; to: number; index: number } | null {
-  const sorted = [...points].filter(validPoint).sort(byTime);
+  const sorted = points.filter(validPoint).toSorted(byTime);
   for (let i = sorted.length - 1; i > 0; i -= 1) {
     if (sorted[i].price < sorted[i - 1].price) {
       return { at: sorted[i].at, from: sorted[i - 1].price, to: sorted[i].price, index: i };
@@ -167,7 +167,7 @@ export function findRaiseBeforeDrop(
   points: PricePoint[],
   rules = INSIGHT_RULES
 ): { at: string; from: number; to: number } | null {
-  const sorted = [...points].filter(validPoint).sort(byTime);
+  const sorted = points.filter(validPoint).toSorted(byTime);
   const drop = lastDrop(sorted);
   if (!drop) return null;
   const dropMs = Date.parse(drop.at);
@@ -195,7 +195,7 @@ export function judgeDiscount(
   const rules = options.rules ?? INSIGHT_RULES;
   const now = options.now ?? new Date();
   const nowMs = now.getTime();
-  const sorted = [...points].filter(validPoint).sort(byTime);
+  const sorted = points.filter(validPoint).toSorted(byTime);
   const current = sorted.at(-1) ?? null;
   const atl = allTimeLow(sorted);
   const daily90 = dailyCloses(sorted.filter((p) => Date.parse(p.at) >= nowMs - 90 * DAY_MS));

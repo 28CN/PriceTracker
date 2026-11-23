@@ -12,6 +12,7 @@ import ThisWeekPanel from '@/components/ThisWeekPanel';
 import type { CategoryLayout } from '@/lib/categoryLayout';
 import type { OverviewResponse } from '@/lib/overview';
 import type { CategoryGroup } from '@/lib/productSort';
+import { toTrackedSearchItems } from '@/lib/trackedSearch';
 import type { ProductView } from '@/lib/types';
 
 function runViewTransition(update: () => void) {
@@ -38,7 +39,8 @@ export default function DashboardWorkspace({
   savedLayout,
   isDemo,
   accountHref,
-  loadError
+  loadError,
+  initialOverview
 }: {
   products: ProductView[];
   groups: CategoryGroup[];
@@ -46,10 +48,11 @@ export default function DashboardWorkspace({
   isDemo: boolean;
   accountHref: string | null;
   loadError: string | null;
+  initialOverview?: OverviewResponse | null;
 }) {
-  const [overview, setOverview] = useState<OverviewResponse | null>(null);
+  const [overview, setOverview] = useState<OverviewResponse | null>(initialOverview ?? null);
   const [overviewStatus, setOverviewStatus] = useState<'loading' | 'ready' | 'error'>(
-    products.length === 0 ? 'ready' : 'loading'
+    initialOverview || products.length === 0 ? 'ready' : 'loading'
   );
   const [isWide, setIsWide] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
@@ -64,6 +67,11 @@ export default function DashboardWorkspace({
   }, []);
 
   useEffect(() => {
+    if (initialOverview) {
+      setOverview(initialOverview);
+      setOverviewStatus('ready');
+      return;
+    }
     if (products.length === 0) {
       setOverviewStatus('ready');
       return;
@@ -82,12 +90,14 @@ export default function DashboardWorkspace({
         }
       });
     return () => controller.abort();
-  }, [products.length]);
+  }, [products.length, initialOverview]);
 
   const selectedProduct = useMemo(
     () => (selectedProductId ? products.find((p) => p.id === selectedProductId) ?? null : null),
     [products, selectedProductId]
   );
+
+  const trackedItems = useMemo(() => toTrackedSearchItems(products), [products]);
 
   const trackedUrls = useMemo(
     () => products.flatMap((product) => product.links.map((link) => link.url)),
@@ -149,7 +159,12 @@ export default function DashboardWorkspace({
         />
       </div>
 
-      <ProductSearch isDemo={isDemo} trackedUrls={trackedUrls} />
+      <ProductSearch
+        isDemo={isDemo}
+        trackedItems={trackedItems}
+        trackedUrls={trackedUrls}
+        onSelectTracked={handleNavigateProduct}
+      />
 
       {loadError ? (
         <div className="alert">

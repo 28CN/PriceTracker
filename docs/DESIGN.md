@@ -97,6 +97,15 @@ Shelf prices rise permanently over time. Comparing today's price against a fixed
 
 Worked example: a Matchbox car at Woolworths is $3.50 for 6 weeks, then $4.00 on 3 Nov and 10 Nov. Two consecutive weekly checks at $4.00 spanning 7 days move the usual price up to $4.00 from 3 Nov (shown as a dashed step line and `Usual price went up to $4.00 · 3 Nov` below the chart). When a $3.00 week arrives afterwards, it is judged against $4.00 as a real discount (25% below usual), not compared against the old $3.50.
 
+## Search
+
+Search splits into two groups inside one combobox so finding something you already track is instant and free, while live shop lookups stay inside tight quotas:
+
+1. **On your list (instant, client-side):** as you type, your own tracked products are filtered in memory with `src/lib/searchMatch.ts` (normalisation, space-free compact matching so `hot wheels`, `hotwheels` and `Hot-Wheels` agree, simple singular/plural folding, word-prefix matching, and light Damerau-Levenshtein tolerance on tokens of 4+ characters). Up to 5 matches show with thumbnail, shop and cheapest fresh price (or muted stale price with `Last seen <date>`). Selecting one jumps to `#p-<id>` and highlights the card briefly.
+2. **Other shops (free cache while typing, paid live search on submit):** after typing 3 or more characters (debounced 350 ms), `GET /api/search?q=...` searches the shared `product_search_cache` fuzzily in TypeScript — including stale entries, labelled with their date (e.g. `Prices from 5 Nov`). Pressing Enter (with no option highlighted) or clicking **Search shops** runs `POST /api/search` for a live Google Shopping lookup inside existing quotas. Cache keys use the compact normalised form (`q:<compact>`) so spacing variants share one entry. Shop results already on your list (by URL or near-identical name) show an **On your list** mark.
+
+**Why no `pg_trgm` migration:** production currently has 21 products, 69 links, and 3 `product_search_cache` rows (22 cached results), and `pg_trgm` is not installed. At this data size, in-memory TypeScript matching in `src/lib/searchMatch.ts` gives zero-network own-list filtering, shares one ranking/fuzzy implementation across client and cache, and avoids a database extension migration that would add maintenance cost without a speed benefit.
+
 ## Landing
 
 One headline, then **Start tracking**, **View example**, and **Sign in**. The sample card is labelled **Example** and is not anyone's list. The looping kangaroo was removed: it kept animating and competed with the button. A single price line explains the idea without moving.
