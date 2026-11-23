@@ -71,16 +71,31 @@ One state at a time:
 | What is true | What the card says |
 | --- | --- |
 | A fresh price | The price, the shop, and `Checked` plus the date |
-| The last price is more than a week old | **Show last price**, then the saved amount labelled **Last saved price** |
+| Only stale prices (older than a week) | The newest last price, muted, the shop, and `Last seen` plus the short date |
 | Every shop is unavailable | **Unavailable** |
 | A check is queued and there is no price | **Checking soon** |
 | A check is running and there is no price | **Checking…** |
 | No price and nothing is queued | **No price yet** |
 | The shop is not one we check | **Not checked here**, and a link to the shop |
 
+Stale prices (older than a week) are always shown directly in a muted colour with a `Last seen` date in Sydney time (day and month, adding the year only when it is not the current year), never hidden behind a click. Fresh prices always win **Cheapest** and the card headline; a stale price can never beat a fresh price, and if only stale prices exist the newest one leads. For example, if Shop A is $24 today and Shop B was $19 three weeks ago, the card shows $24 at Shop A; if Shop B ($19, Last seen 4 Nov) and Shop C ($21, Last seen 10 Nov) are both stale, the card shows $21 at Shop C muted with `Last seen 10 Nov`.
+
 **Checking soon** is not a synonym for "we have no price". A missing date is not a promise. The date is the last successful observation, formatted in Sydney time with the year, and stored in a `<time datetime>` as well. The goal amount is written once on the card. The chart can still draw the goal as a line.
 
 Edit is its own button. It does not sit on top of the price. A missing photo keeps a fixed box so the price does not jump when an image arrives.
+
+## Usual price
+
+Shelf prices rise permanently over time. Comparing today's price against a fixed 90-day median makes a permanent rise look inflated for months and makes the old shelf price look like a deal forever. Instead, each shop tracks its own **usual price** over time (`src/lib/usualPrice.ts`):
+
+- **Baseline:** observations collapse to one check per Sydney calendar day (`Australia/Sydney`). The baseline is the most common price (mode, breaking ties to the higher non-sale price) over the last 8 weeks (56 days), falling back to the median when no price repeats. Shops with fewer than 3 Sydney-day checks use the latest price with low confidence and no shifts.
+- **Asymmetric level shifts (with a 12-hour schedule-jitter allowance):**
+  - **Upward shift:** a higher price that holds for at least 2 consecutive checks spanning at least 7 days (two separate weekly cycles) becomes the new usual price from the date it first appeared.
+  - **Downward shift:** stricter because lower prices are usually promotions (1–2 week specials, sometimes up to 4 weeks). A lower price — whether a permanent cut or a revert after an earlier rise — becomes the new usual price only after holding for at least 3 consecutive checks spanning at least 28 days, dated to its first day.
+- **Short dips and reverts:** 1–2 week specials stay deals and do not move the usual price. A brief rise that reverts causes no shift; a held rise that later holds back at the old price for 4+ weeks records a downward shift on the revert date.
+- **Verdict and goal:** discount judgements compare the leading (cheapest fresh) shop's current price against that shop's current usual price. The user's **Goal** price is never changed automatically.
+
+Worked example: a Matchbox car at Woolworths is $3.50 for 6 weeks, then $4.00 on 3 Nov and 10 Nov. Two consecutive weekly checks at $4.00 spanning 7 days move the usual price up to $4.00 from 3 Nov (shown as a dashed step line and `Usual price went up to $4.00 · 3 Nov` below the chart). When a $3.00 week arrives afterwards, it is judged against $4.00 as a real discount (25% below usual), not compared against the old $3.50.
 
 ## Landing
 

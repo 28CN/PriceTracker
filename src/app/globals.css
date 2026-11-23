@@ -1138,33 +1138,18 @@ button {
   font-weight: 600;
 }
 
-.stale-price {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px dashed color-mix(in srgb, var(--warn) 65%, var(--border));
-  background: var(--warn-soft);
-  color: var(--warn);
-  border-radius: 10px;
-  padding: 8px 10px;
-  min-height: 44px;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 1.2;
-  text-align: center;
-  white-space: normal;
-  cursor: pointer;
+.price.is-stale {
+  color: var(--muted);
+  font-weight: 650;
 }
 
-button.stale-price {
-  appearance: none;
+.row-price.is-stale {
+  color: var(--muted);
+  font-weight: 600;
 }
 
-.stale-price:hover,
-.stale-price:focus-visible {
-  border-style: solid;
-  outline: none;
+.price-stale-inline {
+  color: var(--muted);
 }
 
 .open-link {
@@ -4572,6 +4557,9 @@ textarea:disabled {
 
 .pc-step { fill: none; stroke: var(--brand); stroke-width: 2; stroke-linejoin: round; opacity: 0.85; }
 .pc-step-gap { stroke-dasharray: 3 4; opacity: 0.55; }
+.pc-usual { fill: none; stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 5 4; stroke-opacity: 0.65; stroke-linejoin: round; }
+.pc-usual-key::before { content: ''; display: inline-block; width: 14px; margin-right: 5px; vertical-align: middle; border-top: 1.5px dashed var(--muted); opacity: 0.75; }
+.pc-shift-note { margin: 6px 0 0; color: var(--muted); font-size: 12px; line-height: 1.35; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 
 /* Card header: Edit sits top-right so the price block reaches the right edge */
 .card-head-row { position: relative; }
@@ -4778,16 +4766,22 @@ textarea:disabled {
   font-size: 13px;
   font-weight: 650;
 }
-.rail-when {
+.rail-when,
+.price-last-seen {
   color: var(--muted);
   font-size: 12px;
   line-height: 1.35;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
-.stale-revealed {
+.row-price-stale {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 2px;
+  gap: 1px;
+  min-width: 0;
+  text-align: right;
 }
 .shop-gap {
   color: var(--muted);
@@ -4796,7 +4790,7 @@ textarea:disabled {
 }
 .product-card .rows { overflow: visible; }
 .category-body.is-open .category-body-inner { overflow: visible; }
-.row-side { flex-shrink: 1; min-width: 0; justify-content: flex-end; }
+.row-side { flex-shrink: 1; min-width: 0; justify-content: flex-end; flex-wrap: wrap; row-gap: 4px; }
 .row-price.none,
 .row-price.unavailable { white-space: normal; text-align: right; }
 @container product (min-width: 560px) {

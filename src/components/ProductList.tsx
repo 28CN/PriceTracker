@@ -5,12 +5,10 @@ import dynamic from 'next/dynamic';
 import { useState } from 'react';
 
 import EditProductForm from '@/components/EditProductForm';
-import ExpiredPrice from '@/components/ExpiredPrice';
 import ProductVisual from '@/components/ProductVisual';
 import RetailerLogo from '@/components/RetailerLogo';
-import { headlineFor, shopGapLabel } from '@/lib/cardState';
-import { formatCheckedAt, formatMoney, latestTimestamp } from '@/lib/format';
-import { cheapestStaleLink } from '@/lib/priceAge';
+import { resolveCardPrice, shopGapLabel } from '@/lib/cardState';
+import { formatCheckedAt, formatLastSeen, formatMoney, latestTimestamp } from '@/lib/format';
 import { productThumb } from '@/lib/productImage';
 import { hasCrawlerSupport } from '@/lib/retailer';
 import type { ProductView } from '@/lib/types';
@@ -35,34 +33,37 @@ function CheckedOn({ iso }: { iso: string }) {
   );
 }
 
+function LastSeen({ iso }: { iso: string | null | undefined }) {
+  const label = formatLastSeen(iso);
+  if (!label || !iso) return null;
+  return (
+    <span className="price-last-seen">
+      Last seen <time dateTime={iso}>{label}</time>
+    </span>
+  );
+}
+
 function ProductCard({ product, readOnly }: { product: ProductView; readOnly: boolean }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const activeLinks = product.links.filter((link) => link.isActive);
-  const allUnavailable =
-    activeLinks.length > 0 && activeLinks.every((link) => link.stockStatus === 'unavailable');
+  const cardPrice = resolveCardPrice({
+    links: product.links,
+    checkState: product.checkState
+  });
+  const { headline, allUnavailable, cheapestFreshLink, freshOffers } = cardPrice;
+  const lowestFreshPrice = cheapestFreshLink?.latestPrice ?? null;
   const hitsTarget =
     product.targetPrice !== null &&
-    product.lowestPrice !== null &&
-    product.lowestPrice <= product.targetPrice;
-  const bestLink = product.links.find(
-    (link) =>
-      link.isActive &&
-      !link.priceStale &&
-      link.latestPrice !== null &&
-      (link.retailer === product.lowestRetailer || link.latestPrice === product.lowestPrice)
-  );
-  const liveOffers = activeLinks
-    .filter((link) => !link.priceStale && link.latestPrice !== null)
-    .map((link) => ({ retailer: link.retailer, price: link.latestPrice as number }));
-  const shopGap = shopGapLabel(liveOffers, formatMoney);
+    lowestFreshPrice !== null &&
+    lowestFreshPrice <= product.targetPrice;
+  const shopGap = shopGapLabel(freshOffers, formatMoney);
   const saving = shopGap !== null;
-  const staleLink = cheapestStaleLink(product.links);
   const headlineLink = allUnavailable
     ? activeLinks.length === 1
       ? activeLinks[0]
       : null
-    : bestLink ?? staleLink;
+    : cardPrice.headlineLink;
   const checkedAt = allUnavailable
     ? latestTimestamp(activeLinks.map((link) => link.latestAt))
     : headlineLink?.latestAt ?? null;
@@ -76,13 +77,7 @@ function ProductCard({ product, readOnly }: { product: ProductView; readOnly: bo
       ? product.links.map((link) => link.retailer).join(', ')
       : '';
   const shopUnsupported = Boolean(shopSource && !hasCrawlerSupport(shopSource.url || shopSource.retailer));
-  const headline = headlineFor({
-    allUnavailable,
-    price: allUnavailable ? null : product.lowestPrice,
-    stalePrice: !allUnavailable && !bestLink && staleLink?.latestPrice != null ? staleLink.latestPrice : null,
-    checkState: product.checkState
-  });
-  const showChecked = Boolean(checkedAt) && (headline.kind === 'price' || headline.kind === 'stale' || headline.kind === 'unavailable');
+  const showChecked = Boolean(checkedAt) && (headline.kind === 'price' || headline.kind === 'unavailable');
 
   return (
     <article id={`p-${product.id}`} tabIndex={-1} className={`card product-card ${isEditing ? 'is-editing' : ''}`}>
@@ -130,7 +125,9 @@ function ProductCard({ product, readOnly }: { product: ProductView; readOnly: bo
 
         <div className="price-rail">
           {headline.kind === 'price' ? <span className="price">{formatMoney(headline.price)}</span> : null}
-          {headline.kind === 'stale' ? <ExpiredPrice price={headline.price} revealedClassName="price" /> : null}
+          {headline.kind === 'stale' ? (
+            <span className="price is-stale">{formatMoney(headline.price)}</span>
+          ) : null}
           {headline.kind === 'unavailable' ? <span className="price-state">Unavailable</span> : null}
           {headline.kind === 'checking' ? <span className="price-state">Checking…</span> : null}
           {headline.kind === 'queued' ? <span className="price-state">Checking soon</span> : null}
@@ -143,6 +140,7 @@ function ProductCard({ product, readOnly }: { product: ProductView; readOnly: bo
           ) : null}
           {shopUnsupported ? <span className="shop-gap">Not checked here</span> : null}
           {shopGap ? <span className="rail-when">{shopGap}</span> : null}
+          {headline.kind === 'stale' ? <LastSeen iso={headline.lastSeenAt} /> : null}
           {showChecked && checkedAt ? <CheckedOn iso={checkedAt} /> : null}
         </div>
       </div>
@@ -157,64 +155,77 @@ function ProductCard({ product, readOnly }: { product: ProductView; readOnly: bo
             <PriceChart productId={product.id} />
           )}
 
-          {product.links.map((link) => (
-            <div
-              key={link.id}
-              className={`row ${link.isActive ? '' : 'inactive'}${
-                saving && !link.priceStale && link.latestPrice === product.lowestPrice ? ' is-best' : ''
-              }`}
-            >
-              <div className="row-main">
-                <div className="row-shop">
-                  <RetailerLogo retailer={link.retailer} url={link.url} />
-                  <span>{link.retailer}</span>
-                  {saving && !link.priceStale && link.latestPrice === product.lowestPrice ? (
-                    <span className="best-tag">Cheapest</span>
-                  ) : null}
-                  {!hasCrawlerSupport(link.url || link.retailer) ? (
-                    <span className="shop-gap">Not checked here</span>
-                  ) : null}
-                </div>
-                <div className="row-meta">
+          {product.links.map((link) => {
+            const isStalePrice =
+              link.priceStale && link.stockStatus !== 'unavailable' && link.latestPrice !== null;
+            const isCheapestFresh =
+              link.isActive &&
+              !link.priceStale &&
+              link.stockStatus !== 'unavailable' &&
+              lowestFreshPrice !== null &&
+              link.latestPrice === lowestFreshPrice;
+            const showCheapestTag = saving && isCheapestFresh;
+
+            return (
+              <div
+                key={link.id}
+                className={`row ${link.isActive ? '' : 'inactive'}${showCheapestTag ? ' is-best' : ''}`}
+              >
+                <div className="row-main">
+                  <div className="row-shop">
+                    <RetailerLogo retailer={link.retailer} url={link.url} />
+                    <span>{link.retailer}</span>
+                    {showCheapestTag ? <span className="best-tag">Cheapest</span> : null}
+                    {!hasCrawlerSupport(link.url || link.retailer) ? (
+                      <span className="shop-gap">Not checked here</span>
+                    ) : null}
+                  </div>
                   {!link.isActive ? (
-                    'Paused'
-                  ) : link.latestAt && formatCheckedAt(link.latestAt) ? (
-                    <CheckedOn iso={link.latestAt} />
-                  ) : (
-                    'Not checked yet'
+                    <div className="row-meta">Paused</div>
+                  ) : isStalePrice ? null : (
+                    <div className="row-meta">
+                      {link.latestAt && formatCheckedAt(link.latestAt) ? (
+                        <CheckedOn iso={link.latestAt} />
+                      ) : (
+                        'Not checked yet'
+                      )}
+                    </div>
                   )}
                 </div>
-              </div>
-              <div className="row-side">
-                {link.priceStale && link.latestPrice !== null ? (
-                  <ExpiredPrice price={link.latestPrice} revealedClassName="row-price" />
-                ) : (
-                  <span
-                    className={`row-price ${
-                      link.stockStatus === 'unavailable'
-                        ? 'unavailable'
+                <div className="row-side">
+                  {isStalePrice ? (
+                    <span className="row-price-stale">
+                      <span className="row-price is-stale">{formatMoney(link.latestPrice)}</span>
+                      <LastSeen iso={link.latestAt} />
+                    </span>
+                  ) : (
+                    <span
+                      className={`row-price ${
+                        link.stockStatus === 'unavailable'
+                          ? 'unavailable'
+                          : link.latestPrice === null
+                            ? 'none'
+                            : isCheapestFresh
+                              ? 'best'
+                              : ''
+                      }`}
+                    >
+                      {link.stockStatus === 'unavailable'
+                        ? 'Unavailable'
                         : link.latestPrice === null
-                          ? 'none'
-                          : link.latestPrice === product.lowestPrice
-                            ? 'best'
-                            : ''
-                    }`}
-                  >
-                    {link.stockStatus === 'unavailable'
-                      ? 'Unavailable'
-                      : link.latestPrice === null
-                        ? 'No price yet'
-                        : formatMoney(link.latestPrice)}
-                  </span>
-                )}
-                {link.url ? (
-                  <a className="open-link" href={link.url} target="_blank" rel="noreferrer">
-                    Open shop <ExternalLink size={13} aria-hidden="true" />
-                  </a>
-                ) : null}
+                          ? 'No price yet'
+                          : formatMoney(link.latestPrice)}
+                    </span>
+                  )}
+                  {link.url ? (
+                    <a className="open-link" href={link.url} target="_blank" rel="noreferrer">
+                      Open shop <ExternalLink size={13} aria-hidden="true" />
+                    </a>
+                  ) : null}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       ) : null}
     </article>

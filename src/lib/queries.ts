@@ -329,6 +329,13 @@ export async function fetchProducts(
       if (a.latestPrice === null || b.latestPrice === null) {
         return a.retailer.localeCompare(b.retailer);
       }
+      if (a.priceStale && b.priceStale) {
+        const aTime = a.latestAt ? new Date(a.latestAt).getTime() : -Infinity;
+        const bTime = b.latestAt ? new Date(b.latestAt).getTime() : -Infinity;
+        const aMs = Number.isNaN(aTime) ? -Infinity : aTime;
+        const bMs = Number.isNaN(bTime) ? -Infinity : bTime;
+        if (aMs !== bMs) return bMs - aMs;
+      }
       return a.latestPrice - b.latestPrice;
     });
 
