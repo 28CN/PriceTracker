@@ -5638,6 +5638,11 @@ html[data-theme='dark'] {
   white-space: nowrap;
 }
 
+.tw-when {
+  flex-shrink: 0;
+  font-weight: 500;
+}
+
 .tw-prices {
   display: inline-flex;
   align-items: baseline;

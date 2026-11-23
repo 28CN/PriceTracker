@@ -5,7 +5,7 @@ import { useMemo, useState } from 'react';
 
 import InfoTip from '@/components/InfoTip';
 import ProductVisual from '@/components/ProductVisual';
-import { formatMoney } from '@/lib/format';
+import { formatLastSeen, formatMoney } from '@/lib/format';
 import type { OverviewEntry, OverviewResponse } from '@/lib/overview';
 import { productThumb } from '@/lib/productImage';
 import { retailerKey } from '@/lib/retailer';
@@ -24,7 +24,7 @@ function EntryList({
   title: string;
   icon: React.ReactNode;
   tone: 'drop' | 'goal' | 'rise';
-  entries: OverviewEntry[];
+  entries: (OverviewEntry & { at?: string })[];
   productMap: Map<string, ProductView>;
   onNavigate?: (productId: string) => void;
 }) {
@@ -59,6 +59,11 @@ function EntryList({
                   <span className="tw-shop">
                     <span className="shop-dot" aria-hidden="true" />
                     <span>{entry.retailer}</span>
+                    {entry.at && formatLastSeen(entry.at) ? (
+                      <span className="tw-when">
+                        · from <time dateTime={entry.at}>{formatLastSeen(entry.at)}</time>
+                      </span>
+                    ) : null}
                   </span>
                 </span>
                 <span className="tw-prices">

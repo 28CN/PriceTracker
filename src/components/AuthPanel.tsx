@@ -91,7 +91,7 @@ export default function AuthPanel({ mode, nextPath }: AuthPanelProps) {
               inputMode="text"
               minLength={3}
               maxLength={30}
-              pattern="[A-Za-z0-9](?:[A-Za-z0-9-]{1,28}[A-Za-z0-9])"
+              pattern="[A-Za-z0-9](?:[A-Za-z0-9\-]{1,28}[A-Za-z0-9])"
               placeholder="Enter username"
               required
             />

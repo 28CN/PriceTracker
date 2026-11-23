@@ -7,6 +7,12 @@
 export type SearchCandidate = {
   name: string;
   shops?: string[];
+  /**
+   * Group, tag and brand words that describe the item without being in its
+   * title, e.g. the list group "Hotwheels" for a product called "Basic Car".
+   * Ranked below the name and above shop names.
+   */
+  groups?: string[];
 };
 
 export type MatchKind = 'exact' | 'prefix' | 'fuzzy';
@@ -14,7 +20,7 @@ export type MatchKind = 'exact' | 'prefix' | 'fuzzy';
 export type SearchMatchResult = {
   score: number;
   kind: MatchKind;
-  matchedIn: 'name' | 'shop' | 'both';
+  matchedIn: 'name' | 'group' | 'shop' | 'both';
 };
 
 export type PreparedField = {
@@ -28,6 +34,7 @@ export type PreparedField = {
 
 export type PreparedCandidate = {
   name: PreparedField;
+  groups: PreparedField[];
   shops: PreparedField[];
 };
 
@@ -185,6 +192,7 @@ export function prepareField(raw: string): PreparedField {
 export function prepareCandidate(candidate: SearchCandidate): PreparedCandidate {
   return {
     name: prepareField(candidate.name),
+    groups: (candidate.groups ?? []).filter(Boolean).map(prepareField),
     shops: (candidate.shops ?? []).filter(Boolean).map(prepareField)
   };
 }
@@ -209,20 +217,30 @@ type ChunkHit = {
   kind: MatchKind;
 };
 
+type FieldTier = 'name' | 'group' | 'shop';
+
+/** Points per match kind for each field tier: name > group/tag/brand > shop. */
+const TIER_SCORES: Record<FieldTier, { exact: number; prefix: number; mid: number; fuzzy1: number; fuzzy2: number }> = {
+  name: { exact: 100, prefix: 70, mid: 55, fuzzy1: 35, fuzzy2: 18 },
+  group: { exact: 85, prefix: 58, mid: 45, fuzzy1: 28, fuzzy2: 14 },
+  shop: { exact: 65, prefix: 45, mid: 32, fuzzy1: 20, fuzzy2: 10 }
+};
+
 function scoreChunkAgainstField(
   chunk: string,
   field: PreparedField,
-  isName: boolean
+  tier: FieldTier
 ): ChunkHit | null {
+  const points = TIER_SCORES[tier];
   if (!chunk || !field.norm) return null;
 
   // 1. Exact token / span / compact match.
   if (field.foldedCompact === chunk || field.compact === chunk) {
-    return { score: isName ? 100 : 65, kind: 'exact' };
+    return { score: points.exact, kind: 'exact' };
   }
   for (const span of field.spans) {
     if (span === chunk) {
-      return { score: isName ? 100 : 65, kind: 'exact' };
+      return { score: points.exact, kind: 'exact' };
     }
   }
 
@@ -237,7 +255,7 @@ function scoreChunkAgainstField(
     bestPrefixLen = field.foldedCompact.length;
   }
   if (bestPrefixLen < Infinity) {
-    const base = isName ? 70 : 45;
+    const base = points.prefix;
     const tightness = Math.min(8, Math.round((8 * chunk.length) / bestPrefixLen));
     return { score: base + tightness, kind: 'prefix' };
   }
@@ -245,7 +263,7 @@ function scoreChunkAgainstField(
   // Mid-word compact match only for longer chunks (>= 5 chars) so "wheels" matches "HotWheels"
   // without causing short-token false positives.
   if (chunk.length >= 5 && (field.foldedCompact.includes(chunk) || field.compact.includes(chunk))) {
-    return { score: isName ? 55 : 32, kind: 'prefix' };
+    return { score: points.mid, kind: 'prefix' };
   }
 
   // 3. Light fuzzy tolerance (Damerau-Levenshtein <= 1 for >= 4 chars, <= 2 for >= 8 chars).
@@ -266,10 +284,10 @@ function scoreChunkAgainstField(
     return null;
   }
   if (bestDist === 1) {
-    return { score: isName ? 35 : 20, kind: 'fuzzy' };
+    return { score: points.fuzzy1, kind: 'fuzzy' };
   }
   if (bestDist === 2) {
-    return { score: isName ? 18 : 10, kind: 'fuzzy' };
+    return { score: points.fuzzy2, kind: 'fuzzy' };
   }
 
   return null;
@@ -285,6 +303,7 @@ type DpState = {
   totalScore: number;
   kind: MatchKind;
   usedName: boolean;
+  usedGroup: boolean;
   usedShop: boolean;
 };
 
@@ -296,7 +315,7 @@ export function matchPreparedCandidate(
   if (m === 0) return null;
 
   const dp: (DpState | null)[] = new Array(m + 1).fill(null);
-  dp[0] = { totalScore: 0, kind: 'exact', usedName: false, usedShop: false };
+  dp[0] = { totalScore: 0, kind: 'exact', usedName: false, usedGroup: false, usedShop: false };
 
   for (let i = 0; i < m; i += 1) {
     const state = dp[i];
@@ -314,20 +333,15 @@ export function matchPreparedCandidate(
         continue;
       }
 
-      const nameHit = scoreChunkAgainstField(chunk, candidate.name, true);
-      let shopHit: ChunkHit | null = null;
-      for (const shopField of candidate.shops) {
-        const hit = scoreChunkAgainstField(chunk, shopField, false);
-        if (hit && (!shopHit || hit.score > shopHit.score)) {
-          shopHit = hit;
-        }
-      }
-
-      let picked: (ChunkHit & { source: 'name' | 'shop' }) | null = null;
-      if (nameHit && (!shopHit || nameHit.score >= shopHit.score)) {
-        picked = { ...nameHit, source: 'name' };
-      } else if (shopHit) {
-        picked = { ...shopHit, source: 'shop' };
+      const fields: [PreparedField, FieldTier][] = [
+        [candidate.name, 'name'],
+        ...candidate.groups.map((field): [PreparedField, FieldTier] => [field, 'group']),
+        ...candidate.shops.map((field): [PreparedField, FieldTier] => [field, 'shop'])
+      ];
+      let picked: (ChunkHit & { source: FieldTier }) | null = null;
+      for (const [field, tier] of fields) {
+        const hit = scoreChunkAgainstField(chunk, field, tier);
+        if (hit && (!picked || hit.score > picked.score)) picked = { ...hit, source: tier };
       }
 
       if (!picked) continue;
@@ -341,6 +355,7 @@ export function matchPreparedCandidate(
           totalScore: nextScore,
           kind: nextKind,
           usedName: state.usedName || picked.source === 'name',
+          usedGroup: state.usedGroup || picked.source === 'group',
           usedShop: state.usedShop || picked.source === 'shop'
         };
       }
@@ -366,16 +381,13 @@ export function matchPreparedCandidate(
     score += 20;
   }
 
-  if (finalState.usedName && !finalState.usedShop) {
+  if (finalState.usedName && !finalState.usedGroup && !finalState.usedShop) {
     score += 10;
   }
 
+  const sources = [finalState.usedName, finalState.usedGroup, finalState.usedShop].filter(Boolean).length;
   const matchedIn: SearchMatchResult['matchedIn'] =
-    finalState.usedName && finalState.usedShop
-      ? 'both'
-      : finalState.usedName
-        ? 'name'
-        : 'shop';
+    sources > 1 ? 'both' : finalState.usedName ? 'name' : finalState.usedGroup ? 'group' : 'shop';
 
   return {
     score: Math.round(score * 10) / 10,

@@ -178,7 +178,7 @@ describe('computeOverview', () => {
     ]);
   });
 
-  it('detects usual-price upward shifts confirmed this week and skips old or brief rises', () => {
+  it('lists recent usual-price rises and skips old or brief rises', () => {
     const products = [
       product('confirmed-now', 'Matchbox car', null, [{ id: 'l-up', retailer: 'Woolworths' }]),
       product('old-shift', 'Toothpaste', null, [{ id: 'l-old', retailer: 'Coles' }]),
@@ -195,12 +195,14 @@ describe('computeOverview', () => {
       row('l-up', 8, 4.0),
       row('l-up', 1, 4.0),
 
-      // old-shift: shifted to $6.00 two weeks ago (confirmed at day -10, before cutoff day -7)
-      row('l-old', 45, 5.0),
-      row('l-old', 38, 5.0),
-      row('l-old', 31, 5.0),
-      row('l-old', 17, 6.0),
-      row('l-old', 10, 6.0),
+      // old-shift: $6.00 first seen 40 days ago, outside the 28-day window
+      row('l-old', 60, 5.0),
+      row('l-old', 55, 5.0),
+      row('l-old', 50, 5.0),
+      row('l-old', 40, 6.0),
+      row('l-old', 33, 6.0),
+      row('l-old', 26, 6.0),
+      row('l-old', 12, 6.0),
       row('l-old', 2, 6.0),
 
       // brief-rise: only 1 check at $5.00 so usual price has NOT shifted yet
@@ -220,6 +222,20 @@ describe('computeOverview', () => {
       oldPrice: 3.5,
       newPrice: 4.0
     });
+  });
+
+  it('keeps a rise confirmed two weeks ago when its new price first appeared within 28 days', () => {
+    // Shape of the real Power Grab history at Woolworths: $3.50 for weeks, then
+    // $4.00 from 21 days ago, checked several times since. Confirmed 14 days ago.
+    const products = [product('power-grab', 'Power Grab', 3, [{ id: 'l-pg', retailer: 'Woolworths' }])];
+    const rows: OverviewDailyRow[] = [
+      ...[60, 57, 53, 50, 46, 43, 39, 36, 31, 28, 25].map((d) => row('l-pg', d, 3.5)),
+      ...[21, 19, 18, 14, 11, 7, 4].map((d) => row('l-pg', d, 4.0))
+    ];
+    const res = computeOverview(products, rows, { now: NOW });
+    expect(res.usualPriceRises).toHaveLength(1);
+    expect(res.usualPriceRises[0]).toMatchObject({ productId: 'power-grab', oldPrice: 3.5, newPrice: 4.0 });
+    expect(res.usualPriceRises[0].at.slice(0, 10)).toBe(row('l-pg', 21, 4).day);
   });
 
   it('produces 8-point price index sparkline reflecting weekly price changes', () => {

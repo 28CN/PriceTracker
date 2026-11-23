@@ -9,6 +9,13 @@ export const OVERVIEW_WEEKS = 8;
 /** 9 weeks (63 days) so week 0 of the 8-week sparkline has a prior-week baseline. */
 export const OVERVIEW_LOOKBACK_DAYS = (OVERVIEW_WEEKS + 1) * PRICE_FRESH_DAYS;
 export const OVERVIEW_MAX_ENTRIES = 5;
+/**
+ * A usual-price rise stays in "This week" while its new price first appeared
+ * within this many days. A rise needs about a week of checks before it counts,
+ * so a 7-day window would show it for one week at most, and not at all when a
+ * weekly check was missed.
+ */
+export const USUAL_RISE_RECENT_DAYS = 28;
 
 export type OverviewLink = {
   id: string;
@@ -181,7 +188,6 @@ export function computeOverview(
   const newlyBelowCandidates: Array<{ entry: OverviewEntry; pctDrop: number; goalMargin: number }> = [];
   const usualRiseCandidates: Array<{ entry: OverviewUsualRiseEntry; pctRise: number; absRise: number }> = [];
 
-  const prevWeekCutoffMs = nowMs - WEEK_MS;
 
   for (const product of products) {
     const activeLinks = product.links.filter((link) => link.isActive);
@@ -274,16 +280,13 @@ export function computeOverview(
       });
     }
 
-    // Usual price rises confirmed this week (using src/lib/usualPrice.ts per shop).
+    // Recent usual-price rises that still hold (src/lib/usualPrice.ts per shop).
     let bestRise: { entry: OverviewUsualRiseEntry; pctRise: number; absRise: number } | null = null;
     for (const link of activeLinks) {
       const obs = obsByLink.get(link.id);
       if (!obs || obs.length < 3) continue;
 
       const allObs: PriceObservation[] = obs.map((o) => ({ at: o.at, price: o.price }));
-      const beforeObs: PriceObservation[] = obs
-        .filter((o) => o.ms <= prevWeekCutoffMs)
-        .map((o) => ({ at: o.at, price: o.price }));
 
       const nowUsual = computeUsualPrice(allObs, { now: nowMs });
       if (nowUsual.lowConfidence || nowUsual.shifts.length === 0) continue;
@@ -291,12 +294,8 @@ export function computeOverview(
       const latestShift = nowUsual.shifts[nowUsual.shifts.length - 1];
       if (latestShift.direction !== 'up') continue;
       if (nowUsual.currentUsual !== latestShift.to) continue;
-
-      const prevUsual = computeUsualPrice(beforeObs, { now: prevWeekCutoffMs });
-      const alreadyConfirmed = prevUsual.shifts.some(
-        (s) => s.direction === 'up' && s.at === latestShift.at && s.to === latestShift.to
-      );
-      if (alreadyConfirmed) continue;
+      const shiftMs = Date.parse(latestShift.at);
+      if (!Number.isFinite(shiftMs) || nowMs - shiftMs > USUAL_RISE_RECENT_DAYS * DAY_MS) continue;
 
       const absRise = roundMoney(latestShift.to - latestShift.from);
       if (absRise < 0.01) continue;

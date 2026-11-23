@@ -25,7 +25,7 @@ import {
   prepareCandidate,
   rankPreparedItems
 } from '@/lib/searchMatch';
-import type { TrackedSearchItem } from '@/lib/trackedSearch';
+import { trackedSearchCandidate, type TrackedSearchItem } from '@/lib/trackedSearch';
 
 type Limited = 'demo' | 'off' | 'user_day' | 'user_month' | 'site_day' | 'error';
 
@@ -190,7 +190,7 @@ export default function ProductSearch({
     () =>
       trackedItems.map((item) => ({
         item,
-        prepared: prepareCandidate({ name: item.name, shops: item.shops })
+        prepared: prepareCandidate(trackedSearchCandidate(item))
       })),
     [trackedItems]
   );
@@ -651,7 +651,15 @@ export default function ProductSearch({
 
       <div className="product-search-status" role="status" aria-live="polite">
         {statusAnnouncement ? (
-          <span className={limited || errorSource ? 'product-search-status-warn' : undefined}>
+          <span
+            className={
+              showEmptyOwnState
+                ? 'visually-hidden'
+                : limited || errorSource
+                  ? 'product-search-status-warn'
+                  : undefined
+            }
+          >
             {statusAnnouncement}
           </span>
         ) : null}
