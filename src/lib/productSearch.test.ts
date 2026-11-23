@@ -1,10 +1,24 @@
 import { describe, expect, it } from 'vitest';
 
-import { isSupportedShopName, normalizeQuery, parseShoppingResults, parseStores } from './productSearch';
+import {
+  cacheKeyForQuery,
+  isSupportedShopName,
+  matchCachedShopHits,
+  normalizeQuery,
+  parseShoppingResults,
+  parseStores,
+  type CacheSearchRow
+} from './productSearch';
 
-describe('normalizeQuery', () => {
+describe('normalizeQuery & cacheKeyForQuery', () => {
   it('lowercases and collapses punctuation', () => {
     expect(normalizeQuery('  Hot   Wheels!! 10-Pack ')).toBe('hot wheels 10-pack');
+  });
+
+  it('normalises cache keys so spacing and punctuation variants share one entry', () => {
+    expect(cacheKeyForQuery('hot wheels')).toBe('q:hotwheels');
+    expect(cacheKeyForQuery('hotwheels')).toBe('q:hotwheels');
+    expect(cacheKeyForQuery('Hot-Wheels!')).toBe('q:hotwheels');
   });
 });
 
@@ -58,5 +72,40 @@ describe('parseStores', () => {
       trackable: true
     });
     expect(offers[1]).toMatchObject({ shop: 'Amazon AU', trackable: false });
+  });
+});
+
+describe('matchCachedShopHits', () => {
+  const now = new Date('2026-11-23T08:00:00Z').getTime();
+  const rows: CacheSearchRow[] = [
+    {
+      query_key: 'q:hot wheels',
+      fetched_at: '2026-11-05T04:00:00Z', // stale (>24h)
+      results: [
+        { id: '1', name: 'Hot Wheels 5-Pack Cars', price: 12, imageUrl: null, shop: 'Kmart', token: 't1', supported: true },
+        { id: '2', name: 'Hot Wheels Track Builder', price: 29, imageUrl: null, shop: 'Big W', token: 't2', supported: true }
+      ]
+    },
+    {
+      query_key: 'q:hotwheels',
+      fetched_at: '2026-11-23T06:00:00Z', // fresh (2h ago)
+      results: [
+        { id: '1', name: 'Hot Wheels 5-Pack Cars', price: 10, imageUrl: null, shop: 'Kmart', token: 't1', supported: true }
+      ]
+    }
+  ];
+
+  it('matches fuzzily across spacing/plurals, deduplicates keeping newest, and flags stale rows', () => {
+    const hits = matchCachedShopHits('hotwheels', rows, now);
+    expect(hits).toHaveLength(2);
+    const pack = hits.find((h) => h.id === '1');
+    const track = hits.find((h) => h.id === '2');
+    expect(pack).toMatchObject({ price: 10, stale: false, fetchedAt: '2026-11-23T06:00:00Z' });
+    expect(track).toMatchObject({ price: 29, stale: true, fetchedAt: '2026-11-05T04:00:00Z' });
+  });
+
+  it('matches plural/singular queries against stale cache rows', () => {
+    const hits = matchCachedShopHits('car', rows, now);
+    expect(hits.map((h) => h.id)).toEqual(['1']);
   });
 });

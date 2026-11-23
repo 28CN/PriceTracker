@@ -3,9 +3,9 @@
 import InfoTip from './InfoTip';
 import { useEffect, useMemo, useState } from 'react';
 
-import type { PriceInsightResponse } from '@/lib/priceInsightTypes';
+import type { PriceInsightResponse, UsualPriceStep } from '@/lib/priceInsightTypes';
 import { coverageText, lineEnd, mergePeriods, sydneyDate, type ChartPeriod } from '@/lib/chartPeriods';
-import { formatMoney } from '@/lib/format';
+import { formatLastSeen, formatMoney } from '@/lib/format';
 import type { PricePoint, Verdict } from '@/lib/priceInsight';
 
 const W = 560;
@@ -46,6 +46,43 @@ function stepSegments(points: PricePoint[], x: (t: number) => number, y: (p: num
   return out;
 }
 
+/** Visible usual-price prices over [t0, t1], used for axis scaling and the dashed step path. */
+function visibleUsualSteps(steps: UsualPriceStep[], t0: number, t1: number): { atMs: number; price: number }[] {
+  if (steps.length === 0) return [];
+  const parsed = steps
+    .map((s) => ({ atMs: Date.parse(s.from), price: s.price }))
+    .filter((s) => Number.isFinite(s.atMs) && Number.isFinite(s.price))
+    .sort((a, b) => a.atMs - b.atMs);
+  if (parsed.length === 0) return [];
+
+  let activeAtStart: { atMs: number; price: number } | null = null;
+  const inside: { atMs: number; price: number }[] = [];
+  for (const s of parsed) {
+    if (s.atMs <= t0) activeAtStart = s;
+    else if (s.atMs <= t1) inside.push(s);
+  }
+
+  const out: { atMs: number; price: number }[] = [];
+  if (activeAtStart) out.push({ atMs: t0, price: activeAtStart.price });
+  out.push(...inside);
+  return out;
+}
+
+function usualStepPath(
+  steps: { atMs: number; price: number }[],
+  t1: number,
+  x: (t: number) => number,
+  y: (p: number) => number
+): string {
+  if (steps.length === 0) return '';
+  let d = `M${x(steps[0].atMs).toFixed(1)},${y(steps[0].price).toFixed(1)}`;
+  for (let i = 1; i < steps.length; i += 1) {
+    d += `H${x(steps[i].atMs).toFixed(1)}V${y(steps[i].price).toFixed(1)}`;
+  }
+  d += `H${x(t1).toFixed(1)}`;
+  return d;
+}
+
 export default function PriceChart({ productId, days = 180 }: { productId: string; days?: number }) {
   const [state, setState] = useState<State>({ status: 'loading' });
 
@@ -60,6 +97,16 @@ export default function PriceChart({ productId, days = 180 }: { productId: strin
     return () => ctrl.abort();
   }, [productId, days]);
 
+  const leadingUsual = useMemo(() => {
+    if (state.status !== 'ready') return null;
+    const { links, leadingLinkId } = state.data;
+    const match =
+      (leadingLinkId ? links.find((l) => l.linkId === leadingLinkId) : null) ??
+      links.find((l) => l.usual && l.usual.currentUsual !== null) ??
+      null;
+    return match?.usual ?? null;
+  }, [state]);
+
   const periodGeo = useMemo(() => {
     if (state.status !== 'ready') return null;
     const { links, product } = state.data;
@@ -69,8 +116,10 @@ export default function PriceChart({ productId, days = 180 }: { productId: strin
     const seen = periods.filter((p): p is ChartPeriod & { minPrice: number } => p.minPrice !== null);
     const t0 = periods[0].startMs;
     const t1 = periods[periods.length - 1].endMs;
+    const usualSteps = leadingUsual && !leadingUsual.lowConfidence ? visibleUsualSteps(leadingUsual.series, t0, t1) : [];
     const prices = seen.map((p) => p.minPrice);
     if (product.targetPrice !== null) prices.push(product.targetPrice);
+    for (const s of usualSteps) prices.push(s.price);
     let lo = Math.min(...prices);
     let hi = Math.max(...prices);
     const span = hi - lo || hi * 0.1 || 1;
@@ -104,13 +153,14 @@ export default function PriceChart({ productId, days = 180 }: { productId: strin
       prev = { x: xe, y: yy };
       prevEnd = i;
     });
+    const usualPath = usualStepPath(usualSteps, t1, x, y);
     return {
-      x, y, periods, ticks, lowest, now, nowAt, solid, dashed,
+      x, y, periods, ticks, lowest, now, nowAt, solid, dashed, usualPath,
       hasUnchecked: merged.coverage.observed < merged.coverage.total,
       coverage: coverageText(merged.coverage, merged.cycleDays),
       from: periods[0].start
     };
-  }, [state]);
+  }, [state, leadingUsual]);
 
   const geo = useMemo(() => {
     if (state.status !== 'ready' || periodGeo) return null;
@@ -118,8 +168,10 @@ export default function PriceChart({ productId, days = 180 }: { productId: strin
     if (lowest.length < 2) return null;
     const t0 = Date.parse(range.from);
     const t1 = Date.parse(range.to);
+    const usualSteps = leadingUsual && !leadingUsual.lowConfidence ? visibleUsualSteps(leadingUsual.series, t0, t1) : [];
     const prices = lowest.map((p) => p.price);
     if (product.targetPrice !== null) prices.push(product.targetPrice);
+    for (const s of usualSteps) prices.push(s.price);
     let lo = Math.min(...prices);
     let hi = Math.max(...prices);
     const span = hi - lo || hi * 0.1 || 1;
@@ -138,8 +190,9 @@ export default function PriceChart({ productId, days = 180 }: { productId: strin
     const dataLo = Math.min(...prices);
     const dataHi = Math.max(...prices);
     const ticks = dataHi - dataLo < 0.01 ? [dataLo] : [dataHi, (dataHi + dataLo) / 2, dataLo];
-    return { x, y, segments, area, atl, hasGap, ticks, points: lowest, last: lowest[lowest.length - 1] };
-  }, [state, periodGeo]);
+    const usualPath = usualStepPath(usualSteps, t1, x, y);
+    return { x, y, segments, area, atl, hasGap, ticks, usualPath, points: lowest, last: lowest[lowest.length - 1] };
+  }, [state, periodGeo, leadingUsual]);
 
   if (state.status === 'loading') {
     return (
@@ -165,14 +218,26 @@ export default function PriceChart({ productId, days = 180 }: { productId: strin
 
   const { insight, product, range } = state.data;
   const verdict = VERDICT_COPY[insight.verdict];
+  const displayUsual = insight.usualPrice ?? leadingUsual?.currentUsual ?? null;
+  const discountPct =
+    insight.verdict === 'real_discount' && insight.discountVsUsual !== null && insight.discountVsUsual >= 0.01
+      ? Math.round(insight.discountVsUsual * 100)
+      : null;
+  const latestShift = leadingUsual?.shifts.at(-1) ?? null;
+  const shiftDate = latestShift ? formatLastSeen(latestShift.at) : '';
+  const hasUsualLine = Boolean(periodGeo?.usualPath || geo?.usualPath);
 
   return (
     <figure className="price-chart">
       <figcaption className="price-chart-head">
-        <span className={`verdict-pill tone-${verdict.tone}`}>{verdict.label}</span>
+        <span className={`verdict-pill tone-${verdict.tone}`}>
+          {discountPct ? `${verdict.label} · ${discountPct}% off` : verdict.label}
+        </span>
         {insight.isAllTimeLow ? <span className="verdict-pill tone-good">All-time low</span> : null}
-        {insight.median90d !== null ? (
-          <span className="price-chart-meta">Normally {formatMoney(insight.median90d)}</span>
+        {displayUsual !== null ? (
+          <span className={`price-chart-meta${hasUsualLine ? ' pc-usual-key' : ''}`}>
+            Usual {formatMoney(displayUsual)}
+          </span>
         ) : null}
         {periodGeo ? (
           <InfoTip label="How often we checked">{periodGeo.coverage}</InfoTip>
@@ -221,6 +286,7 @@ export default function PriceChart({ productId, days = 180 }: { productId: strin
                   <line x1={PAD.left} x2={W - PAD.right} y1={periodGeo.y(product.targetPrice)} y2={periodGeo.y(product.targetPrice)} />
                 </g>
               ) : null}
+              {periodGeo.usualPath ? <path d={periodGeo.usualPath} className="pc-usual" /> : null}
               {periodGeo.dashed ? <path d={periodGeo.dashed} className="pc-step pc-step-gap" /> : null}
               <path d={periodGeo.solid} className="pc-step" />
               {periodGeo.periods.map((p) =>
@@ -272,6 +338,12 @@ export default function PriceChart({ productId, days = 180 }: { productId: strin
             <span>{sydneyDate(periodGeo.from)}</span>
             <span>This week</span>
           </div>
+          {latestShift && shiftDate ? (
+            <p className="pc-shift-note">
+              Usual price went {latestShift.direction === 'up' ? 'up' : 'down'} to{' '}
+              {formatMoney(latestShift.to)} · <time dateTime={latestShift.at}>{shiftDate}</time>
+            </p>
+          ) : null}
         </div>
       ) : geo ? (
         <div className="pc-plot">
@@ -297,6 +369,7 @@ export default function PriceChart({ productId, days = 180 }: { productId: strin
               <line x1={PAD.left} x2={W - PAD.right} y1={geo.y(product.targetPrice)} y2={geo.y(product.targetPrice)} />
             </g>
           ) : null}
+          {geo.usualPath ? <path d={geo.usualPath} className="pc-usual" /> : null}
           <path d={geo.area} fill={`url(#pc-fill-${productId})`} />
           {geo.segments.map((seg, i) => (
             <path key={i} d={seg.d} className={seg.gap ? 'pc-line pc-gap' : 'pc-line'} />
@@ -341,6 +414,12 @@ export default function PriceChart({ productId, days = 180 }: { productId: strin
           <span>{sydneyDate(range.from)}</span>
           <span>Today</span>
         </div>
+        {latestShift && shiftDate ? (
+          <p className="pc-shift-note">
+            Usual price went {latestShift.direction === 'up' ? 'up' : 'down'} to{' '}
+            {formatMoney(latestShift.to)} · <time dateTime={latestShift.at}>{shiftDate}</time>
+          </p>
+        ) : null}
         </div>
       ) : (
         <p className="price-chart-empty">Not enough price history to draw a chart yet.</p>

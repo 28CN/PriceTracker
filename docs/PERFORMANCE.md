@@ -63,6 +63,29 @@ This is not a fair pair with the production numbers. It shows the page can be se
 
 The signed-in list and the chart were not re-timed against production data. The chart still reads daily rows, raw history for the promo weeks, and the stats view. The stats view walks history for those links. That is the remaining cost, and it is left in place so the chart stays honest. A private 60-second browser cache only helps the second open.
 
+## Search
+
+Reproduce both tables below locally with `node scripts/bench-search.mjs` (runs `scripts/bench-search.vitest.ts` via Vitest; excluded from `npm test`).
+
+- **Old flow:** finding a product already on your own list required submitting the form and waiting for a `POST /api/search` round trip (session check, `is_demo` lookup, and a Postgres `ilike` query on `products`). The production round-trip time for `POST /api/search` was not measured here.
+- **New flow (client-side own-list filter):** measured on `Intel(R) Xeon(R) Processor` (8 cores, `linux x64`, Node `v24.22.1`) via `node scripts/bench-search.mjs` over 1,000 iterations (after 100 warmup iterations) across 8 queries (`hotwheels`, `hot wheels`, `cars`, `kmrat`, `batteries`, `storage boxes`, `kmart`, `nonexistentxyz`) on synthetic product lists:
+
+| Operation | Dataset | Iterations | Median | p95 |
+| --- | --- | --- | --- | --- |
+| `rankPreparedItems` (pre-prepared via `useMemo`, as in `ProductSearch`) | 21 products | 1,000 | 0.024 ms | 0.067 ms |
+| `rankSearchItems` (unprepared each call) | 21 products | 1,000 | 0.129 ms | 0.204 ms |
+| `rankPreparedItems` (pre-prepared via `useMemo`) | 500 products | 1,000 | 0.699 ms | 1.316 ms |
+| `rankSearchItems` (unprepared each call) | 500 products | 1,000 | 4.025 ms | 5.731 ms |
+
+- **New flow (free cache route `GET /api/search`):** measured by the same `node scripts/bench-search.mjs` run on the same machine with mocked `getApiAuth` and mocked `createAdminSupabaseClient` (1,000 iterations after 50 warmup iterations, including `NextRequest` handling and JSON serialisation, excluding real Postgres and network round-trip latency):
+
+| Route | Mocked cache size | Iterations | Median | p95 |
+| --- | --- | --- | --- | --- |
+| `GET /api/search` | 3 rows / 22 results | 1,000 | 0.186 ms | 0.330 ms |
+| `GET /api/search` | 50 rows / 500 results | 1,000 | 2.949 ms | 3.530 ms |
+
+Real production network and Postgres round-trip times for `GET /api/search` and `POST /api/search` were not measured in this environment.
+
 ## What would be a bad shortcut
 
 - Deleting or truncating `price_history` to make the list faster.

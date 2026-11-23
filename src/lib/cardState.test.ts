@@ -1,8 +1,27 @@
 import { describe, expect, it } from 'vitest';
 
-import { headlineFor, headlineText, shopGapLabel } from './cardState';
+import {
+  headlineFor,
+  headlineText,
+  resolveCardPrice,
+  shopGapLabel,
+  type CardOffer
+} from './cardState';
+import { formatLastSeen } from './format';
 
 const money = (value: number) => `$${value.toFixed(2)}`;
+
+function offer(partial: Partial<CardOffer> & { id: string; retailer: string }): CardOffer {
+  return {
+    id: partial.id,
+    retailer: partial.retailer,
+    isActive: partial.isActive ?? true,
+    stockStatus: partial.stockStatus ?? 'in_stock',
+    latestPrice: partial.latestPrice ?? null,
+    priceStale: partial.priceStale ?? false,
+    latestAt: partial.latestAt ?? null
+  };
+}
 
 describe('headlineFor', () => {
   it('shows a fresh price and ignores a queued recheck', () => {
@@ -11,10 +30,16 @@ describe('headlineFor', () => {
     );
   });
 
-  it('keeps the last price when the check is old', () => {
-    expect(headlineFor({ allUnavailable: false, price: null, stalePrice: 41.99, checkState: null }).kind).toBe(
-      'stale'
-    );
+  it('shows the last price directly when the check is old', () => {
+    const headline = headlineFor({
+      allUnavailable: false,
+      price: null,
+      stalePrice: 41.99,
+      staleAt: '2026-11-04T01:00:00.000Z',
+      checkState: null
+    });
+    expect(headline).toEqual({ kind: 'stale', price: 41.99, lastSeenAt: '2026-11-04T01:00:00.000Z' });
+    expect(headlineText(headline, money)).toBe('$41.99');
   });
 
   it('says checking soon only when a check is queued and there is no price', () => {
@@ -43,6 +68,192 @@ describe('headlineFor', () => {
 
   it('shows unavailable without inventing a price', () => {
     expect(headlineText(headlineFor({ allUnavailable: true, price: 10, stalePrice: null }), money)).toBe('Unavailable');
+  });
+});
+
+describe('resolveCardPrice', () => {
+  it('picks the cheapest shop when all prices are fresh', () => {
+    const result = resolveCardPrice({
+      links: [
+        offer({ id: 'a', retailer: 'Coles', latestPrice: 25, latestAt: '2026-11-20T01:00:00.000Z' }),
+        offer({ id: 'b', retailer: 'Woolworths', latestPrice: 20, latestAt: '2026-11-19T01:00:00.000Z' }),
+        offer({ id: 'c', retailer: 'Kmart', latestPrice: 22, latestAt: '2026-11-21T01:00:00.000Z' })
+      ]
+    });
+
+    expect(result.headline).toEqual({ kind: 'price', price: 20 });
+    expect(result.headlineLink?.id).toBe('b');
+    expect(result.cheapestFreshLink?.id).toBe('b');
+    expect(result.isStale).toBe(false);
+    expect(result.freshOffers).toHaveLength(3);
+  });
+
+  it('lets a fresh price beat a cheaper stale price for headline and Cheapest', () => {
+    const result = resolveCardPrice({
+      links: [
+        offer({
+          id: 'stale-low',
+          retailer: 'Kmart',
+          latestPrice: 12,
+          priceStale: true,
+          latestAt: '2026-11-01T01:00:00.000Z'
+        }),
+        offer({
+          id: 'fresh-high',
+          retailer: 'Coles',
+          latestPrice: 25,
+          priceStale: false,
+          latestAt: '2026-11-20T01:00:00.000Z'
+        }),
+        offer({
+          id: 'fresh-mid',
+          retailer: 'Woolworths',
+          latestPrice: 22,
+          priceStale: false,
+          latestAt: '2026-11-19T01:00:00.000Z'
+        })
+      ]
+    });
+
+    expect(result.headline).toEqual({ kind: 'price', price: 22 });
+    expect(result.headlineLink?.id).toBe('fresh-mid');
+    expect(result.cheapestFreshLink?.id).toBe('fresh-mid');
+    expect(result.isStale).toBe(false);
+    expect(result.freshOffers).toEqual([
+      { retailer: 'Coles', price: 25 },
+      { retailer: 'Woolworths', price: 22 }
+    ]);
+  });
+
+  it('picks the newest stale price and flags it stale when only stale prices exist', () => {
+    const result = resolveCardPrice({
+      links: [
+        offer({
+          id: 'older-cheaper',
+          retailer: 'Kmart',
+          latestPrice: 12,
+          priceStale: true,
+          latestAt: '2026-11-01T01:00:00.000Z'
+        }),
+        offer({
+          id: 'newest-higher',
+          retailer: 'Bunnings',
+          latestPrice: 18.5,
+          priceStale: true,
+          latestAt: '2026-11-04T01:00:00.000Z'
+        }),
+        offer({
+          id: 'middle',
+          retailer: 'Big W',
+          latestPrice: 15,
+          priceStale: true,
+          latestAt: '2026-11-02T01:00:00.000Z'
+        })
+      ]
+    });
+
+    expect(result.headline).toEqual({
+      kind: 'stale',
+      price: 18.5,
+      lastSeenAt: '2026-11-04T01:00:00.000Z'
+    });
+    expect(result.headlineLink?.id).toBe('newest-higher');
+    expect(result.cheapestFreshLink).toBeNull();
+    expect(result.isStale).toBe(true);
+    expect(result.freshOffers).toEqual([]);
+  });
+
+  it('shows the stale price when one shop is stale and another is unavailable', () => {
+    const result = resolveCardPrice({
+      links: [
+        offer({
+          id: 'out',
+          retailer: 'Myer',
+          stockStatus: 'unavailable',
+          latestPrice: null,
+          latestAt: '2026-11-20T01:00:00.000Z'
+        }),
+        offer({
+          id: 'stale',
+          retailer: 'Bunnings',
+          latestPrice: 18.5,
+          priceStale: true,
+          latestAt: '2026-11-04T01:00:00.000Z'
+        })
+      ]
+    });
+
+    expect(result.allUnavailable).toBe(false);
+    expect(result.headline).toEqual({
+      kind: 'stale',
+      price: 18.5,
+      lastSeenAt: '2026-11-04T01:00:00.000Z'
+    });
+    expect(result.headlineLink?.id).toBe('stale');
+    expect(result.cheapestFreshLink).toBeNull();
+    expect(result.isStale).toBe(true);
+  });
+
+  it('reports unavailable when every active shop is unavailable even if a paused shop has a stale price', () => {
+    const result = resolveCardPrice({
+      links: [
+        offer({
+          id: 'out',
+          retailer: 'Myer',
+          stockStatus: 'unavailable',
+          latestPrice: null,
+          latestAt: '2026-11-20T01:00:00.000Z'
+        }),
+        offer({
+          id: 'paused-stale',
+          retailer: 'Bunnings',
+          isActive: false,
+          latestPrice: 18.5,
+          priceStale: true,
+          latestAt: '2026-11-04T01:00:00.000Z'
+        })
+      ]
+    });
+
+    expect(result.allUnavailable).toBe(true);
+    expect(result.headline).toEqual({ kind: 'unavailable' });
+    expect(result.headlineLink).toBeNull();
+    expect(result.isStale).toBe(false);
+  });
+
+  it('formats the stale Last seen label with Sydney short date and year only when different', () => {
+    const now = new Date('2026-11-23T00:00:00.000Z');
+    const sameYear = resolveCardPrice({
+      links: [
+        offer({
+          id: 'a',
+          retailer: 'Bunnings',
+          latestPrice: 18.5,
+          priceStale: true,
+          latestAt: '2026-11-04T01:00:00.000Z'
+        })
+      ]
+    });
+    const prevYear = resolveCardPrice({
+      links: [
+        offer({
+          id: 'b',
+          retailer: 'Bunnings',
+          latestPrice: 18.5,
+          priceStale: true,
+          latestAt: '2025-11-04T01:00:00.000Z'
+        })
+      ]
+    });
+
+    expect(sameYear.headline.kind).toBe('stale');
+    if (sameYear.headline.kind === 'stale') {
+      expect(formatLastSeen(sameYear.headline.lastSeenAt, now)).toBe('4 Nov');
+    }
+    expect(prevYear.headline.kind).toBe('stale');
+    if (prevYear.headline.kind === 'stale') {
+      expect(formatLastSeen(prevYear.headline.lastSeenAt, now)).toBe('4 Nov 2025');
+    }
   });
 });
 

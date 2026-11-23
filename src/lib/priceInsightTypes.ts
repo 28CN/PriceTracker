@@ -4,15 +4,19 @@
  */
 import type { PriceInsight, PricePoint } from './priceInsight';
 import type { PromoCoverage, PromoCycle, PromoPeriod } from './promoPeriods';
+import type { UsualPriceResult } from './usualPrice';
 
 export type { IsoWeekday, PromoCoverage, PromoCycle, PromoPeriod } from './promoPeriods';
 export type { PriceInsight, PricePoint } from './priceInsight';
+export type { UsualPriceResult, UsualPriceShift, UsualPriceStep } from './usualPrice';
 
 export type PriceInsightResponse = {
   product: { id: string; name: string; targetPrice: number | null };
   range: { days: number; from: string; to: string };
   /** Lowest current price across links over time, ascending; for the main line. */
   lowest: PricePoint[];
+  /** Leading shop (cheapest fresh, or newest stale) used for the verdict and chart usual-price line. */
+  leadingLinkId: string | null;
   /** One series per tracked link, ascending; for per-retailer lines. */
   links: Array<{
     linkId: string;
@@ -27,6 +31,8 @@ export type PriceInsightResponse = {
     periods: PromoPeriod[];
     /** v1.1: how many of `periods` had at least one scrape. */
     coverage: PromoCoverage;
+    /** Per-shop usual price step series and detected level shifts. */
+    usual: UsualPriceResult;
   }>;
   insight: PriceInsight;
 };

@@ -68,6 +68,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 5,
+  colorScheme: 'light dark',
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: '#eef3f0' },
     { media: '(prefers-color-scheme: dark)', color: '#121816' }
@@ -82,7 +83,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script
           dangerouslySetInnerHTML={{
             __html:
-              "try{var t=localStorage.getItem('pricetracker.theme')||'system';document.documentElement.dataset.theme=t;document.documentElement.style.colorScheme=t==='system'?(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):t}catch(e){}"
+              "try{var t=localStorage.getItem('pricetracker.theme')||'system';document.documentElement.dataset.theme=t;document.documentElement.style.colorScheme=t==='system'?(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):t;var m=document.querySelector('meta[name=\"color-scheme\"]');if(!m){m=document.createElement('meta');m.name='color-scheme';document.head.appendChild(m);}m.content=t==='system'?'light dark':t;}catch(e){}"
           }}
         />
       </head>

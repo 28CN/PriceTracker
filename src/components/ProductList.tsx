@@ -1,18 +1,17 @@
 'use client';
 
-import { ChevronDown, ExternalLink, Pencil } from 'lucide-react';
+import { ChevronDown, Pencil } from 'lucide-react';
 import dynamic from 'next/dynamic';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 import EditProductForm from '@/components/EditProductForm';
-import ExpiredPrice from '@/components/ExpiredPrice';
+import ProductOfferRows from '@/components/ProductOfferRows';
 import ProductVisual from '@/components/ProductVisual';
 import RetailerLogo from '@/components/RetailerLogo';
-import { headlineFor, shopGapLabel } from '@/lib/cardState';
-import { formatCheckedAt, formatMoney, latestTimestamp } from '@/lib/format';
-import { cheapestStaleLink } from '@/lib/priceAge';
+import { resolveCardPrice, shopGapLabel } from '@/lib/cardState';
+import { formatCheckedAt, formatLastSeen, formatMoney, latestTimestamp } from '@/lib/format';
 import { productThumb } from '@/lib/productImage';
-import { hasCrawlerSupport } from '@/lib/retailer';
+import { hasCrawlerSupport, retailerKey } from '@/lib/retailer';
 import type { ProductView } from '@/lib/types';
 
 const PriceChart = dynamic(() => import('@/components/PriceChart'), {
@@ -35,40 +34,57 @@ function CheckedOn({ iso }: { iso: string }) {
   );
 }
 
-function ProductCard({ product, readOnly }: { product: ProductView; readOnly: boolean }) {
+function LastSeen({ iso }: { iso: string | null | undefined }) {
+  const label = formatLastSeen(iso);
+  if (!label || !iso) return null;
+  return (
+    <span className="price-last-seen">
+      Last seen <time dateTime={iso}>{label}</time>
+    </span>
+  );
+}
+
+function ProductCard({
+  product,
+  readOnly,
+  sidePanelActive,
+  isSelected,
+  onToggleSelect
+}: {
+  product: ProductView;
+  readOnly: boolean;
+  sidePanelActive: boolean;
+  isSelected: boolean;
+  onToggleSelect?: (productId: string, triggerEl: HTMLElement | null) => void;
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const openBtnRef = useRef<HTMLButtonElement>(null);
+
   const activeLinks = product.links.filter((link) => link.isActive);
-  const allUnavailable =
-    activeLinks.length > 0 && activeLinks.every((link) => link.stockStatus === 'unavailable');
+  const cardPrice = resolveCardPrice({
+    links: product.links,
+    checkState: product.checkState
+  });
+  const { headline, allUnavailable, cheapestFreshLink, freshOffers } = cardPrice;
+  const lowestFreshPrice = cheapestFreshLink?.latestPrice ?? null;
   const hitsTarget =
     product.targetPrice !== null &&
-    product.lowestPrice !== null &&
-    product.lowestPrice <= product.targetPrice;
-  const bestLink = product.links.find(
-    (link) =>
-      link.isActive &&
-      !link.priceStale &&
-      link.latestPrice !== null &&
-      (link.retailer === product.lowestRetailer || link.latestPrice === product.lowestPrice)
-  );
-  const liveOffers = activeLinks
-    .filter((link) => !link.priceStale && link.latestPrice !== null)
-    .map((link) => ({ retailer: link.retailer, price: link.latestPrice as number }));
-  const shopGap = shopGapLabel(liveOffers, formatMoney);
-  const saving = shopGap !== null;
-  const staleLink = cheapestStaleLink(product.links);
+    lowestFreshPrice !== null &&
+    lowestFreshPrice <= product.targetPrice;
+  const shopGap = shopGapLabel(freshOffers, formatMoney);
   const headlineLink = allUnavailable
     ? activeLinks.length === 1
       ? activeLinks[0]
       : null
-    : bestLink ?? staleLink;
+    : cardPrice.headlineLink;
   const checkedAt = allUnavailable
     ? latestTimestamp(activeLinks.map((link) => link.latestAt))
     : headlineLink?.latestAt ?? null;
   const shopSource = headlineLink ?? (activeLinks.length === 1 ? activeLinks[0] : null);
   const shopRetailer = shopSource?.retailer ?? null;
   const shopUrl = shopSource?.url;
+  const shopSlug = shopSource ? retailerKey(shopSource.url || shopSource.retailer) : null;
   const thumb = productThumb(product, shopSource?.id);
   const shopLabel = shopRetailer
     ? shopRetailer
@@ -76,24 +92,36 @@ function ProductCard({ product, readOnly }: { product: ProductView; readOnly: bo
       ? product.links.map((link) => link.retailer).join(', ')
       : '';
   const shopUnsupported = Boolean(shopSource && !hasCrawlerSupport(shopSource.url || shopSource.retailer));
-  const headline = headlineFor({
-    allUnavailable,
-    price: allUnavailable ? null : product.lowestPrice,
-    stalePrice: !allUnavailable && !bestLink && staleLink?.latestPrice != null ? staleLink.latestPrice : null,
-    checkState: product.checkState
-  });
-  const showChecked = Boolean(checkedAt) && (headline.kind === 'price' || headline.kind === 'stale' || headline.kind === 'unavailable');
+  const showChecked = Boolean(checkedAt) && (headline.kind === 'price' || headline.kind === 'unavailable');
+
+  const expanded = sidePanelActive ? isSelected : isOpen;
+  const showInlineDetails = !sidePanelActive && !isEditing && isOpen;
 
   return (
-    <article id={`p-${product.id}`} tabIndex={-1} className={`card product-card ${isEditing ? 'is-editing' : ''}`}>
+    <article
+      id={`p-${product.id}`}
+      tabIndex={-1}
+      data-shop={shopSlug ?? undefined}
+      className={`card product-card${shopSource ? ' has-shop-accent' : ''}${
+        isEditing ? ' is-editing' : ''
+      }${sidePanelActive && isSelected ? ' is-selected' : ''}${
+        showInlineDetails ? ' is-expanded-inline' : ''
+      }`}
+    >
       <div className="card-layout">
         <div className="card-main">
           <button
+            ref={openBtnRef}
             type="button"
             className="card-open"
-            aria-expanded={isOpen}
+            aria-expanded={expanded}
             onClick={() => {
-              if (!isEditing) setIsOpen((current) => !current);
+              if (isEditing) return;
+              if (sidePanelActive && onToggleSelect) {
+                onToggleSelect(product.id, openBtnRef.current);
+              } else {
+                setIsOpen((current) => !current);
+              }
             }}
           >
             <ProductVisual
@@ -111,7 +139,11 @@ function ProductCard({ product, readOnly }: { product: ProductView; readOnly: bo
                 </span>
               ) : null}
             </span>
-            <ChevronDown className={`card-chevron${isOpen ? ' is-open' : ''}`} size={17} aria-hidden="true" />
+            <ChevronDown
+              className={`card-chevron${expanded ? ' is-open' : ''}`}
+              size={16}
+              aria-hidden="true"
+            />
           </button>
           {!readOnly ? (
             <button
@@ -122,7 +154,7 @@ function ProductCard({ product, readOnly }: { product: ProductView; readOnly: bo
                 setIsOpen(true);
               }}
             >
-              <Pencil size={13} aria-hidden="true" />
+              <Pencil size={16} aria-hidden="true" />
               Edit
             </button>
           ) : null}
@@ -130,7 +162,9 @@ function ProductCard({ product, readOnly }: { product: ProductView; readOnly: bo
 
         <div className="price-rail">
           {headline.kind === 'price' ? <span className="price">{formatMoney(headline.price)}</span> : null}
-          {headline.kind === 'stale' ? <ExpiredPrice price={headline.price} revealedClassName="price" /> : null}
+          {headline.kind === 'stale' ? (
+            <span className="price is-stale">{formatMoney(headline.price)}</span>
+          ) : null}
           {headline.kind === 'unavailable' ? <span className="price-state">Unavailable</span> : null}
           {headline.kind === 'checking' ? <span className="price-state">Checking…</span> : null}
           {headline.kind === 'queued' ? <span className="price-state">Checking soon</span> : null}
@@ -143,78 +177,17 @@ function ProductCard({ product, readOnly }: { product: ProductView; readOnly: bo
           ) : null}
           {shopUnsupported ? <span className="shop-gap">Not checked here</span> : null}
           {shopGap ? <span className="rail-when">{shopGap}</span> : null}
+          {headline.kind === 'stale' ? <LastSeen iso={headline.lastSeenAt} /> : null}
           {showChecked && checkedAt ? <CheckedOn iso={checkedAt} /> : null}
         </div>
       </div>
 
       {isEditing ? <EditProductForm product={product} onClose={() => setIsEditing(false)} /> : null}
 
-      {!isEditing && isOpen ? (
+      {showInlineDetails ? (
         <div className="rows">
-          {product.links.length === 0 ? (
-            <p className="hint">{readOnly ? 'No shop links are available.' : 'No shop links yet.'}</p>
-          ) : (
-            <PriceChart productId={product.id} />
-          )}
-
-          {product.links.map((link) => (
-            <div
-              key={link.id}
-              className={`row ${link.isActive ? '' : 'inactive'}${
-                saving && !link.priceStale && link.latestPrice === product.lowestPrice ? ' is-best' : ''
-              }`}
-            >
-              <div className="row-main">
-                <div className="row-shop">
-                  <RetailerLogo retailer={link.retailer} url={link.url} />
-                  <span>{link.retailer}</span>
-                  {saving && !link.priceStale && link.latestPrice === product.lowestPrice ? (
-                    <span className="best-tag">Cheapest</span>
-                  ) : null}
-                  {!hasCrawlerSupport(link.url || link.retailer) ? (
-                    <span className="shop-gap">Not checked here</span>
-                  ) : null}
-                </div>
-                <div className="row-meta">
-                  {!link.isActive ? (
-                    'Paused'
-                  ) : link.latestAt && formatCheckedAt(link.latestAt) ? (
-                    <CheckedOn iso={link.latestAt} />
-                  ) : (
-                    'Not checked yet'
-                  )}
-                </div>
-              </div>
-              <div className="row-side">
-                {link.priceStale && link.latestPrice !== null ? (
-                  <ExpiredPrice price={link.latestPrice} revealedClassName="row-price" />
-                ) : (
-                  <span
-                    className={`row-price ${
-                      link.stockStatus === 'unavailable'
-                        ? 'unavailable'
-                        : link.latestPrice === null
-                          ? 'none'
-                          : link.latestPrice === product.lowestPrice
-                            ? 'best'
-                            : ''
-                    }`}
-                  >
-                    {link.stockStatus === 'unavailable'
-                      ? 'Unavailable'
-                      : link.latestPrice === null
-                        ? 'No price yet'
-                        : formatMoney(link.latestPrice)}
-                  </span>
-                )}
-                {link.url ? (
-                  <a className="open-link" href={link.url} target="_blank" rel="noreferrer">
-                    Open shop <ExternalLink size={13} aria-hidden="true" />
-                  </a>
-                ) : null}
-              </div>
-            </div>
-          ))}
+          {product.links.length > 0 ? <PriceChart productId={product.id} /> : null}
+          <ProductOfferRows product={product} readOnly={readOnly} />
         </div>
       ) : null}
     </article>
@@ -223,10 +196,16 @@ function ProductCard({ product, readOnly }: { product: ProductView; readOnly: bo
 
 export default function ProductList({
   products,
-  readOnly = false
+  readOnly = false,
+  sidePanelActive = false,
+  selectedProductId = null,
+  onToggleSelect
 }: {
   products: ProductView[];
   readOnly?: boolean;
+  sidePanelActive?: boolean;
+  selectedProductId?: string | null;
+  onToggleSelect?: (productId: string, triggerEl: HTMLElement | null) => void;
 }) {
   if (products.length === 0) {
     return (
@@ -237,10 +216,19 @@ export default function ProductList({
   }
 
   return (
-    <div className="stack">
-      {products.map((product) => (
-        <ProductCard key={product.id} product={product} readOnly={readOnly} />
-      ))}
+    <div className="product-list-container">
+      <div className="stack product-grid">
+        {products.map((product) => (
+          <ProductCard
+            key={product.id}
+            product={product}
+            readOnly={readOnly}
+            sidePanelActive={sidePanelActive}
+            isSelected={selectedProductId === product.id}
+            onToggleSelect={onToggleSelect}
+          />
+        ))}
+      </div>
     </div>
   );
 }

@@ -24,14 +24,26 @@ Types are exported from `src/app/api/products/[id]/price-insight/route.ts`
 ```ts
 type PricePoint = { at: string /* ISO */; price: number };
 
+type UsualPriceResult = {
+  series: Array<{ from: string /* ISO */; price: number }>;
+  currentUsual: number | null;
+  shifts: Array<{ at: string /* ISO */; from: number; to: number; direction: 'up' | 'down' }>;
+  lowConfidence: boolean;
+};
+
 type PriceInsightResponse = {
   product: { id: string; name: string; targetPrice: number | null };
   range: { days: number; from: string; to: string };
   lowest: PricePoint[];          // lowest price across links over time (step line), ascending
+  leadingLinkId: string | null;  // cheapest fresh shop (or newest stale) used for verdict & chart usual line
   links: Array<{
     linkId: string; retailer: string; url: string; stockStatus: string;
-    points: PricePoint[];        // raw observations for this link, ascending
+    points: PricePoint[];        // daily observations for this link, ascending
     stats: LinkStats | null;     // from the price_link_stats view
+    promo: PromoCycle;
+    periods: PromoPeriod[];
+    coverage: PromoCoverage;
+    usual: UsualPriceResult;     // per-shop usual-price step series and detected level shifts
   }>;
   insight: PriceInsight;
 };
@@ -46,45 +58,50 @@ type LinkStats = {
 type PriceInsight = {
   verdict: 'insufficient_data' | 'fake_discount' | 'real_discount' | 'no_discount';
   reasons: Array<'too_few_samples' | 'history_too_short' | 'raised_before_drop'
-    | 'below_median_90d' | 'below_median_30d' | 'not_below_median' | 'all_time_low'>;
+    | 'below_usual' | 'not_below_usual' | 'all_time_low'>;
   currentPrice: number | null;
   allTimeLow: PricePoint | null;
   isAllTimeLow: boolean;
-  median30d: number | null;
-  median90d: number | null;
-  discountVsMedian90d: number | null; // 0.12 = 12% below the 90-day median
+  usualPrice: number | null;          // current usual price of the leading shop
+  discountVsUsual: number | null;     // 0.25 = 25% below usualPrice
+  median30d: number | null;           // reference only
+  median90d: number | null;           // reference only
+  discountVsMedian90d: number | null; // reference only
   sampleCount: number;                // daily samples in the last 90 days
   lastDrop: { at; from; to } | null;
   raise: { at; from; to } | null;     // set when verdict = fake_discount
 };
 ```
 
-## Verdict rules (`src/lib/priceInsight.ts`, constants in `INSIGHT_RULES`)
+## Verdict rules (`src/lib/priceInsight.ts` & `src/lib/usualPrice.ts`)
 
-The verdict runs on the product's lowest price across links. Its input is
-already one sample per link per UTC day: the day's **minimum** price from
-`price_link_daily`, except that each link's newest day uses its live
-`current_price` from `price_link_stats`. So the latest point always equals
-`insight.currentPrice`, and an intraday dip that has since ended doesn't count
-as the current price. The rules were written for one price per UTC day, so
-they apply unchanged: sample counts are days, the raise/drop checks compare
-day-to-day, and the medians use the daily prices before today's. (A daily min
-can make a past day look slightly cheaper than its close, which makes
-`real_discount` marginally harder to reach, never easier.)
+Per-shop usual prices are computed server-side from the observations already
+fetched (no extra database queries). The verdict runs on the leading shop
+(`leadingLinkId`: cheapest fresh shop, or newest stale shop if none are fresh),
+using its daily series from `price_link_daily` patched with live
+`current_price` on the newest day.
 
 1. **insufficient_data**: fewer than 5 daily samples in 90 days
-   (`too_few_samples`), or history spans less than 7 days (`history_too_short`).
+   (`too_few_samples`), history spans less than 7 days (`history_too_short`),
+   or no usual price can be determined.
 2. **fake_discount** (`raised_before_drop`): the current price comes from the
    latest drop, and in the 14 days before that drop the price went up by at
    least 5%. The drop also lands no lower than 2% under the price before the
    raise. In short, it was raised and then "discounted" back.
-3. **real_discount**: the current price is at least 5% below the 90-day
-   median **and** at least 5% below the 30-day median.
-4. **no_discount**: anything else (`not_below_median`). `below_median_90d`
-   may still appear when only the 90-day check passes.
+3. **real_discount** (`below_usual`): the current price is at least 5% below
+   the leading shop's current **usual price** (`usualPrice`), computed on
+   Sydney calendar days (`Australia/Sydney`). Level shifts are asymmetric (with
+   a 12-hour schedule-jitter allowance): rises confirm after `>= 2` consecutive
+   checks spanning `>= 7` days, while downward shifts (including reverts after
+   an earlier rise) require `>= 3` consecutive checks spanning `>= 28` days so
+   1–2 week promotions do not lower the usual price.
+4. **no_discount** (`not_below_usual`): anything else.
 
 `all_time_low` is added to `reasons` whenever the current price is at or below
-the all-time low.
+the all-time low. `median30d`, `median90d`, and `discountVsMedian90d` remain in
+the response for reference, while the verdict and chart "Usual" / "% off"
+displays use `usualPrice` and `discountVsUsual`. The product's **Goal** price
+is never modified automatically.
 
 ## Database
 

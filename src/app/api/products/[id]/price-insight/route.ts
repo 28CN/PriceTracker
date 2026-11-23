@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 
 import { getApiAuth } from '@/lib/auth';
+import { resolveCardPrice, type CardOffer } from '@/lib/cardState';
+import { isStaleCheckedAt } from '@/lib/priceAge';
 import {
   buildSeries,
   judgeDiscount,
@@ -11,6 +13,7 @@ import {
 } from '@/lib/priceInsight';
 import type { LinkStats, PriceInsightResponse } from '@/lib/priceInsightTypes';
 import { buildPromoPeriods, resolveCycle, type CycleRow, type Observation } from '@/lib/promoPeriods';
+import { computeUsualPrice, type UsualPriceResult } from '@/lib/usualPrice';
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
@@ -123,7 +126,47 @@ export async function GET(request: Request, { params }: RouteContext) {
     }
   }
   const lowestAll = lowestPriceSeries(series);
-  const insight = judgeDiscount(lowestPriceSeries(series, { collapse: false }), { now });
+  const rawByLink = new Map<string, Observation[]>();
+  for (const r of rawRows) {
+    const list = rawByLink.get(r.link_id) ?? [];
+    list.push({ at: r.created_at, price: Number(r.price) });
+    rawByLink.set(r.link_id, list);
+  }
+  const seriesByLink = new Map(series.map((s) => [s.linkId, s.points]));
+
+  // Compute per-shop usual price from already-fetched history (no extra DB query).
+  const usualByLink = new Map<string, UsualPriceResult>();
+  const linkOffers: CardOffer[] = [];
+  for (const l of (links ?? []) as Array<{ id: string; retailer: string | null; url: string | null; stock_status: string | null }>) {
+    const linkPoints = seriesByLink.get(l.id) ?? rawByLink.get(l.id) ?? [];
+    usualByLink.set(l.id, computeUsualPrice(linkPoints, { now }));
+
+    const s = statsByLink.get(l.id);
+    const stockStatus =
+      l.stock_status === 'unavailable' || l.stock_status === 'in_stock' ? l.stock_status : 'unknown';
+    const latestPrice = stockStatus === 'unavailable' ? null : (num(s?.current_price) ?? linkPoints.at(-1)?.price ?? null);
+    const latestAt =
+      (typeof s?.last_seen_at === 'string' ? s.last_seen_at : null) ?? linkPoints.at(-1)?.at ?? null;
+    linkOffers.push({
+      id: l.id,
+      retailer: l.retailer ?? '',
+      isActive: true,
+      stockStatus,
+      latestPrice,
+      priceStale: latestPrice !== null && isStaleCheckedAt(latestAt, now.getTime()),
+      latestAt
+    });
+  }
+
+  // Verdict compares the leading (cheapest fresh, or newest stale) shop's current price
+  // against that shop's current usual price.
+  const leadingLinkId = resolveCardPrice({ links: linkOffers }).headlineLink?.id ?? null;
+  const leadingPoints = leadingLinkId ? (seriesByLink.get(leadingLinkId) ?? rawByLink.get(leadingLinkId) ?? []) : [];
+  const leadingUsual = leadingLinkId ? usualByLink.get(leadingLinkId) ?? null : null;
+  const insight =
+    leadingPoints.length > 0
+      ? judgeDiscount(leadingPoints, { now, usualPrice: leadingUsual?.currentUsual ?? null })
+      : judgeDiscount(lowestPriceSeries(series, { collapse: false }), { now });
 
   // All-time low always comes from price_link_stats (full history), never
   // from the windowed rows. No stats -> no all-time low.
@@ -140,16 +183,11 @@ export async function GET(request: Request, { params }: RouteContext) {
 
   const inChart = (p: PricePoint) => p.at >= chartFrom;
   const toIso = now.toISOString();
-  const rawByLink = new Map<string, Observation[]>();
-  for (const r of rawRows) {
-    const list = rawByLink.get(r.link_id) ?? [];
-    list.push({ at: r.created_at, price: Number(r.price) });
-    rawByLink.set(r.link_id, list);
-  }
   const body: PriceInsightResponse = {
     product: { id: product.id, name: product.name, targetPrice: num(product.target_price) },
     range: { days, from: chartFrom, to: toIso },
     lowest: lowestAll.filter(inChart),
+    leadingLinkId,
     links: (links ?? []).map((l: { id: string; retailer: string | null; url: string | null; stock_status: string | null }) => {
       const s = statsByLink.get(l.id);
       const promo = resolveCycle(l.retailer ?? '', cycleRows);
@@ -173,14 +211,15 @@ export async function GET(request: Request, { params }: RouteContext) {
           : null;
       return {
         linkId: l.id,
-        retailer: l.retailer,
-        url: l.url,
+        retailer: l.retailer ?? '',
+        url: l.url ?? '',
         stockStatus: l.stock_status ?? 'unknown',
-        points: (series.find((x) => x.linkId === l.id)?.points ?? []).filter(inChart),
+        points: (seriesByLink.get(l.id) ?? []).filter(inChart),
         stats,
         promo,
         periods,
-        coverage
+        coverage,
+        usual: usualByLink.get(l.id) ?? { series: [], currentUsual: null, shifts: [], lowConfidence: true }
       };
     }),
     insight

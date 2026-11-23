@@ -34,7 +34,10 @@ export default function CategorySection({
   isReordering = false,
   isDragging = false,
   readOnly = false,
-  dragHandleProps
+  dragHandleProps,
+  sidePanelActive = false,
+  selectedProductId = null,
+  onToggleSelect
 }: {
   category: string;
   products: ProductView[];
@@ -45,6 +48,9 @@ export default function CategorySection({
   isDragging?: boolean;
   readOnly?: boolean;
   dragHandleProps?: HTMLAttributes<HTMLElement>;
+  sidePanelActive?: boolean;
+  selectedProductId?: string | null;
+  onToggleSelect?: (productId: string, triggerEl: HTMLElement | null) => void;
 }) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const wasPinned = useRef(isPinned);
@@ -58,10 +64,9 @@ export default function CategorySection({
     setHasOpened(true);
   }
 
-  // "/#p-<id>" from search: open this group, then bring the card into view.
+  // "/#p-<id>" from search or "This week": open this group, then bring the card into view.
   useEffect(() => {
-    function reveal() {
-      const id = window.location.hash.match(/^#p-([\w-]+)$/)?.[1];
+    function revealById(id: string | undefined) {
       if (!id || !products.some((product) => product.id === id)) return;
       setIsOpen(true);
       window.setTimeout(() => {
@@ -74,9 +79,21 @@ export default function CategorySection({
         window.setTimeout(() => card.classList.remove('is-highlight'), 1800);
       }, 350);
     }
-    reveal();
-    window.addEventListener('hashchange', reveal);
-    return () => window.removeEventListener('hashchange', reveal);
+    function revealFromHash() {
+      const id = window.location.hash.match(/^#p-([\w-]+)$/)?.[1];
+      revealById(id);
+    }
+    function revealFromEvent(event: Event) {
+      const id = (event as CustomEvent<string>).detail;
+      revealById(id);
+    }
+    revealFromHash();
+    window.addEventListener('hashchange', revealFromHash);
+    window.addEventListener('pt:reveal-product', revealFromEvent);
+    return () => {
+      window.removeEventListener('hashchange', revealFromHash);
+      window.removeEventListener('pt:reveal-product', revealFromEvent);
+    };
   }, [products]);
 
   useEffect(() => {
@@ -109,7 +126,7 @@ export default function CategorySection({
           <span className="category-toggle-main">
             <ChevronDown
               className={`category-chevron${showBody ? ' is-open' : ''}`}
-              size={17}
+              size={16}
               aria-hidden="true"
             />
             <span className="category-name">{category}</span>
@@ -118,7 +135,7 @@ export default function CategorySection({
             </span>
             {dealCount > 0 && !isReordering ? (
               <span className="category-deals">
-                <Sparkles size={12} aria-hidden="true" />
+                <Sparkles size={16} aria-hidden="true" />
                 {dealCount} below goal
               </span>
             ) : null}
@@ -142,7 +159,13 @@ export default function CategorySection({
       {hasOpened ? (
         <div className={`category-body${showBody ? ' is-open' : ''}`} inert={!showBody} aria-hidden={!showBody}>
           <div className="category-body-inner">
-            <ProductList products={[...products].sort((a, b) => Number(hitsTarget(b)) - Number(hitsTarget(a)))} readOnly={readOnly} />
+            <ProductList
+              products={[...products].sort((a, b) => Number(hitsTarget(b)) - Number(hitsTarget(a)))}
+              readOnly={readOnly}
+              sidePanelActive={sidePanelActive}
+              selectedProductId={selectedProductId}
+              onToggleSelect={onToggleSelect}
+            />
           </div>
         </div>
       ) : null}

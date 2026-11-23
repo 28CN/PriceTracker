@@ -133,30 +133,49 @@ describe('judgeDiscount', () => {
     expect(judgeDiscount(pts, opts).verdict).toBe('insufficient_data');
   });
 
-  it('real_discount when well below both 30d and 90d medians', () => {
+  it('real_discount when well below the current usual price', () => {
+    // Updated reason assertion: verdict now compares against usualPrice rather than 30d/90d medians.
     const r = judgeDiscount(daily([...Array(40).fill(100), 85]), opts);
     expect(r.verdict).toBe('real_discount');
+    expect(r.usualPrice).toBe(100);
+    expect(r.discountVsUsual).toBe(0.15);
     expect(r.median90d).toBe(100);
     expect(r.median30d).toBe(100);
     expect(r.discountVsMedian90d).toBe(0.15);
-    expect(r.reasons).toEqual(expect.arrayContaining(['all_time_low', 'below_median_90d', 'below_median_30d']));
+    expect(r.reasons).toEqual(expect.arrayContaining(['all_time_low', 'below_usual']));
     expect(r.isAllTimeLow).toBe(true);
   });
 
   it('no_discount when the price is at the usual level', () => {
     const r = judgeDiscount(daily([...Array(20).fill(100), 98]), opts);
     expect(r.verdict).toBe('no_discount');
-    expect(r.reasons).toContain('not_below_median');
+    expect(r.usualPrice).toBe(100);
+    expect(r.reasons).toContain('not_below_usual');
   });
 
-  it('no_discount when below the 90d median but not the recent 30d median', () => {
-    // Expensive two months ago, cheaper for the last month; "today" equals the recent norm.
+  it('no_discount after a downward level shift when today matches the new lower usual price', () => {
+    // Expensive two months ago, cheaper for the last month; usual price shifted to 100.
     const r = judgeDiscount(daily([...Array(60).fill(150), ...Array(30).fill(100), 99]), opts);
     expect(r.median90d).toBe(150);
     expect(r.median30d).toBe(100);
+    expect(r.usualPrice).toBe(100);
     expect(r.verdict).toBe('no_discount');
-    expect(r.reasons).toContain('below_median_90d');
-    expect(r.reasons).not.toContain('below_median_30d');
+    expect(r.reasons).toContain('not_below_usual');
+  });
+
+  it('real_discount when a dip falls below a NEW higher usual price (even when 90d median is still old)', () => {
+    // $3.50 x6 weeks, then $4.00 on 3 Nov & 10 Nov (shifts usual to $4.00), then $3.00 on 17 Nov.
+    const startMs = Date.parse('2026-09-22T01:00:00.000Z');
+    const weekly = [3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 4.0, 4.0, 3.0].map((price, i) => ({
+      at: new Date(startMs + i * 7 * 86_400_000).toISOString(),
+      price
+    }));
+    const r = judgeDiscount(weekly, { now: new Date('2026-11-18T01:00:00.000Z') });
+    expect(r.median90d).toBe(3.5);
+    expect(r.usualPrice).toBe(4.0);
+    expect(r.discountVsUsual).toBe(0.25);
+    expect(r.verdict).toBe('real_discount');
+    expect(r.reasons).toContain('below_usual');
   });
 
   it('fake_discount when the price was raised shortly before the drop', () => {

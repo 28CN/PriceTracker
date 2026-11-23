@@ -106,6 +106,10 @@ describe('GET /api/products/:id/price-insight', () => {
     expect(body.product).toEqual({ id: PID, name: 'Kettle', targetPrice: 85 });
     expect(body.range.days).toBe(30);
     expect(body.insight.verdict).toBe('real_discount');
+    expect(body.insight.usualPrice).toBe(100);
+    expect(body.insight.discountVsUsual).toBe(0.2);
+    expect(body.leadingLinkId).toBe(LID);
+    expect(body.links[0].usual).toMatchObject({ currentUsual: 100, shifts: [], lowConfidence: false });
     expect(body.insight.isAllTimeLow).toBe(true);
     expect(body.insight.allTimeLow.price).toBe(80);
     expect(body.links[0]).toMatchObject({ linkId: LID, retailer: 'Shop', stockStatus: 'in_stock' });
@@ -194,6 +198,46 @@ describe('GET /api/products/:id/price-insight', () => {
     expect(body.links[5].points.at(-1).price).toBe(72);
     expect(body.insight.verdict).toBe('real_discount');
     expect(body.insight.allTimeLow.price).toBe(70);
+  });
+
+  it('judges the leading fresh shop against its own shifted usual price without extra queries', async () => {
+    const LID2 = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+    // Woolworths: $3.50 x6 weeks, $4.00 x2 weeks (shifts usual to $4.00), then $3.00 today (25% off).
+    const woolies = [56, 49, 42, 35, 28, 21, 14, 7, 0].map((d, idx) =>
+      dailyRow(LID, d, idx < 6 ? '3.50' : idx < 8 ? '4.00' : '3.00')
+    );
+    // Kmart: stale $2.50 from 20 days ago (must not beat fresh Woolworths).
+    const kmart = [34, 27, 20].map((d) => dailyRow(LID2, d, '2.50'));
+    const { db } = fakeDb({
+      products: { data: { id: PID, name: 'Matchbox', target_price: '3.00' }, error: null },
+      tracked_links: {
+        data: [
+          { id: LID, retailer: 'Woolworths', url: 'https://w.example/m', stock_status: 'in_stock' },
+          { id: LID2, retailer: 'Kmart', url: 'https://k.example/m', stock_status: 'in_stock' }
+        ],
+        error: null
+      },
+      price_link_daily: { data: [...woolies, ...kmart], error: null },
+      price_link_stats: {
+        data: [
+          { link_id: LID, product_id: PID, current_price: '3.00', last_seen_at: day(0), all_time_low: '3.00', all_time_low_at: day(0), sample_count: 9, sample_count_90d: 9 },
+          { link_id: LID2, product_id: PID, current_price: '2.50', last_seen_at: day(20), all_time_low: '2.50', all_time_low_at: day(20), sample_count: 3, sample_count_90d: 3 }
+        ],
+        error: null
+      }
+    });
+    getApiAuth.mockResolvedValue({ supabase: db, userId: 'u', isAdmin: false });
+
+    const body = await (await call(PID, '?days=90')).json();
+    expect(body.leadingLinkId).toBe(LID);
+    expect(body.insight.usualPrice).toBe(4);
+    expect(body.insight.discountVsUsual).toBe(0.25);
+    expect(body.insight.verdict).toBe('real_discount');
+    expect(body.links[0].usual.currentUsual).toBe(4);
+    expect(body.links[0].usual.shifts).toHaveLength(1);
+    expect(body.links[0].usual.shifts[0]).toMatchObject({ from: 3.5, to: 4, direction: 'up' });
+    expect(body.links[1].usual.currentUsual).toBe(2.5);
+    expect(body.links[1].usual.shifts).toEqual([]);
   });
 
   it('returns 500 instead of truncating past the hard cap', async () => {

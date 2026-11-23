@@ -26,13 +26,13 @@ A partial index `crawl_jobs_product_open_idx` covers `product_id` where status i
 
 ## Search
 
-`POST /api/search` does not run on each keystroke.
+Search is split across three layers so own-list lookups need no network round trip and live provider calls stay strictly opt-in:
 
-1. The caller's own product names, up to 5. Three or more matches and the live search is skipped.
-2. A shared cache of shop results, 24 hours, keyed by the normalised query. The cache holds public shopping metadata, not a person's list.
-3. A live lookup, only for a real (non-demo) account, inside the quota: 5 a day, 30 a month, 8 for the whole site a day, on the Sydney calendar. Link resolution is a second request (`/api/search/shops`) and is metered too.
+1. **Own list (client-side, instant):** the page passes the signed-in user's tracked products (`id`, `name`, shop names, cheapest fresh price / stale price, thumbnail via `productThumb`) to `ProductSearch`, which filters and ranks up to 5 matches in memory using `src/lib/searchMatch.ts`. No request is sent while filtering your own list.
+2. **Shared cache (`GET /api/search?q=...`, debounced 350 ms at 3+ characters):** requires a signed-in session (works for demo accounts too) and never spends quota. The route reads `q:*` rows from `product_search_cache` — both fresh and stale — and matches them fuzzily in TypeScript with `searchMatch`. Stale hits carry `stale: true` and `fetchedAt` so the UI labels them `Prices from <date>`. Cache keys are stored in compact normalised form (`q:<compact>`) so `hotwheels` and `hot wheels` share one entry. No `pg_trgm` extension or migration is used: production currently holds 21 products, 69 links, and 3 cache rows (22 results), where in-memory matching is faster and simpler than a trigram index.
+3. **Live lookup (`POST /api/search`, explicit Enter or "Search shops" button):** checks same-origin and auth, checks the fresh 24-hour cache first (compact and legacy spaced keys) to avoid redundant calls, and otherwise runs SerpApi Google Shopping only for a real (non-demo) account inside the quota: 5 a day, 30 a month, 8 for the whole site a day, on the Sydney calendar. When blocked by demo mode or a cap, it falls back to matching rows from `product_search_cache` alongside the limit notice. Link resolution is a second request (`POST /api/search/shops`) and is metered too.
 
-The price on a search result is a listed price from that lookup. It is not written to `price_history` until the person tracks the product and a crawl actually records one. Quota failures return a clear limit and a link to Google Shopping. The demo account cannot spend quota.
+The price on a search result is a listed price from that lookup (or a dated cached price). It is not written to `price_history` until the person tracks the product and a crawl actually records one. Quota failures return a clear limit and a link to Google Shopping. The demo account cannot spend quota.
 
 Tracking posts to `/api/products` and only then says **Tracked**. A second click is ignored while the first is still saving.
 
