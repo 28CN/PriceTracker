@@ -184,7 +184,7 @@ export default function AuthPanel({ mode, nextPath }: AuthPanelProps) {
 
         {error ? <div className="form-error" role="alert">{error}</div> : null}
 
-        <button className="button auth-submit" type="submit" disabled={pending}>
+        <button className="button primary auth-submit" type="submit" disabled={pending}>
           {pending ? 'Please wait…' : registering ? 'Create account' : 'Sign in'}
         </button>
 

@@ -57,6 +57,10 @@ export default function DashboardWorkspace({
   const [isWide, setIsWide] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const lastTriggerRef = useRef<HTMLElement | null>(null);
+  // Read through a ref so the select handler stays the same between renders
+  // and the memoised cards do not all re-render when one is picked.
+  const selectedIdRef = useRef<string | null>(null);
+  selectedIdRef.current = selectedProductId;
 
   useEffect(() => {
     const media = window.matchMedia('(min-width: 1200px)');
@@ -105,7 +109,7 @@ export default function DashboardWorkspace({
   );
 
   const closeDetail = useCallback(() => {
-    const closingId = selectedProductId;
+    const closingId = selectedIdRef.current;
     runViewTransition(() => {
       setSelectedProductId(null);
     });
@@ -119,11 +123,11 @@ export default function DashboardWorkspace({
             : null;
       target?.focus({ preventScroll: true });
     });
-  }, [selectedProductId]);
+  }, []);
 
   const handleToggleSelect = useCallback(
     (productId: string, triggerEl: HTMLElement | null) => {
-      if (selectedProductId === productId) {
+      if (selectedIdRef.current === productId) {
         closeDetail();
         return;
       }
@@ -132,7 +136,7 @@ export default function DashboardWorkspace({
         setSelectedProductId(productId);
       });
     },
-    [selectedProductId, closeDetail]
+    [closeDetail]
   );
 
   const handleNavigateProduct = useCallback((productId: string) => {

@@ -244,8 +244,9 @@ export default function PriceChart({ productId, days = 180 }: { productId: strin
         ) : (
           <span className="price-chart-meta">Last {range.days} days</span>
         )}
-        {periodGeo?.hasUnchecked ? <span className="price-chart-meta pc-hatch-key">Not checked</span> : null}
-        {geo?.hasGap ? <span className="price-chart-meta pc-gap-key">Not checked</span> : null}
+        {/* Legend for the hatched weeks / dashed stretches: past gaps, not today's check. */}
+        {periodGeo?.hasUnchecked ? <span className="price-chart-meta pc-hatch-key">Weeks not checked</span> : null}
+        {geo?.hasGap ? <span className="price-chart-meta pc-gap-key">Days not checked</span> : null}
       </figcaption>
 
       {periodGeo ? (

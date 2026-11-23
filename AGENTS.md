@@ -2,6 +2,8 @@
 
 Read this before changing anything. Then read `README.md`, `docs/DESIGN.md`,
 `docs/PERFORMANCE.md`, `docs/ARCHITECTURE.md` and `docs/TESTING.md`.
+New to the project? Start with `docs/AGENT-HANDOFF.md`: history, where things
+run, open items and what to ask the owner for.
 
 ## Project
 

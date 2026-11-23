@@ -2,7 +2,7 @@
 
 import { ChevronDown, Pencil } from 'lucide-react';
 import dynamic from 'next/dynamic';
-import { useRef, useState } from 'react';
+import { memo, useRef, useState } from 'react';
 
 import EditProductForm from '@/components/EditProductForm';
 import ProductOfferRows from '@/components/ProductOfferRows';
@@ -44,7 +44,8 @@ function LastSeen({ iso }: { iso: string | null | undefined }) {
   );
 }
 
-function ProductCard({
+// Memoised: selecting one card or typing in search does not re-render the others.
+const ProductCard = memo(function ProductCard({
   product,
   readOnly,
   sidePanelActive,
@@ -103,8 +104,8 @@ function ProductCard({
       tabIndex={-1}
       data-shop={shopSlug ?? undefined}
       className={`card product-card${shopSource ? ' has-shop-accent' : ''}${
-        isEditing ? ' is-editing' : ''
-      }${sidePanelActive && isSelected ? ' is-selected' : ''}${
+        hitsTarget ? ' is-at-goal' : ''
+      }${isEditing ? ' is-editing' : ''}${sidePanelActive && isSelected ? ' is-selected' : ''}${
         showInlineDetails ? ' is-expanded-inline' : ''
       }`}
     >
@@ -134,7 +135,7 @@ function ProductCard({
               <h2 className="product-name">{product.name}</h2>
               {product.categoryName ? <span className="chip">{product.categoryName}</span> : null}
               {product.targetPrice !== null ? (
-                <span className="goal-line">
+                <span className={`goal-line${hitsTarget ? ' is-at-goal' : ''}`}>
                   {hitsTarget ? 'Below goal' : 'Goal'} {formatMoney(product.targetPrice)}
                 </span>
               ) : null}
@@ -161,7 +162,9 @@ function ProductCard({
         </div>
 
         <div className="price-rail">
-          {headline.kind === 'price' ? <span className="price">{formatMoney(headline.price)}</span> : null}
+          {headline.kind === 'price' ? (
+            <span className={`price${hitsTarget ? ' is-at-goal' : ''}`}>{formatMoney(headline.price)}</span>
+          ) : null}
           {headline.kind === 'stale' ? (
             <span className="price is-stale">{formatMoney(headline.price)}</span>
           ) : null}
@@ -192,7 +195,7 @@ function ProductCard({
       ) : null}
     </article>
   );
-}
+});
 
 export default function ProductList({
   products,

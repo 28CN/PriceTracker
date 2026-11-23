@@ -21,6 +21,30 @@ Principles:
 
 Use semantic CSS variables rather than literal colours inside components.
 
+### Visual tokens
+
+Defined at the top of `src/app/globals.css` across `:root`, `@media (prefers-color-scheme: dark)`, `html[data-theme='light']` and `html[data-theme='dark']`:
+
+- **Type scale & line-heights** (minimum body/label text size `12px`):
+  - `--fs-xs: 12px` (`--lh-xs: 1.35`)
+  - `--fs-sm: 13px` (`--lh-sm: 1.4`)
+  - `--fs-base: 15px` (`--lh-base: 1.5`)
+  - `--fs-md: 17px` (`--lh-md: 1.35`)
+  - `--fs-lg: 20px` (`--lh-lg: 1.25`)
+  - `--fs-xl: 28px` (`--lh-xl: 1.15`)
+  - `--fs-hero: clamp(36px, 5vw, 60px)` (`--lh-hero: 1.04`)
+- **Spacing scale:** `--space-1` through `--space-8` (`4, 8, 12, 16, 20, 24, 32, 48px`).
+- **Radii:** `--radius-sm: 8px` (chips, thumbnails, inner controls), `--radius-md: 12px` (buttons, inputs, cards), `--radius-lg: 18px` (panels, sections, dialogs).
+- **Surfaces:** `--surface-1` (page panels), `--surface-2` (cards and inputs), `--surface-3` (raised and hover states), derived from the theme canvas and surface colours.
+- **Shadows:** `--shadow-1` (resting subtle hairline and soft elevation) and `--shadow-2` (hover and popovers).
+- **Focus ring:** `--ring` (`2px` offset + `2px` accent ring via `color-mix` using `--brand`: light `#6677a8`, dark `#e3a45d`).
+
+Card and focus rules:
+
+- **Cards:** uniform `1px solid var(--line)` border (no heavy coloured left border); shop colour appears as a 6px circular dot beside the shop name. Inner padding is `--space-4` (`16px`), list gaps are `--space-3` (`12px`), and prices use `tabular-nums`. Hover applies `var(--shadow-2)` and `translateY(-1px)` using `transform`/`opacity`/`box-shadow` transitions only (disabled under `prefers-reduced-motion`).
+- **Restrained colour:** `--brand` is reserved for primary actions, prices that hit Goal, focus rings, and selected states. Neutral surfaces and text are used elsewhere; below-goal/drop greens (`--success`) and usual-price rise ambers (`--warn`) remain semantic.
+- **Focus:** every interactive element (`a`, `button`, `input`, `select`, `textarea`, `[role='option']`, `summary`, `.chip`) uses `:focus-visible { outline: none; box-shadow: var(--ring); }` (or an inset ring inside `overflow: hidden` containers so focus is never clipped). Focus styling is never removed without a visible replacement.
+
 | Token | Light role | Dark role |
 | --- | --- | --- |
 | `--canvas` | cool off-white page | deep blue-charcoal |

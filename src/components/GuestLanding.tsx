@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Store } from 'lucide-react';
 
 import InfoTip from '@/components/InfoTip';
+import KangarooPriceAnimation from '@/components/KangarooPriceAnimation';
 import RetailerLogo from '@/components/RetailerLogo';
 import { SUPPORTED_RETAILERS } from '@/lib/retailer';
 
@@ -33,6 +34,10 @@ export default function GuestLanding() {
           </div>
         </div>
 
+        <KangarooPriceAnimation />
+      </section>
+
+      <section className="guest-example glass-surface" aria-label="Example">
         <figure className="example-card">
           <figcaption>
             Example
@@ -80,6 +85,16 @@ export default function GuestLanding() {
           ))}
         </div>
       </section>
+
+      <footer className="site-footer">
+        <p>
+          Kangaroo animation by{' '}
+          <a href="https://github.com/googlefonts/noto-emoji" target="_blank" rel="noreferrer">
+            Google Noto Emoji
+          </a>
+          , CC BY 4.0.
+        </p>
+      </footer>
     </main>
   );
 }

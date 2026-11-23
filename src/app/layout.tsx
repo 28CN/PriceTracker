@@ -34,13 +34,13 @@ const criticalFallbackCss = `
   :where(.stat-card){padding:10px 12px;border:1px solid #e3e6ed;border-radius:12px}
   :where(.category-board,.category-stack,.stack){display:grid;gap:14px}
   :where(.category-body,.card){padding:12px}
-  :where(.product-thumb){display:block;width:76px!important;height:76px!important;object-fit:contain}
+  :where(.product-thumb){display:block;width:76px;height:76px;object-fit:contain}
   :where(.empty-illustration){width:150px;height:auto}
   @media(max-width:760px){
     :where(.dashboard-hero,.manage-hero){padding:22px}
     :where(.dashboard-overview){display:grid;padding:18px}
     :where(.hero-art){width:230px;opacity:.2}
-    :where(.product-thumb){width:64px!important;height:64px!important}
+    :where(.product-thumb){width:64px;height:64px}
   }
   @media(prefers-color-scheme:dark){
     :where(html,body){background:#111713;color:#f1f3ec}

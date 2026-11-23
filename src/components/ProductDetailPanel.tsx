@@ -80,7 +80,7 @@ export default function ProductDetailPanel({
             <div className="detail-panel-meta">
               {product.categoryName ? <span className="chip">{product.categoryName}</span> : null}
               {product.targetPrice !== null ? (
-                <span className="goal-line">
+                <span className={`goal-line${hitsTarget ? ' is-at-goal' : ''}`}>
                   {hitsTarget ? 'Below goal' : 'Goal'} {formatMoney(product.targetPrice)}
                 </span>
               ) : null}

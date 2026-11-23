@@ -345,9 +345,15 @@ function buildGroups(products: ProductView[]): CategoryGroup[] {
   }));
 }
 
-export default function DashboardPreviewPage() {
+export default async function DashboardPreviewPage({
+  searchParams
+}: {
+  searchParams: Promise<{ overview?: string }>;
+}) {
   // Sample data for reviewing the layout locally and on preview deployments only.
   if (process.env.VERCEL_ENV === 'production') notFound();
+  // ?overview=fetch loads the This week data after paint, like the signed-in page.
+  const { overview } = await searchParams;
   const groups = buildGroups(sampleProducts);
   return (
     <DashboardWorkspace
@@ -357,7 +363,7 @@ export default function DashboardPreviewPage() {
       isDemo
       accountHref={null}
       loadError={null}
-      initialOverview={sampleOverview}
+      initialOverview={overview === 'fetch' ? null : sampleOverview}
     />
   );
 }
