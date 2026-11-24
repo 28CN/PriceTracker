@@ -1,9 +1,12 @@
 'use client';
 
 import { LoaderCircle, Plus, Save, Trash2 } from 'lucide-react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, type ClipboardEvent, type DragEvent } from 'react';
 
+import InfoTip from '@/components/InfoTip';
+import { cleanHttpUrl, firstUrlIn } from '@/lib/productUrl';
 import { detectRetailer } from '@/lib/retailer';
 import type { CategoryView } from '@/lib/types';
 
@@ -17,16 +20,101 @@ const emptyLinks = (): LinkDraft[] => [
   { url: '', retailer: '' }
 ];
 
-export default function AddProductForm({ categories }: { categories: CategoryView[] }) {
+function startingLinks(url?: string): LinkDraft[] {
+  const links = emptyLinks();
+  if (url) links[0] = { url, retailer: detectRetailer(url) };
+  return links;
+}
+
+/** A link from a drag or a paste: the URL list first, then plain text. */
+function linkFromTransfer(data: DataTransfer | null): string | null {
+  if (!data) return null;
+  const uriLine = data
+    .getData('text/uri-list')
+    .split(/\r?\n/)
+    .find((line) => line.trim() && !line.startsWith('#'));
+  return firstUrlIn(uriLine || '') || firstUrlIn(data.getData('text/plain') || '');
+}
+
+function isLinkInput(target: EventTarget | null): boolean {
+  return target instanceof HTMLInputElement && target.type === 'url';
+}
+
+export default function AddProductForm({
+  categories,
+  initialUrl,
+  initialName = '',
+  readOnly = false,
+  savedHref
+}: {
+  categories: CategoryView[];
+  initialUrl?: string;
+  initialName?: string;
+  /** The sample watchlist: show the form, but saving is off. */
+  readOnly?: boolean;
+  /** Where to go after saving, e.g. back to the list from /add. */
+  savedHref?: string;
+}) {
   const router = useRouter();
 
   const [categoryId, setCategoryId] = useState('');
   const [newCategoryName, setNewCategoryName] = useState('');
-  const [name, setName] = useState('');
+  const [name, setName] = useState(initialName);
   const [targetPrice, setTargetPrice] = useState('');
-  const [links, setLinks] = useState<LinkDraft[]>(emptyLinks);
+  const [links, setLinks] = useState<LinkDraft[]>(() => startingLinks(initialUrl));
   const [isSaving, setIsSaving] = useState(false);
+  const [isDropTarget, setIsDropTarget] = useState(false);
+  const [saved, setSaved] = useState(false);
   const [feedback, setFeedback] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null);
+
+  function placeLink(url: string) {
+    let placed = false;
+    setLinks((current) => {
+      if (current.some((link) => cleanHttpUrl(link.url) === url)) return current;
+      const empty = current.findIndex((link) => !link.url.trim());
+      const draft = { url, retailer: detectRetailer(url) };
+      if (empty >= 0) {
+        placed = true;
+        return current.map((link, position) => (position === empty ? draft : link));
+      }
+      if (current.length >= MAX_LINKS) return current;
+      placed = true;
+      return [...current, draft];
+    });
+    setFeedback(placed ? { tone: 'ok', text: 'Link added.' } : null);
+  }
+
+  function handlePaste(event: ClipboardEvent<HTMLFormElement>) {
+    // A link box takes the paste as usual.
+    if (isLinkInput(event.target)) return;
+    const pasted = event.clipboardData.getData('text/plain').trim();
+    const url = cleanHttpUrl(pasted);
+    // Only a bare link moves to the shop links; other text pastes as usual.
+    if (!url || /\s/.test(pasted)) return;
+    event.preventDefault();
+    placeLink(url);
+  }
+
+  function handleDragOver(event: DragEvent<HTMLFormElement>) {
+    const types = [...event.dataTransfer.types];
+    if (!types.includes('text/uri-list') && !types.includes('text/plain')) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'copy';
+    if (!isDropTarget) setIsDropTarget(true);
+  }
+
+  function handleDragLeave(event: DragEvent<HTMLFormElement>) {
+    if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
+    setIsDropTarget(false);
+  }
+
+  function handleDrop(event: DragEvent<HTMLFormElement>) {
+    setIsDropTarget(false);
+    const url = linkFromTransfer(event.dataTransfer);
+    if (!url) return;
+    event.preventDefault();
+    placeLink(url);
+  }
 
   function updateLink(index: number, patch: Partial<LinkDraft>) {
     setLinks((current) =>
@@ -64,6 +152,7 @@ export default function AddProductForm({ categories }: { categories: CategoryVie
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
+    if (readOnly) return;
     setIsSaving(true);
     setFeedback(null);
 
@@ -86,6 +175,7 @@ export default function AddProductForm({ categories }: { categories: CategoryVie
       }
 
       setFeedback({ tone: 'ok', text: 'Saved. It will get a price at the next crawl.' });
+      setSaved(true);
       setName('');
       setTargetPrice('');
       setNewCategoryName('');
@@ -104,7 +194,14 @@ export default function AddProductForm({ categories }: { categories: CategoryVie
   const canAddMore = links.length < MAX_LINKS;
 
   return (
-    <form className="card" onSubmit={handleSubmit}>
+    <form
+      className={`card add-product-form${isDropTarget ? ' is-drop-target' : ''}`}
+      onSubmit={handleSubmit}
+      onPaste={handlePaste}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
       <div className="field">
         <label htmlFor="category">Category</label>
         <select
@@ -142,7 +239,10 @@ export default function AddProductForm({ categories }: { categories: CategoryVie
           required
           placeholder="Bluey Plush Toy"
           value={name}
-          onChange={(event) => setName(event.target.value)}
+          onChange={(event) => {
+            setName(event.target.value);
+            setSaved(false);
+          }}
         />
       </div>
 
@@ -163,6 +263,7 @@ export default function AddProductForm({ categories }: { categories: CategoryVie
       <div className="link-section-head">
         <p className="section-title" style={{ margin: 0 }}>
           Shop links
+          <InfoTip label="Adding a link">Paste or drop a shop link anywhere on this form.</InfoTip>
         </p>
         <span className="hint">
           {links.length} / {MAX_LINKS}
@@ -209,7 +310,7 @@ export default function AddProductForm({ categories }: { categories: CategoryVie
           <Plus size={16} aria-hidden="true" />
           Add another shop link
         </button>
-        <button type="submit" className="button primary" disabled={isSaving}>
+        <button type="submit" className="button primary" disabled={isSaving || readOnly}>
           {isSaving ? (
             <LoaderCircle className="spin" size={16} aria-hidden="true" />
           ) : (
@@ -232,6 +333,18 @@ export default function AddProductForm({ categories }: { categories: CategoryVie
           style={{ marginTop: 10 }}
         >
           {feedback.text}
+          {saved && savedHref ? (
+            <>
+              {' '}
+              <Link href={savedHref}>See your list</Link>
+            </>
+          ) : null}
+        </p>
+      ) : null}
+
+      {readOnly ? (
+        <p className="hint" style={{ marginTop: 8 }}>
+          This is the sample list, so saving is off. <Link href="/register">Make my own list</Link>
         </p>
       ) : null}
     </form>

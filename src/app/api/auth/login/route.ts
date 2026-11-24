@@ -71,8 +71,8 @@ export async function POST(request: NextRequest) {
     {
       ok: true,
       username,
-      redirectTo:
-        mustChangePassword ? '/account?security=required' : '/'
+      // Null lets the sign-in page go back to where the visitor came from.
+      redirectTo: mustChangePassword ? '/account?security=required' : null
     },
     { headers: { 'Cache-Control': 'private, no-store' } }
   );

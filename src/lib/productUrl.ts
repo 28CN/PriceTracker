@@ -61,6 +61,35 @@ export function cleanHttpUrl(raw: string): string | null {
   return url.toString();
 }
 
+// Any of these in the path means a page of many products.
+const LISTING_ANYWHERE = new Set(['search', 'browse', 'specials', 'on-special', 'half-price']);
+
+// Toymate pages that are one slug but list many products.
+const TOYMATE_LISTING_SLUGS = new Set([
+  'pre-order-coming-soon',
+  'outdoor-games-sports',
+  'water-sand-play',
+  'order-tracking-form',
+  'terms-conditions',
+  'privacy-policy',
+  'returns-exchange',
+  'help-centre',
+  'store-finder',
+  'gift-cards'
+]);
+
+/**
+ * Toymate products live at one slug: /bluey-8-inch-plush-s1/. Its groups
+ * are short slugs (/paw-patrol/) or nested (/brand-shop/bluey/bluey-plush/).
+ */
+function looksLikeToymateProduct(parts: string[]): boolean {
+  if (parts.length !== 1) return false;
+  const slug = parts[0];
+  if (TOYMATE_LISTING_SLUGS.has(slug)) return false;
+  const words = slug.split('-').filter(Boolean);
+  return words.length >= 4 || (words.length >= 2 && /\d/.test(slug));
+}
+
 export function looksLikeProductPage(raw: string): boolean {
   const cleaned = cleanHttpUrl(raw);
   if (!cleaned) return false;
@@ -70,6 +99,8 @@ export function looksLikeProductPage(raw: string): boolean {
   if (LISTING_PREFIXES.some((prefix) => path.startsWith(prefix))) return false;
   const parts = path.split('/').filter(Boolean);
   if (parts.length === 1 && LISTING_SEGMENTS.has(parts[0])) return false;
+  if (parts.some((part) => LISTING_ANYWHERE.has(part))) return false;
+  if (/(^|\.)toymate\.com\.au$/.test(url.hostname)) return looksLikeToymateProduct(parts);
   if (
     path.includes('/product') ||
     path.includes('/products/') ||
@@ -86,4 +117,11 @@ export function looksLikeProductPage(raw: string): boolean {
 export function isTrackableSearchUrl(raw: string): boolean {
   const cleaned = cleanHttpUrl(raw);
   return Boolean(cleaned && hasCrawlerSupport(cleaned) && looksLikeProductPage(cleaned));
+}
+
+/** The first http(s) link inside shared text, e.g. "Look at this https://…". */
+export function firstUrlIn(text: string): string | null {
+  const match = text.match(/https?:\/\/[^\s<>"']+/i);
+  if (!match) return null;
+  return cleanHttpUrl(match[0].replace(/[),.;!?]+$/, ''));
 }
