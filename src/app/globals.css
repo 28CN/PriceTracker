@@ -6661,3 +6661,63 @@ dialog.shopping-list-dialog[open] {
     height: 85dvh;
   }
 }
+
+
+/* Account and auth form polish ------------------------------------------- */
+
+.field-label-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.auth-form .field-label-row label {
+  font-size: var(--fs-sm);
+  line-height: var(--lh-sm);
+  font-weight: 650;
+  color: var(--text);
+}
+
+.security-form .field-label-row label {
+  font-size: var(--fs-base);
+  line-height: var(--lh-base);
+  font-weight: 400;
+  color: var(--text);
+}
+
+.field-label-row .info-tip-button {
+  width: 24px;
+  height: 24px;
+  margin: -2px 0;
+}
+
+.field-label-row .info-tip-bubble {
+  left: 0;
+  transform: none;
+  font-weight: 400;
+}
+
+.caps-lock-hint {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-xs);
+}
+
+.caps-lock-hint:empty {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  pointer-events: none;
+}
+
+.security-current-password {
+  grid-column: 1 / -1;
+}
+
+.form-error:focus-visible,
+.form-error:focus {
+  outline: none;
+  box-shadow: var(--ring);
+}

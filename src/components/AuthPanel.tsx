@@ -2,8 +2,13 @@
 
 import { Eye, EyeOff, LockKeyhole, UserRound } from 'lucide-react';
 import Link from 'next/link';
-import { FormEvent, useState } from 'react';
+import { FormEvent, KeyboardEvent, useEffect, useId, useRef, useState } from 'react';
+import {
+  getPasswordValidityMessage,
+  getUsernameValidityMessage
+} from '@/lib/authValidation';
 import { EMAIL_DISABLED_MESSAGE, isEmailUiEnabled } from '@/lib/emailFeature';
+import InfoTip from './InfoTip';
 
 const EMAIL_UI_ENABLED = isEmailUiEnabled();
 
@@ -16,10 +21,49 @@ function safeNextPath(value: string | undefined): string {
   return value?.startsWith('/') && !value.startsWith('//') ? value : '/';
 }
 
+function readCapsLock(event: KeyboardEvent<HTMLInputElement>): boolean {
+  return typeof event.getModifierState === 'function'
+    ? event.getModifierState('CapsLock')
+    : false;
+}
+
 export default function AuthPanel({ mode, nextPath }: AuthPanelProps) {
+  const usernameId = useId();
+  const passwordId = useId();
+  const errorRef = useRef<HTMLDivElement>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [capsLockOn, setCapsLockOn] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorTick, setErrorTick] = useState(0);
+
+  const registering = mode === 'register';
+
+  useEffect(() => {
+    if (error) {
+      errorRef.current?.focus();
+    }
+  }, [error, errorTick]);
+
+  function handleUsernameInvalid(event: FormEvent<HTMLInputElement>) {
+    const input = event.currentTarget;
+    const message = getUsernameValidityMessage(input.value, !registering);
+    if (message) {
+      input.setCustomValidity(message);
+    }
+  }
+
+  function handlePasswordInvalid(event: FormEvent<HTMLInputElement>) {
+    const input = event.currentTarget;
+    const message = getPasswordValidityMessage(input.value, registering);
+    if (message) {
+      input.setCustomValidity(message);
+    }
+  }
+
+  function handlePasswordKey(event: KeyboardEvent<HTMLInputElement>) {
+    setCapsLockOn(readCapsLock(event));
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -53,6 +97,7 @@ export default function AuthPanel({ mode, nextPath }: AuthPanelProps) {
 
       if (!response.ok) {
         setError(result?.error || 'Something went wrong. Please try again.');
+        setErrorTick((n) => n + 1);
         setPending(false);
         return;
       }
@@ -64,11 +109,10 @@ export default function AuthPanel({ mode, nextPath }: AuthPanelProps) {
       }
     } catch {
       setError('Could not connect. Please try again.');
+      setErrorTick((n) => n + 1);
       setPending(false);
     }
   }
-
-  const registering = mode === 'register';
 
   return (
     <section className="auth-shell" aria-labelledby="auth-title">
@@ -80,11 +124,19 @@ export default function AuthPanel({ mode, nextPath }: AuthPanelProps) {
       </div>
 
       <form className="auth-form" onSubmit={submit}>
-        <label className="field">
-          <span>Username</span>
+        <div className="field">
+          <span className="field-label-row">
+            <label htmlFor={usernameId}>Username</label>
+            {registering ? (
+              <InfoTip label="Username rules">
+                3–30 letters, numbers or hyphens. Capitalisation does not matter.
+              </InfoTip>
+            ) : null}
+          </span>
           <span className="input-with-icon">
             <UserRound size={17} aria-hidden="true" />
             <input
+              id={usernameId}
               name="username"
               type="text"
               autoComplete="username"
@@ -93,25 +145,35 @@ export default function AuthPanel({ mode, nextPath }: AuthPanelProps) {
               maxLength={30}
               pattern="[A-Za-z0-9](?:[A-Za-z0-9\-]{1,28}[A-Za-z0-9])"
               placeholder="Enter username"
+              onInvalid={handleUsernameInvalid}
+              onInput={(event) => event.currentTarget.setCustomValidity('')}
               required
             />
           </span>
-          {registering ? (
-            <small>3–30 letters, numbers or hyphens. Capitalisation does not matter.</small>
-          ) : null}
-        </label>
+        </div>
 
-        <label className="field">
-          <span>Password</span>
+        <div className="field">
+          <span className="field-label-row">
+            <label htmlFor={passwordId}>Password</label>
+            {registering ? (
+              <InfoTip label="Password rules">8–72 characters.</InfoTip>
+            ) : null}
+          </span>
           <span className="input-with-icon password-input">
             <LockKeyhole size={17} aria-hidden="true" />
             <input
+              id={passwordId}
               name="password"
               type={showPassword ? 'text' : 'password'}
               autoComplete={registering ? 'new-password' : 'current-password'}
               minLength={registering ? 8 : undefined}
               maxLength={72}
               placeholder={registering ? 'Use a memorable phrase' : 'Your password'}
+              onInvalid={handlePasswordInvalid}
+              onInput={(event) => event.currentTarget.setCustomValidity('')}
+              onKeyDown={handlePasswordKey}
+              onKeyUp={handlePasswordKey}
+              onBlur={() => setCapsLockOn(false)}
               required
             />
             <button
@@ -119,15 +181,16 @@ export default function AuthPanel({ mode, nextPath }: AuthPanelProps) {
               className="password-visibility"
               onClick={() => setShowPassword((value) => !value)}
               aria-label={showPassword ? 'Hide password' : 'Show password'}
+              aria-pressed={showPassword}
               title={showPassword ? 'Hide password' : 'Show password'}
             >
               {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
             </button>
           </span>
-          {registering ? (
-            <small>8–72 characters.</small>
-          ) : null}
-        </label>
+          <small className="caps-lock-hint" aria-live="polite">
+            {capsLockOn ? 'Caps Lock is on' : ''}
+          </small>
+        </div>
 
         {registering ? (
           <details className="optional-contact">
@@ -182,7 +245,11 @@ export default function AuthPanel({ mode, nextPath }: AuthPanelProps) {
           </div>
         )}
 
-        {error ? <div className="form-error" role="alert">{error}</div> : null}
+        {error ? (
+          <div className="form-error" role="alert" tabIndex={-1} ref={errorRef}>
+            {error}
+          </div>
+        ) : null}
 
         <button className="button primary auth-submit" type="submit" disabled={pending}>
           {pending ? 'Please wait…' : registering ? 'Create account' : 'Sign in'}

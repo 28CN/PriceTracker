@@ -2,13 +2,22 @@
 
 import { Camera, CheckCircle2, Eye, EyeOff, LoaderCircle, MoreHorizontal, ShieldCheck, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { FormEvent, useMemo, useRef, useState } from 'react';
+import { FormEvent, KeyboardEvent, useId, useMemo, useRef, useState } from 'react';
 
+import { getPasswordValidityMessage } from '@/lib/authValidation';
+import { validatePasswordChange } from '@/lib/passwordChange';
 import { validatePublicSlug } from '@/lib/publicSlug';
 import { createBrowserSupabaseClient } from '@/lib/supabase/browser';
 import { EMAIL_DISABLED_MESSAGE, isEmailUiEnabled } from '@/lib/emailFeature';
+import InfoTip from './InfoTip';
 
 const EMAIL_UI_ENABLED = isEmailUiEnabled();
+
+function readCapsLock(event: KeyboardEvent<HTMLInputElement>): boolean {
+  return typeof event.getModifierState === 'function'
+    ? event.getModifierState('CapsLock')
+    : false;
+}
 
 type FieldName =
   | 'displayName'
@@ -77,10 +86,16 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
       }
     });
   }
+  const currentPasswordId = useId();
+  const newPasswordId = useId();
+  const confirmPasswordId = useId();
   const [securityMessage, setSecurityMessage] =
     useState<{ type: 'ok' | 'error'; text: string } | null>(null);
   const [deleteMessage, setDeleteMessage] = useState<string | null>(null);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
+  const [currentCapsLockOn, setCurrentCapsLockOn] = useState(false);
+  const [newCapsLockOn, setNewCapsLockOn] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
   const [dataMessage, setDataMessage] =
     useState<{ type: 'ok' | 'error'; text: string } | null>(null);
@@ -205,14 +220,29 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
     router.refresh();
   }
 
+  function handleNewPasswordInvalid(event: FormEvent<HTMLInputElement>) {
+    const input = event.currentTarget;
+    const msg = getPasswordValidityMessage(input.value, true);
+    if (msg) {
+      input.setCustomValidity(msg);
+    }
+  }
+
   async function changePassword(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSecurityMessage(null);
     const formElement = event.currentTarget;
     const form = new FormData(formElement);
+    const currentPassword = String(form.get('currentPassword') || '');
     const newPassword = String(form.get('newPassword') || '');
-    if (newPassword !== String(form.get('confirmPassword') || '')) {
-      setSecurityMessage({ type: 'error', text: 'The new passwords do not match.' });
+    const confirmPassword = String(form.get('confirmPassword') || '');
+    const validationError = validatePasswordChange({
+      currentPassword,
+      newPassword,
+      confirmPassword
+    });
+    if (validationError) {
+      setSecurityMessage({ type: 'error', text: validationError });
       return;
     }
     setChangingPassword(true);
@@ -220,7 +250,7 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
       const response = await fetch('/api/account/password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ newPassword })
+        body: JSON.stringify({ currentPassword, newPassword })
       });
       const result = (await response.json().catch(() => null)) as { error?: string } | null;
       if (!response.ok) {
@@ -228,6 +258,10 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
         return;
       }
       formElement.reset();
+      setShowCurrentPassword(false);
+      setShowNewPassword(false);
+      setCurrentCapsLockOn(false);
+      setNewCapsLockOn(false);
       setSecurityMessage({ type: 'ok', text: 'Password changed.' });
       router.refresh();
     } catch {
@@ -517,16 +551,57 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
         <span className="eyebrow"><ShieldCheck size={14} /> Security</span>
         <h2>Change password</h2>
         <form className="security-form" onSubmit={changePassword}>
-          <label className="field">
-            <span>New password</span>
+          <div className="field security-current-password">
+            <span className="field-label-row">
+              <label htmlFor={currentPasswordId}>Current password</label>
+            </span>
             <span className="input-with-icon password-input">
               <input
+                id={currentPasswordId}
+                name="currentPassword"
+                type={showCurrentPassword ? 'text' : 'password'}
+                autoComplete="current-password"
+                maxLength={72}
+                disabled={changingPassword}
+                onKeyDown={(event) => setCurrentCapsLockOn(readCapsLock(event))}
+                onKeyUp={(event) => setCurrentCapsLockOn(readCapsLock(event))}
+                onBlur={() => setCurrentCapsLockOn(false)}
+                required
+              />
+              <button
+                type="button"
+                className="password-visibility"
+                onClick={() => setShowCurrentPassword((value) => !value)}
+                aria-label={showCurrentPassword ? 'Hide current password' : 'Show current password'}
+                aria-pressed={showCurrentPassword}
+                title={showCurrentPassword ? 'Hide current password' : 'Show current password'}
+              >
+                {showCurrentPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+              </button>
+            </span>
+            <small className="caps-lock-hint" aria-live="polite">
+              {currentCapsLockOn ? 'Caps Lock is on' : ''}
+            </small>
+          </div>
+          <div className="field">
+            <span className="field-label-row">
+              <label htmlFor={newPasswordId}>New password</label>
+              <InfoTip label="Password rules">8–72 characters.</InfoTip>
+            </span>
+            <span className="input-with-icon password-input">
+              <input
+                id={newPasswordId}
                 name="newPassword"
                 type={showNewPassword ? 'text' : 'password'}
                 autoComplete="new-password"
                 minLength={8}
                 maxLength={72}
                 disabled={changingPassword}
+                onInvalid={handleNewPasswordInvalid}
+                onInput={(event) => event.currentTarget.setCustomValidity('')}
+                onKeyDown={(event) => setNewCapsLockOn(readCapsLock(event))}
+                onKeyUp={(event) => setNewCapsLockOn(readCapsLock(event))}
+                onBlur={() => setNewCapsLockOn(false)}
                 required
               />
               <button
@@ -534,22 +609,31 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
                 className="password-visibility"
                 onClick={() => setShowNewPassword((value) => !value)}
                 aria-label={showNewPassword ? 'Hide password' : 'Show password'}
+                aria-pressed={showNewPassword}
+                title={showNewPassword ? 'Hide password' : 'Show password'}
               >
                 {showNewPassword ? <EyeOff size={17} /> : <Eye size={17} />}
               </button>
             </span>
-            <small>8–72 characters.</small>
-          </label>
-          <label className="field">
-            <span>Confirm new password</span>
+            <small className="caps-lock-hint" aria-live="polite">
+              {newCapsLockOn ? 'Caps Lock is on' : ''}
+            </small>
+          </div>
+          <div className="field">
+            <span className="field-label-row">
+              <label htmlFor={confirmPasswordId}>Confirm new password</label>
+            </span>
             <span className="input-with-icon password-input">
               <input
+                id={confirmPasswordId}
                 name="confirmPassword"
                 type={showNewPassword ? 'text' : 'password'}
                 autoComplete="new-password"
                 minLength={8}
                 maxLength={72}
                 disabled={changingPassword}
+                onInvalid={handleNewPasswordInvalid}
+                onInput={(event) => event.currentTarget.setCustomValidity('')}
                 required
               />
               <button
@@ -557,11 +641,13 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
                 className="password-visibility"
                 onClick={() => setShowNewPassword((value) => !value)}
                 aria-label={showNewPassword ? 'Hide password' : 'Show password'}
+                aria-pressed={showNewPassword}
+                title={showNewPassword ? 'Hide password' : 'Show password'}
               >
                 {showNewPassword ? <EyeOff size={17} /> : <Eye size={17} />}
               </button>
             </span>
-          </label>
+          </div>
           <div className="security-feedback">
             <Message value={securityMessage} />
             <button type="submit" className="button secondary" disabled={changingPassword}>
