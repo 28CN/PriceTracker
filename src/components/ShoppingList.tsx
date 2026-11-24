@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowUpRight, Search, X } from 'lucide-react';
+import { ArrowUpRight, Share2, Search, X } from 'lucide-react';
 import { useDeferredValue, useEffect, useId, useMemo, useRef, useState } from 'react';
 
 import InfoTip from '@/components/InfoTip';
@@ -10,9 +10,13 @@ import { formatLastSeen, formatMoney } from '@/lib/format';
 import { productThumb } from '@/lib/productImage';
 import {
   filterProductsByQuery,
+  hasWednesdaySpecials,
+  lowestListText,
   lowestPriceRows,
   SHOP_RECENT_DAYS,
   shopGroups,
+  shopListText,
+  shopTotal,
   type LowestRow,
   type LowestSort,
   type ShopItem
@@ -190,6 +194,7 @@ function ShoppingListContent({
   const lowestTabRef = useRef<HTMLButtonElement>(null);
   const shopTabRef = useRef<HTMLButtonElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const [shareNote, setShareNote] = useState<string | null>(null);
 
   const hasQuery = deferredQuery.trim().length > 0;
   const filteredProducts = useMemo(
@@ -223,6 +228,27 @@ function ShoppingListContent({
     replaceListUrl(tab, activeShopKey);
   }, [tab, activeShopKey]);
 
+  async function shareList() {
+    const day = (iso: string) => formatLastSeen(iso, referenceNow);
+    const text =
+      tab === 'shop' && activeGroup
+        ? shopListText(activeGroup, activeGroup.items, formatMoney, day)
+        : lowestListText(rows, formatMoney, day);
+    try {
+      if (typeof navigator.share === 'function' && window.matchMedia('(pointer: coarse)').matches) {
+        await navigator.share({ title: 'Shopping list', text });
+        return;
+      }
+      await navigator.clipboard.writeText(text);
+      setShareNote('Copied');
+    } catch (error) {
+      // Closing the share sheet is not a failure.
+      if (error instanceof DOMException && error.name === 'AbortError') return;
+      setShareNote('Could not copy');
+    }
+    window.setTimeout(() => setShareNote(null), 2000);
+  }
+
   function switchTab(next: ShoppingListTab, moveFocus = false) {
     setTab(next);
     if (moveFocus) {
@@ -235,6 +261,12 @@ function ShoppingListContent({
     <>
       <header className="deal-dialog-head sl-head">
         <h2 id={titleId}>Shopping list</h2>
+        <span className="sl-share-note" role="status" aria-live="polite">
+          {shareNote}
+        </span>
+        <button type="button" className="icon-button" onClick={shareList} aria-label="Share list">
+          <Share2 size={16} aria-hidden="true" />
+        </button>
         <button type="button" className="icon-button" onClick={onClose} aria-label="Close">
           <X size={16} aria-hidden="true" />
         </button>
@@ -370,6 +402,7 @@ function ShoppingListContent({
               </div>
               <InfoTip label="Which items are shown">
                 Only items this shop priced in the last {SHOP_RECENT_DAYS} days.
+                {hasWednesdaySpecials(activeShopKey) ? ' New specials start every Wednesday.' : null}
               </InfoTip>
             </div>
           ) : null}
@@ -402,6 +435,7 @@ function ShoppingListContent({
             className="sl-body"
           >
             {activeGroup && activeGroup.items.length > 0 ? (
+              <>
               <ul className="sl-list">
                 {activeGroup.items.map((item) => (
                   <ShopRowItem
@@ -411,6 +445,11 @@ function ShoppingListContent({
                   />
                 ))}
               </ul>
+              <p className="sl-total">
+                <span>Total</span>
+                <strong>{formatMoney(shopTotal(activeGroup.items))}</strong>
+              </p>
+              </>
             ) : (
               <div className="sl-empty">
                 <p>
