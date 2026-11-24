@@ -12,6 +12,7 @@ import {
 import Link from 'next/link';
 import { useEffect, useId, useMemo, useRef } from 'react';
 
+import CountUp from '@/components/CountUp';
 import ProductVisual from '@/components/ProductVisual';
 import { resolveCardPrice } from '@/lib/cardState';
 import { formatMoney } from '@/lib/format';
@@ -163,7 +164,9 @@ export default function DashboardHero({
                 <span className="summary-tile-label">Tracked</span>
               </div>
               <div className="summary-tile-body">
-                <strong className="summary-tile-value">{products.length}</strong>
+                <strong className="summary-tile-value">
+                  <CountUp value={products.length} />
+                </strong>
                 <Sparkline
                   points={overview?.sparklines.tracked ?? null}
                   tone="brand"
@@ -186,7 +189,9 @@ export default function DashboardHero({
                 <ChevronRight className="summary-tile-chevron" size={16} aria-hidden="true" />
               </div>
               <div className="summary-tile-body">
-                <strong className="summary-tile-value">{deals.length}</strong>
+                <strong className="summary-tile-value">
+                  <CountUp value={deals.length} />
+                </strong>
                 <Sparkline
                   points={overview?.sparklines.belowGoal ?? null}
                   tone="success"
@@ -207,7 +212,7 @@ export default function DashboardHero({
                   <span className="summary-value-skel" aria-busy="true" aria-label="Loading" />
                 ) : (
                   <strong className="summary-tile-value">
-                    {overview?.droppedThisWeekCount ?? 0}
+                    <CountUp value={overview?.droppedThisWeekCount ?? 0} />
                   </strong>
                 )}
                 <Sparkline
