@@ -26,6 +26,10 @@ export function normalizeUsername(value: unknown): string {
   return typeof value === 'string' ? value.trim().toLowerCase() : '';
 }
 
+export function syntheticAuthEmail(username: string): string {
+  return `${username}@users.invalid`;
+}
+
 export function validateUsername(username: string, allowAdmin = false): string | null {
   if (!USERNAME_PATTERN.test(username)) {
     return 'Use 3–30 lowercase letters, numbers or single hyphens.';
