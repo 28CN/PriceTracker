@@ -1,6 +1,18 @@
 import { describe, expect, it } from 'vitest';
 
-import { isRecentlySold, lowestPriceRows, shopGroups, shopKeyFor, shopNameFor, SHOP_RECENT_DAYS } from './shoppingList';
+import {
+  filterProductsByQuery,
+  hasWednesdaySpecials,
+  isRecentlySold,
+  lowestListText,
+  lowestPriceRows,
+  shopGroups,
+  shopKeyFor,
+  shopListText,
+  shopNameFor,
+  SHOP_RECENT_DAYS,
+  shopTotal
+} from './shoppingList';
 import type { LinkView, ProductView } from './types';
 
 const NOW = Date.parse('2026-11-24T00:00:00.000Z');
@@ -151,5 +163,79 @@ describe('shopKeyFor', () => {
   it('uses the proper shop name for a known website', () => {
     expect(shopNameFor({ retailer: 'Rejectshop', url: 'https://www.therejectshop.com.au/p/1' })).toBe('The Reject Shop');
     expect(shopNameFor({ retailer: 'Corner Store', url: 'https://corner.example/x' })).toBe('Corner Store');
+  });
+});
+
+describe('filterProductsByQuery', () => {
+  const matchbox: ProductView = {
+    ...product('mb', 'Power Grab', [woolies('mb-w', 3.5, daysAgo(2))]),
+    categoryName: 'Matchbox'
+  };
+  const milk = product('milk', 'Milk 2L', [coles('milk-c', 3.1, daysAgo(1)), woolies('milk-w', 3.1, daysAgo(3))]);
+  const bread = product('bread', 'Bread', [coles('bread-c', 4, daysAgo(1))]);
+  const all = [matchbox, milk, bread];
+
+  it('returns all products in original order when query is empty or whitespace', () => {
+    expect(filterProductsByQuery(all, '').map((p) => p.id)).toEqual(['mb', 'milk', 'bread']);
+    expect(filterProductsByQuery(all, '   ').map((p) => p.id)).toEqual(['mb', 'milk', 'bread']);
+  });
+
+  it('matches typos against product names and groups', () => {
+    expect(filterProductsByQuery(all, 'matchbx').map((p) => p.id)).toEqual(['mb']);
+  });
+
+  it('matches shop names and aliases while preserving original order', () => {
+    expect(filterProductsByQuery(all, 'coles').map((p) => p.id)).toEqual(['milk', 'bread']);
+    expect(filterProductsByQuery(all, 'woolies').map((p) => p.id)).toEqual(['mb', 'milk']);
+  });
+
+  it('returns an empty list when nothing matches', () => {
+    expect(filterProductsByQuery(all, 'nonexistentxyz')).toEqual([]);
+  });
+});
+
+describe('sharing text and totals', () => {
+  const money = (value: number) => `$${value.toFixed(2)}`;
+  const day = (iso: string) => iso.slice(0, 10);
+
+  it('adds up a shop list without float noise', () => {
+    const groups = shopGroups(
+      [
+        product('a', 'A', [coles('a', 0.1, daysAgo(1))]),
+        product('b', 'B', [coles('b', 0.2, daysAgo(1))])
+      ],
+      NOW
+    );
+    expect(shopTotal(groups[0].items)).toBe(0.3);
+  });
+
+  it('writes each shop item with its price, old ones marked, and the total', () => {
+    const groups = shopGroups(
+      [product('m', 'Milk', [coles('m', 3.1, daysAgo(1))]), product('b', 'Bread', [coles('b', 4, daysAgo(10))])],
+      NOW
+    );
+    const text = shopListText(groups[0], groups[0].items, money, day);
+    expect(text).toBe(
+      ['Shopping list: Coles', '- Milk: $3.10', `- Bread: $4.00 (last seen ${daysAgo(10).slice(0, 10)})`, 'Total $7.10'].join('\n')
+    );
+  });
+
+  it('writes the lowest prices with every tied shop and missing prices', () => {
+    const rows = lowestPriceRows(
+      [
+        product('m', 'Milk', [coles('c', 3.1, daysAgo(1)), woolies('w', 3.1, daysAgo(1))]),
+        product('z', 'Zinc', [])
+      ],
+      'name'
+    );
+    expect(lowestListText(rows, money, day)).toBe(
+      ['Shopping list: lowest prices', '- Milk: $3.10 at Coles or Woolworths', '- Zinc: no price yet'].join('\n')
+    );
+  });
+
+  it('knows which shops change specials on Wednesday', () => {
+    expect(hasWednesdaySpecials('coles')).toBe(true);
+    expect(hasWednesdaySpecials('woolworths')).toBe(true);
+    expect(hasWednesdaySpecials('kmart')).toBe(false);
   });
 });

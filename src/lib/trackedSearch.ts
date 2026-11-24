@@ -1,6 +1,6 @@
 import { resolveCardPrice } from './cardState';
 import { productThumb, type ThumbSource } from './productImage';
-import type { SearchCandidate } from './searchMatch';
+import { compactSearchText, type SearchCandidate } from './searchMatch';
 import type { ProductView } from './types';
 
 export type TrackedSearchItem = {
@@ -81,7 +81,35 @@ export function toTrackedSearchItems(products: readonly ProductView[]): TrackedS
   return products.map(toTrackedSearchItem);
 }
 
+// Common Australian shop nicknames/shorthands mapped to canonical compact shop keys.
+const SHOP_ALIASES: readonly [string, string][] = [
+  ['woolworths', 'woolies'],
+  ['woolies', 'woolworths'],
+  ['bigw', 'big w'],
+  ['jbhifi', 'jb'],
+  ['jbhifi', 'jb hi-fi'],
+  ['chemistwarehouse', 'chemist']
+];
+
+function shopAliasesFor(shops: readonly string[]): string[] {
+  const extra: string[] = [];
+  for (const shop of shops) {
+    const compact = compactSearchText(shop);
+    if (!compact) continue;
+    for (const [key, alias] of SHOP_ALIASES) {
+      if ((compact === key || compact.startsWith(key)) && !extra.includes(alias)) {
+        extra.push(alias);
+      }
+    }
+  }
+  return extra;
+}
+
 /** What the instant list search matches on: title, then group/tag, then shops and link words. */
 export function trackedSearchCandidate(item: TrackedSearchItem): SearchCandidate {
-  return { name: item.name, groups: item.groups, shops: [...item.shops, ...item.linkWords] };
+  return {
+    name: item.name,
+    groups: item.groups,
+    shops: [...item.shops, ...shopAliasesFor(item.shops), ...item.linkWords]
+  };
 }

@@ -1,5 +1,7 @@
 import { resolveCardPrice } from './cardState';
 import { detectRetailer, retailerKey } from './retailer';
+import { matchPreparedCandidate, prepareCandidate, prepareQuery } from './searchMatch';
+import { toTrackedSearchItem, trackedSearchCandidate } from './trackedSearch';
 import type { LinkView, ProductView } from './types';
 
 /**
@@ -166,4 +168,49 @@ export function shopGroups(products: ProductView[], now: number = Date.now(), da
     });
   }
   return list.sort((a, b) => b.items.length - a.items.length || a.name.localeCompare(b.name, 'en-AU'));
+}
+
+/** Filter tracked products with the dashboard search matcher, keeping original order. */
+export function filterProductsByQuery(products: readonly ProductView[], query: string): ProductView[] {
+  const trimmed = query.trim();
+  if (!trimmed) return [...products];
+  const preparedQuery = prepareQuery(trimmed);
+  if (!preparedQuery) return [];
+  return products.filter((product) => {
+    const candidate = trackedSearchCandidate(toTrackedSearchItem(product));
+    return matchPreparedCandidate(preparedQuery, prepareCandidate(candidate)) !== null;
+  });
+}
+
+/** Coles and Woolworths start their new specials every Wednesday. */
+export function hasWednesdaySpecials(shopKey: string | null | undefined): boolean {
+  return shopKey === 'coles' || shopKey === 'woolworths';
+}
+
+/** Sum of the prices shown for one shop: what the whole list would cost there. */
+export function shopTotal(items: readonly ShopItem[]): number {
+  return Math.round(items.reduce((sum, item) => sum + item.price, 0) * 100) / 100;
+}
+
+type Money = (value: number) => string;
+type Day = (iso: string) => string;
+
+/** Plain text of the Lowest prices tab, for sharing or pasting into a note. */
+export function lowestListText(rows: readonly LowestRow[], money: Money, day: Day): string {
+  const lines = rows.map((row) => {
+    if (row.price === null) return `- ${row.product.name}: ${row.unavailable ? 'unavailable' : 'no price yet'}`;
+    const where = row.retailers.length > 0 ? ` at ${row.retailers.join(' or ')}` : '';
+    const old = row.stale && row.lastSeenAt ? ` (last seen ${day(row.lastSeenAt)})` : '';
+    return `- ${row.product.name}: ${money(row.price)}${where}${old}`;
+  });
+  return ['Shopping list: lowest prices', ...lines].join('\n');
+}
+
+/** Plain text of one shop's list with its total. */
+export function shopListText(group: Pick<ShopGroup, 'name'>, items: readonly ShopItem[], money: Money, day: Day): string {
+  const lines = items.map((item) => {
+    const old = item.stale && item.link.latestAt ? ` (last seen ${day(item.link.latestAt)})` : '';
+    return `- ${item.product.name}: ${money(item.price)}${old}`;
+  });
+  return [`Shopping list: ${group.name}`, ...lines, `Total ${money(shopTotal(items))}`].join('\n');
 }

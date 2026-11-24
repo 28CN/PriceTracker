@@ -226,6 +226,7 @@ export default function DashboardWorkspace({
         isDemo={isDemo}
         trackedItems={trackedItems}
         trackedUrls={trackedUrls}
+        enableSlashShortcut
         onSelectTracked={handleNavigateProduct}
       />
 

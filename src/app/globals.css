@@ -6662,6 +6662,128 @@ dialog.shopping-list-dialog[open] {
   }
 }
 
+/* Shopping list search --------------------------------------------------- */
+
+.sl-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.sl-search-icon {
+  position: absolute;
+  left: 12px;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+input[type='search'].sl-search-input {
+  width: 100%;
+  min-height: 38px;
+  padding: 6px 36px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+  color: var(--text);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-sm);
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+input[type='search'].sl-search-input::placeholder {
+  color: var(--muted);
+}
+
+input[type='search'].sl-search-input::-webkit-search-decoration,
+input[type='search'].sl-search-input::-webkit-search-cancel-button,
+input[type='search'].sl-search-input::-webkit-search-results-button,
+input[type='search'].sl-search-input::-webkit-search-results-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.sl-search-clear {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: opacity 140ms ease, transform 140ms ease;
+}
+
+.sl-search-clear:hover {
+  background: var(--surface-3);
+  color: var(--text);
+}
+
+.sl-search-clear:active {
+  transform: translateY(-50%) scale(0.96);
+}
+
+.sl-search-clear:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+
+@media (max-width: 640px) {
+  input[type='search'].sl-search-input {
+    min-height: 40px;
+    font-size: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sl-search-clear {
+    transition: none;
+  }
+
+  .sl-search-clear:active {
+    transform: translateY(-50%);
+  }
+}
+
+/* Shopping list: share and shop total */
+.sl-head {
+  gap: var(--space-2);
+}
+
+.sl-head h2 {
+  margin-right: auto;
+}
+
+.sl-share-note {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+
+.sl-total {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-3) var(--space-2);
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+
+.sl-total strong {
+  color: var(--text);
+  font-size: var(--fs-md);
+  font-variant-numeric: tabular-nums;
+}
+
 
 /* Account and auth form polish ------------------------------------------- */
 

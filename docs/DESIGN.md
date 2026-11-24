@@ -115,6 +115,14 @@ questions a shopper has on the way out.
   never win **Cheapest**. Chips show a count; a shop with nothing current stays
   visible but disabled, so its absence is not a mystery.
 
+**Share list** (top of the window) turns the open tab into plain text: on a
+phone it opens the share sheet, elsewhere it copies to the clipboard and says
+"Copied". The By shop tab ends with a **Total** for that shop, so two shops can
+be compared for the whole list (an idea shoppers asked for on OzBargain and in
+apps like GroceryFlow). For Coles and Woolworths the InfoTip adds that new
+specials start every Wednesday, which is when both chains change their weekly
+catalogue.
+
 The logic is pure and tested in `src/lib/shoppingList.ts`. It uses the product
 list the dashboard already has: no new query. The dialog is loaded on first
 open (`next/dynamic`), keeps one size on both tabs, and the open view is kept
@@ -127,6 +135,12 @@ Search splits into two groups inside one combobox so finding something you alrea
 
 1. **On your list (instant, client-side):** as you type, your own tracked products are filtered in memory with `src/lib/searchMatch.ts` (normalisation, space-free compact matching so `hot wheels`, `hotwheels` and `Hot-Wheels` agree, simple singular/plural folding, word-prefix matching, and light Damerau-Levenshtein tolerance on tokens of 4+ characters). It matches the product title first, then the item's group name (a product called `Basic Car` in the group `Hotwheels` is found by `hotwheels`, and `matchbx` finds the `Matchbox` group), then shop names and the product words in its shop links (for example `hot wheels super rig` from a Coles link). Up to 5 matches show with thumbnail, shop and cheapest fresh price (or muted stale price with `Last seen <date>`). Selecting one jumps to `#p-<id>` and highlights the card briefly.
 2. **Other shops (free cache while typing, paid live search on submit):** after typing 3 or more characters (debounced 350 ms), `GET /api/search?q=...` searches the shared `product_search_cache` fuzzily in TypeScript — including stale entries, labelled with their date (e.g. `Prices from 5 Nov`). Pressing Enter (with no option highlighted) or clicking **Search shops** runs `POST /api/search` for a live Google Shopping lookup inside existing quotas. Cache keys use the compact normalised form (`q:<compact>`) so spacing variants share one entry. Shop results already on your list (by URL or near-identical name) show an **On your list** mark.
+
+**Shop nicknames:** `woolies` finds Woolworths items, `bigw` Big W, `jb` JB Hi-Fi and `chemist` Chemist Warehouse (a short alias list in `src/lib/trackedSearch.ts`).
+
+**Keyboard:** `/` puts the cursor in the search box from anywhere on the dashboard, unless you are already typing or a window is open.
+
+**Inside the Shopping list:** a search box at the top filters both tabs with the same matcher, so `matchbx` and `woolies` work there too. Shop chip counts follow the filter. The query is not kept in the address.
 
 The shared cache only holds what someone has searched live before. On 23 Nov 2026 it held one search (`lego classic`, 12 results) plus two shop lists, so `hotwheels` or `matchbox` correctly finds nothing there until someone presses **Search shops** for it.
 

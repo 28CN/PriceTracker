@@ -114,15 +114,24 @@ function writeRecentSearches(items: string[]) {
   }
 }
 
+function isEditableTarget(el: EventTarget | null): boolean {
+  if (!(el instanceof HTMLElement)) return false;
+  const tag = el.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
+  return el.isContentEditable || el.closest('[contenteditable="true"], [contenteditable=""]') !== null;
+}
+
 export default function ProductSearch({
   trackedItems = [],
   trackedUrls,
   isDemo = false,
+  enableSlashShortcut = false,
   onSelectTracked
 }: {
   trackedItems?: TrackedSearchItem[];
   trackedUrls?: string[];
   isDemo?: boolean;
+  enableSlashShortcut?: boolean;
   onSelectTracked?: (productId: string) => void;
 }) {
   const router = useRouter();
@@ -171,6 +180,35 @@ export default function ProductSearch({
     document.addEventListener('pointerdown', onPointerDown);
     return () => document.removeEventListener('pointerdown', onPointerDown);
   }, []);
+
+  // Pressing "/" anywhere on the dashboard focuses the search box unless typing or a dialog is open.
+  useEffect(() => {
+    if (!enableSlashShortcut) return;
+    function onKeyDown(event: globalThis.KeyboardEvent) {
+      if (
+        event.key !== '/' ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.altKey ||
+        event.isComposing ||
+        event.defaultPrevented
+      ) {
+        return;
+      }
+      if (isEditableTarget(event.target) || isEditableTarget(document.activeElement)) {
+        return;
+      }
+      if (document.querySelector('dialog[open], [role="dialog"][aria-modal="true"]')) {
+        return;
+      }
+      const input = inputRef.current;
+      if (!input || input.disabled) return;
+      event.preventDefault();
+      input.focus();
+    }
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [enableSlashShortcut]);
 
   const trackedUrlSet = useMemo(() => {
     const urls = trackedUrls ?? trackedItems.flatMap((item) => item.urls);
@@ -616,6 +654,7 @@ export default function ProductSearch({
             aria-controls={listboxId}
             aria-activedescendant={activeOptionId}
             aria-label="Search your list or shops"
+            aria-keyshortcuts={enableSlashShortcut ? '/' : undefined}
             value={query}
             onFocus={() => {
               setFocused(true);
