@@ -172,3 +172,14 @@ manually from the Actions page.
 
 Administrator API operations remain locked until the current session reaches Supabase
 Authenticator Assurance Level 2 (TOTP verified).
+
+## Changing a password
+
+`POST /api/account/password` needs `currentPassword` and `newPassword`. The
+server checks the current password with a separate Supabase client that keeps
+no session and sets no cookies, using the account's own stored sign-in email
+(never one from the request). It is rate limited like sign-in (10 tries per 15
+minutes, action `password`, keyed by user). A wrong current password returns
+`400 "Your current password is not right."`; the new one must differ from it.
+Supabase errors are logged, not shown. The demo account still cannot change
+anything.
