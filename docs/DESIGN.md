@@ -115,6 +115,14 @@ questions a shopper has on the way out.
   never win **Cheapest**. Chips show a count; a shop with nothing current stays
   visible but disabled, so its absence is not a mystery.
 
+**Share list** (top of the window) turns the open tab into plain text: on a
+phone it opens the share sheet, elsewhere it copies to the clipboard and says
+"Copied". The By shop tab ends with a **Total** for that shop, so two shops can
+be compared for the whole list (an idea shoppers asked for on OzBargain and in
+apps like GroceryFlow). For Coles and Woolworths the InfoTip adds that new
+specials start every Wednesday, which is when both chains change their weekly
+catalogue.
+
 The logic is pure and tested in `src/lib/shoppingList.ts`. It uses the product
 list the dashboard already has: no new query. The dialog is loaded on first
 open (`next/dynamic`), keeps one size on both tabs, and the open view is kept
