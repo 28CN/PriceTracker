@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation';
 import CategoryList from '@/components/CategoryList';
 import DashboardHero from '@/components/DashboardHero';
 import { getViewer, normalizeUsername } from '@/lib/auth';
-import { sortProducts } from '@/lib/productSort';
+import { groupProductsByCategory } from '@/lib/productSort';
 import { isPublicSlugShape } from '@/lib/publicSlug';
 import { fetchProducts } from '@/lib/queries';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
@@ -67,15 +67,7 @@ export default async function PublicWatchlistPage({ params }: PageProps) {
     console.error('[public watchlist] could not load products:', error);
   }
 
-  const grouped = new Map<string, ProductView[]>();
-  for (const product of products) {
-    const category = product.categoryName || 'Uncategorised';
-    grouped.set(category, [...(grouped.get(category) || []), product]);
-  }
-  const groups = [...grouped.entries()].map(([category, items]) => ({
-    category,
-    products: sortProducts(items)
-  }));
+  const groups = groupProductsByCategory(products);
   const name = profile.display_name || profile.public_slug;
 
   return (

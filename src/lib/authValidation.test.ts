@@ -5,6 +5,7 @@ import {
   getUsernameValidityMessage,
   PASSWORD_LONG_MESSAGE,
   PASSWORD_SHORT_MESSAGE,
+  readCapsLock,
   USERNAME_INVALID_MESSAGE
 } from './authValidation';
 
@@ -50,5 +51,13 @@ describe('getPasswordValidityMessage', () => {
   test('returns empty string for empty value so native required message applies', () => {
     expect(getPasswordValidityMessage('', true)).toBe('');
     expect(getPasswordValidityMessage('', false)).toBe('');
+  });
+});
+
+describe('readCapsLock', () => {
+  test('returns modifier state when supported and false otherwise', () => {
+    expect(readCapsLock({ getModifierState: (key) => key === 'CapsLock' })).toBe(true);
+    expect(readCapsLock({ getModifierState: () => false })).toBe(false);
+    expect(readCapsLock({})).toBe(false);
   });
 });

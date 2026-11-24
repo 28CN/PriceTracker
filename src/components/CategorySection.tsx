@@ -1,29 +1,11 @@
 'use client';
 
 import { ChevronDown, Pin, Sparkles } from 'lucide-react';
-import { useEffect, useRef, useState, type HTMLAttributes } from 'react';
+import { useEffect, useMemo, useRef, useState, type HTMLAttributes } from 'react';
 
 import ProductList from '@/components/ProductList';
-import { hitsTarget } from '@/lib/productSort';
+import { categoryTone, hitsTarget } from '@/lib/productSort';
 import type { ProductView } from '@/lib/types';
-
-const CATEGORY_TONES = [
-  'tone-mint',
-  'tone-sky',
-  'tone-peach',
-  'tone-lilac',
-  'tone-sand',
-  'tone-rose',
-  'tone-teal'
-] as const;
-
-function categoryTone(name: string): string {
-  let hash = 0;
-  for (let i = 0; i < name.length; i += 1) {
-    hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
-  }
-  return CATEGORY_TONES[hash % CATEGORY_TONES.length];
-}
 
 export default function CategorySection({
   category,
@@ -55,7 +37,11 @@ export default function CategorySection({
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const wasPinned = useRef(isPinned);
   const tone = categoryTone(category);
-  const dealCount = products.filter(hitsTarget).length;
+  const dealCount = useMemo(() => products.filter(hitsTarget).length, [products]);
+  const sortedProducts = useMemo(
+    () => [...products].sort((a, b) => Number(hitsTarget(b)) - Number(hitsTarget(a))),
+    [products]
+  );
   const showBody = isOpen && !isReordering;
   // Mount the list on first open, then only hide it, so photos and card
   // state are not thrown away on every collapse.
@@ -66,16 +52,25 @@ export default function CategorySection({
 
   // "/#p-<id>" from search or "This week": open this group, then bring the card into view.
   useEffect(() => {
+    const timers = new Set<number>();
+    function schedule(fn: () => void, ms: number) {
+      const id = window.setTimeout(() => {
+        timers.delete(id);
+        fn();
+      }, ms);
+      timers.add(id);
+    }
     function revealById(id: string | undefined) {
       if (!id || !products.some((product) => product.id === id)) return;
       setIsOpen(true);
-      window.setTimeout(() => {
+      schedule(() => {
         const card = document.getElementById(`p-${id}`);
         if (!card) return;
         const calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         card.scrollIntoView({ behavior: calm ? 'auto' : 'smooth', block: 'center' });
         card.classList.add('is-highlight');
         card.focus({ preventScroll: true });
+        // Not tracked: the highlight must always clear, even after a re-render.
         window.setTimeout(() => card.classList.remove('is-highlight'), 1800);
       }, 350);
     }
@@ -93,6 +88,8 @@ export default function CategorySection({
     return () => {
       window.removeEventListener('hashchange', revealFromHash);
       window.removeEventListener('pt:reveal-product', revealFromEvent);
+      timers.forEach((timerId) => window.clearTimeout(timerId));
+      timers.clear();
     };
   }, [products]);
 
@@ -160,7 +157,7 @@ export default function CategorySection({
         <div className={`category-body${showBody ? ' is-open' : ''}`} inert={!showBody} aria-hidden={!showBody}>
           <div className="category-body-inner">
             <ProductList
-              products={[...products].sort((a, b) => Number(hitsTarget(b)) - Number(hitsTarget(a)))}
+              products={sortedProducts}
               readOnly={readOnly}
               sidePanelActive={sidePanelActive}
               selectedProductId={selectedProductId}

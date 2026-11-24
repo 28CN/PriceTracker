@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation';
 import DashboardWorkspace from '@/components/DashboardWorkspace';
 import type { CategoryLayout } from '@/lib/categoryLayout';
 import type { OverviewResponse } from '@/lib/overview';
-import { sortProducts, type CategoryGroup } from '@/lib/productSort';
+import { groupProductsByCategory } from '@/lib/productSort';
 import type { LinkView, ProductView } from '@/lib/types';
 
 export const metadata: Metadata = {
@@ -331,20 +331,6 @@ const sampleLayout: CategoryLayout = {
   otherOrder: ['Household', 'Pantry', 'Electronics']
 };
 
-function buildGroups(products: ProductView[]): CategoryGroup[] {
-  const grouped = new Map<string, ProductView[]>();
-  for (const product of products) {
-    const key = product.categoryName || 'Uncategorised';
-    const bucket = grouped.get(key);
-    if (bucket) bucket.push(product);
-    else grouped.set(key, [product]);
-  }
-  return [...grouped.entries()].map(([category, items]) => ({
-    category,
-    products: sortProducts(items)
-  }));
-}
-
 export default async function DashboardPreviewPage({
   searchParams
 }: {
@@ -354,7 +340,7 @@ export default async function DashboardPreviewPage({
   if (process.env.VERCEL_ENV === 'production') notFound();
   // ?overview=fetch loads the This week data after paint, like the signed-in page.
   const { overview } = await searchParams;
-  const groups = buildGroups(sampleProducts);
+  const groups = groupProductsByCategory(sampleProducts);
   return (
     <DashboardWorkspace
       products={sampleProducts}

@@ -4,7 +4,6 @@ import { ChevronDown, Pencil } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 
-import EditProductForm from '@/components/EditProductForm';
 import ProductOfferRows from '@/components/ProductOfferRows';
 import ProductVisual from '@/components/ProductVisual';
 import RetailerLogo from '@/components/RetailerLogo';
@@ -14,6 +13,14 @@ import { goalCelebrationKey, prefersReducedMotion } from '@/lib/motion';
 import { productThumb } from '@/lib/productImage';
 import { hasCrawlerSupport, retailerKey } from '@/lib/retailer';
 import type { ProductView } from '@/lib/types';
+
+const EditProductForm = dynamic(() => import('@/components/EditProductForm'), {
+  loading: () => (
+    <div className="edit-panel" aria-busy="true" role="status">
+      <p className="hint">Loading editor…</p>
+    </div>
+  )
+});
 
 const MAX_GOAL_BURSTS_PER_LOAD = 3;
 const GOAL_SPARK_COUNT = 8;
@@ -192,7 +199,7 @@ const ProductCard = memo(function ProductCard({
               />
             </span>
             <span className="product-title-copy">
-              <h2 className="product-name">{product.name}</h2>
+              <span className="product-name">{product.name}</span>
               {product.categoryName ? <span className="chip">{product.categoryName}</span> : null}
               {product.targetPrice !== null ? (
                 <span className={`goal-line${hitsTarget ? ' is-at-goal' : ''}`}>
@@ -260,7 +267,7 @@ const ProductCard = memo(function ProductCard({
   );
 });
 
-export default function ProductList({
+const ProductList = memo(function ProductList({
   products,
   readOnly = false,
   sidePanelActive = false,
@@ -297,4 +304,6 @@ export default function ProductList({
       </div>
     </div>
   );
-}
+});
+
+export default ProductList;

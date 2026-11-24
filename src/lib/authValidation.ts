@@ -28,3 +28,11 @@ export function getPasswordValidityMessage(
   }
   return '';
 }
+
+export function readCapsLock(event: {
+  getModifierState?: (key: 'CapsLock') => boolean;
+}): boolean {
+  return typeof event.getModifierState === 'function'
+    ? event.getModifierState('CapsLock')
+    : false;
+}
