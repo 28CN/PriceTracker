@@ -147,8 +147,32 @@ describe('instant list search uses groups, shops and link words', () => {
   });
 
   it('matches shop names', () => {
+    expect(ids('coles')).toEqual(['power-grab', 'super-rigs']);
+    expect(ids('kmart')).toEqual(['basic-car']);
     expect(ids('rejectshop')).toEqual(['basic-car']);
     expect(ids('toymate')).toEqual(['super-rigs']);
+  });
+
+  it('matches common shop aliases (woolies, bigw, jb, chemist)', () => {
+    expect(ids('woolies')).toEqual(['moving-parts', 'power-grab']);
+    expect(ids('woolies moving')).toEqual(['moving-parts']);
+
+    const aliasItems = [
+      item('bw-item', 'Desk Lamp', 'Home', [['Big W', 'https://www.bigw.com.au/product/desk-lamp/p/1']]),
+      item('jb-item', 'Headphones', 'Audio', [['JB Hi-Fi', 'https://www.jbhifi.com.au/products/headphones']]),
+      item('cw-item', 'Vitamin C', 'Health', [
+        ['Chemist Warehouse', 'https://www.chemistwarehouse.com.au/buy/1/vitamin-c']
+      ])
+    ];
+    const aliasIds = (query: string) =>
+      rankSearchItems(query, aliasItems, trackedSearchCandidate).map((hit) => hit.item.id);
+
+    expect(aliasIds('bigw')).toEqual(['bw-item']);
+    expect(aliasIds('big w')).toEqual(['bw-item']);
+    expect(aliasIds('jb')).toEqual(['jb-item']);
+    expect(aliasIds('jb hi-fi')).toEqual(['jb-item']);
+    expect(aliasIds('jb headphones')).toEqual(['jb-item']);
+    expect(aliasIds('chemist')).toEqual(['cw-item']);
   });
 
   it('ranks a title match above a group-only match', () => {

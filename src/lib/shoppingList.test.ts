@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
-import { isRecentlySold, lowestPriceRows, shopGroups, shopKeyFor, shopNameFor, SHOP_RECENT_DAYS } from './shoppingList';
+import {
+  filterProductsByQuery,
+  isRecentlySold,
+  lowestPriceRows,
+  shopGroups,
+  shopKeyFor,
+  shopNameFor,
+  SHOP_RECENT_DAYS
+} from './shoppingList';
 import type { LinkView, ProductView } from './types';
 
 const NOW = Date.parse('2026-11-24T00:00:00.000Z');
@@ -151,5 +159,33 @@ describe('shopKeyFor', () => {
   it('uses the proper shop name for a known website', () => {
     expect(shopNameFor({ retailer: 'Rejectshop', url: 'https://www.therejectshop.com.au/p/1' })).toBe('The Reject Shop');
     expect(shopNameFor({ retailer: 'Corner Store', url: 'https://corner.example/x' })).toBe('Corner Store');
+  });
+});
+
+describe('filterProductsByQuery', () => {
+  const matchbox: ProductView = {
+    ...product('mb', 'Power Grab', [woolies('mb-w', 3.5, daysAgo(2))]),
+    categoryName: 'Matchbox'
+  };
+  const milk = product('milk', 'Milk 2L', [coles('milk-c', 3.1, daysAgo(1)), woolies('milk-w', 3.1, daysAgo(3))]);
+  const bread = product('bread', 'Bread', [coles('bread-c', 4, daysAgo(1))]);
+  const all = [matchbox, milk, bread];
+
+  it('returns all products in original order when query is empty or whitespace', () => {
+    expect(filterProductsByQuery(all, '').map((p) => p.id)).toEqual(['mb', 'milk', 'bread']);
+    expect(filterProductsByQuery(all, '   ').map((p) => p.id)).toEqual(['mb', 'milk', 'bread']);
+  });
+
+  it('matches typos against product names and groups', () => {
+    expect(filterProductsByQuery(all, 'matchbx').map((p) => p.id)).toEqual(['mb']);
+  });
+
+  it('matches shop names and aliases while preserving original order', () => {
+    expect(filterProductsByQuery(all, 'coles').map((p) => p.id)).toEqual(['milk', 'bread']);
+    expect(filterProductsByQuery(all, 'woolies').map((p) => p.id)).toEqual(['mb', 'milk']);
+  });
+
+  it('returns an empty list when nothing matches', () => {
+    expect(filterProductsByQuery(all, 'nonexistentxyz')).toEqual([]);
   });
 });
