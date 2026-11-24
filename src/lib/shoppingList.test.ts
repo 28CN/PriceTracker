@@ -2,12 +2,16 @@ import { describe, expect, it } from 'vitest';
 
 import {
   filterProductsByQuery,
+  hasWednesdaySpecials,
   isRecentlySold,
+  lowestListText,
   lowestPriceRows,
   shopGroups,
   shopKeyFor,
+  shopListText,
   shopNameFor,
-  SHOP_RECENT_DAYS
+  SHOP_RECENT_DAYS,
+  shopTotal
 } from './shoppingList';
 import type { LinkView, ProductView } from './types';
 
@@ -187,5 +191,51 @@ describe('filterProductsByQuery', () => {
 
   it('returns an empty list when nothing matches', () => {
     expect(filterProductsByQuery(all, 'nonexistentxyz')).toEqual([]);
+  });
+});
+
+describe('sharing text and totals', () => {
+  const money = (value: number) => `$${value.toFixed(2)}`;
+  const day = (iso: string) => iso.slice(0, 10);
+
+  it('adds up a shop list without float noise', () => {
+    const groups = shopGroups(
+      [
+        product('a', 'A', [coles('a', 0.1, daysAgo(1))]),
+        product('b', 'B', [coles('b', 0.2, daysAgo(1))])
+      ],
+      NOW
+    );
+    expect(shopTotal(groups[0].items)).toBe(0.3);
+  });
+
+  it('writes each shop item with its price, old ones marked, and the total', () => {
+    const groups = shopGroups(
+      [product('m', 'Milk', [coles('m', 3.1, daysAgo(1))]), product('b', 'Bread', [coles('b', 4, daysAgo(10))])],
+      NOW
+    );
+    const text = shopListText(groups[0], groups[0].items, money, day);
+    expect(text).toBe(
+      ['Shopping list: Coles', '- Milk: $3.10', `- Bread: $4.00 (last seen ${daysAgo(10).slice(0, 10)})`, 'Total $7.10'].join('\n')
+    );
+  });
+
+  it('writes the lowest prices with every tied shop and missing prices', () => {
+    const rows = lowestPriceRows(
+      [
+        product('m', 'Milk', [coles('c', 3.1, daysAgo(1)), woolies('w', 3.1, daysAgo(1))]),
+        product('z', 'Zinc', [])
+      ],
+      'name'
+    );
+    expect(lowestListText(rows, money, day)).toBe(
+      ['Shopping list: lowest prices', '- Milk: $3.10 at Coles or Woolworths', '- Zinc: no price yet'].join('\n')
+    );
+  });
+
+  it('knows which shops change specials on Wednesday', () => {
+    expect(hasWednesdaySpecials('coles')).toBe(true);
+    expect(hasWednesdaySpecials('woolworths')).toBe(true);
+    expect(hasWednesdaySpecials('kmart')).toBe(false);
   });
 });
