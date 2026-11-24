@@ -4,11 +4,12 @@ import { redirect } from 'next/navigation';
 import type { NextRequest } from 'next/server';
 
 import { cookieFingerprint, inflight } from './inflight';
+import { validatePassword } from './passwordChange';
 import { createAdminSupabaseClient } from './supabase/admin';
 import { createServerSupabaseClient } from './supabase/server';
-import { normalizeUsername, validateUsername } from './username';
+import { normalizeUsername, syntheticAuthEmail, validateUsername } from './username';
 
-export { normalizeUsername, validateUsername };
+export { normalizeUsername, syntheticAuthEmail, validatePassword, validateUsername };
 
 export type Viewer = {
   id: string;
@@ -47,20 +48,6 @@ export async function getApiAuth() {
   return { supabase, userId, isAdmin: adminResult === true };
 }
 
-export function validatePassword(password: unknown): string | null {
-  if (typeof password !== 'string' || password.length < 8) {
-    return 'Use at least 8 characters.';
-  }
-  if (password.length > 72) {
-    return 'Use no more than 72 characters.';
-  }
-  return null;
-}
-
-export function syntheticAuthEmail(username: string): string {
-  return `${username}@users.invalid`;
-}
-
 export function assertSameOrigin(request: NextRequest): boolean {
   const origin = request.headers.get('origin');
   if (!origin) return true;
@@ -69,7 +56,7 @@ export function assertSameOrigin(request: NextRequest): boolean {
 
 export async function consumeAuthRateLimit(
   request: NextRequest,
-  action: 'login' | 'register' | 'recover' | 'demo',
+  action: 'login' | 'register' | 'recover' | 'demo' | 'password',
   identifier: string,
   attemptLimit: number
 ): Promise<boolean> {
