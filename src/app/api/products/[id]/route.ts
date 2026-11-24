@@ -50,10 +50,10 @@ export async function PATCH(request: Request, { params }: RouteContext) {
         raw === null || raw === '' ? null : Number(raw);
 
       if (targetPrice !== null && !Number.isFinite(targetPrice)) {
-        return NextResponse.json({ error: 'Target price must be a number.' }, { status: 400 });
+        return NextResponse.json({ error: 'Goal price must be a number.' }, { status: 400 });
       }
       if (targetPrice !== null && targetPrice < 0) {
-        return NextResponse.json({ error: 'Target price cannot be negative.' }, { status: 400 });
+        return NextResponse.json({ error: 'Goal price cannot be negative.' }, { status: 400 });
       }
       patch.target_price = targetPrice;
     }

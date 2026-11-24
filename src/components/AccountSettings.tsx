@@ -2,9 +2,9 @@
 
 import { Camera, CheckCircle2, Eye, EyeOff, LoaderCircle, MoreHorizontal, ShieldCheck, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { FormEvent, KeyboardEvent, useId, useMemo, useRef, useState } from 'react';
+import { FormEvent, useId, useMemo, useRef, useState } from 'react';
 
-import { getPasswordValidityMessage } from '@/lib/authValidation';
+import { getPasswordValidityMessage, readCapsLock } from '@/lib/authValidation';
 import { validatePasswordChange } from '@/lib/passwordChange';
 import { validatePublicSlug } from '@/lib/publicSlug';
 import { createBrowserSupabaseClient } from '@/lib/supabase/browser';
@@ -12,12 +12,6 @@ import { EMAIL_DISABLED_MESSAGE, isEmailUiEnabled } from '@/lib/emailFeature';
 import InfoTip from './InfoTip';
 
 const EMAIL_UI_ENABLED = isEmailUiEnabled();
-
-function readCapsLock(event: KeyboardEvent<HTMLInputElement>): boolean {
-  return typeof event.getModifierState === 'function'
-    ? event.getModifierState('CapsLock')
-    : false;
-}
 
 type FieldName =
   | 'displayName'
@@ -89,6 +83,7 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
   const currentPasswordId = useId();
   const newPasswordId = useId();
   const confirmPasswordId = useId();
+  const phoneLabelId = useId();
   const [securityMessage, setSecurityMessage] =
     useState<{ type: 'ok' | 'error'; text: string } | null>(null);
   const [deleteMessage, setDeleteMessage] = useState<string | null>(null);
@@ -342,7 +337,7 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
                   initial.username.slice(0, 1).toUpperCase()
                 )}
               </span>
-              <span><Camera size={15} /> {uploading ? 'Uploading…' : 'Change photo'}</span>
+              <span><Camera size={15} aria-hidden="true" /> {uploading ? 'Uploading…' : 'Change photo'}</span>
             </label>
           </div>
 
@@ -388,7 +383,7 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
               <h2>Recovery and alerts</h2>
             </div>
             {initial.contactEmailVerified ? (
-              <span className="verified-badge"><CheckCircle2 size={14} /> Verified</span>
+              <span className="verified-badge"><CheckCircle2 size={14} aria-hidden="true" /> Verified</span>
             ) : null}
           </div>
           <div className="settings-grid">
@@ -414,10 +409,10 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
                 </small>
               )}
             </label>
-            <label className="field" ref={setFieldRef('phone')}>
-              <span>Mobile number</span>
+            <div className="field" ref={setFieldRef('phone')}>
+              <span id={phoneLabelId}>Mobile number</span>
               <span className="phone-field">
-                <select name="phoneCountry" defaultValue={initial.phoneCountry || 'AU'}>
+                <select name="phoneCountry" defaultValue={initial.phoneCountry || 'AU'} aria-label="Country code">
                   <option value="AU">AU +61</option>
                   <option value="NZ">NZ +64</option>
                   <option value="GB">UK +44</option>
@@ -429,6 +424,7 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
                   name="phone"
                   type="tel"
                   defaultValue={initial.phone}
+                  aria-labelledby={phoneLabelId}
                   aria-invalid={Boolean(fieldErrors.phone)}
                 />
               </span>
@@ -437,7 +433,7 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
               ) : (
                 <small>SMS alerts are not enabled yet.</small>
               )}
-            </label>
+            </div>
           </div>
         </section>
 
@@ -496,7 +492,7 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
           {!EMAIL_UI_ENABLED ? <p className="email-disabled-note" role="note">{EMAIL_DISABLED_MESSAGE}</p> : null}
           <label className="choice-row">
             <span>
-              <strong>Target price alerts</strong>
+              <strong>Goal price alerts</strong>
               <small>Send when a tracked price reaches your target or less.</small>
             </span>
             <input
@@ -530,13 +526,13 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
               disabled={!EMAIL_UI_ENABLED}
             />
           </label>
-          <label className="choice-row">
+          <div className="choice-row">
             <span>
               <strong>Weekly alert</strong>
               <small>Sent once after the first price check completed on or after Wednesday.</small>
             </span>
             <span className="preference-value">Wednesday</span>
-          </label>
+          </div>
         </section>
 
         <Message value={message} />
@@ -546,9 +542,9 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
       </form>
 
       <details className="account-other-options">
-        <summary><MoreHorizontal size={18} /> Other options</summary>
+        <summary><MoreHorizontal size={18} aria-hidden="true" /> Other options</summary>
       <section className="settings-section" id="security">
-        <span className="eyebrow"><ShieldCheck size={14} /> Security</span>
+        <span className="eyebrow"><ShieldCheck size={14} aria-hidden="true" /> Security</span>
         <h2>Change password</h2>
         <form className="security-form" onSubmit={changePassword}>
           <div className="field security-current-password">
@@ -576,7 +572,7 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
                 aria-pressed={showCurrentPassword}
                 title={showCurrentPassword ? 'Hide current password' : 'Show current password'}
               >
-                {showCurrentPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+                {showCurrentPassword ? <EyeOff size={17} aria-hidden="true" /> : <Eye size={17} aria-hidden="true" />}
               </button>
             </span>
             <small className="caps-lock-hint" aria-live="polite">
@@ -612,7 +608,7 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
                 aria-pressed={showNewPassword}
                 title={showNewPassword ? 'Hide password' : 'Show password'}
               >
-                {showNewPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+                {showNewPassword ? <EyeOff size={17} aria-hidden="true" /> : <Eye size={17} aria-hidden="true" />}
               </button>
             </span>
             <small className="caps-lock-hint" aria-live="polite">
@@ -644,7 +640,7 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
                 aria-pressed={showNewPassword}
                 title={showNewPassword ? 'Hide password' : 'Show password'}
               >
-                {showNewPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+                {showNewPassword ? <EyeOff size={17} aria-hidden="true" /> : <Eye size={17} aria-hidden="true" />}
               </button>
             </span>
           </div>
@@ -652,7 +648,7 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
             <Message value={securityMessage} />
             <button type="submit" className="button secondary" disabled={changingPassword}>
               {changingPassword ? (
-                <><LoaderCircle className="spin" size={16} /> Updating password…</>
+                <><LoaderCircle className="spin" size={16} aria-hidden="true" /> Updating password…</>
               ) : (
                 'Change password'
               )}
@@ -662,7 +658,7 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
       </section>
 
       <section className="settings-section danger-zone">
-        <span className="eyebrow"><Trash2 size={14} /> Danger zone</span>
+        <span className="eyebrow"><Trash2 size={14} aria-hidden="true" /> Danger zone</span>
         <h2>Data and account</h2>
         <p>These actions are permanent.</p>
         <div className="data-action-list">
@@ -695,7 +691,7 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
               <span>Password</span>
               <input name="password" type="password" autoComplete="current-password" required />
             </label>
-            {deleteMessage ? <div className="form-error">{deleteMessage}</div> : null}
+            {deleteMessage ? <div className="form-error" role="alert">{deleteMessage}</div> : null}
             <button type="submit" className="button danger-button">Permanently delete account</button>
           </form>
         </details>

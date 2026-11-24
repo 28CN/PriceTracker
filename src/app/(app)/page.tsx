@@ -4,7 +4,7 @@ import DashboardWorkspace from '@/components/DashboardWorkspace';
 import GuestLanding from '@/components/GuestLanding';
 import { getViewer } from '@/lib/auth';
 import { fetchCategoryLayout, type CategoryLayout } from '@/lib/categoryLayout';
-import { sortProducts } from '@/lib/productSort';
+import { groupProductsByCategory } from '@/lib/productSort';
 import { fetchProducts } from '@/lib/queries';
 import { rememberServerTiming } from '@/lib/installServerTiming';
 import { serverTimingHeader } from '@/lib/serverTiming';
@@ -72,21 +72,7 @@ export default async function HomePage() {
   );
   if (!viewer) return <GuestLanding />;
 
-  const grouped = new Map<string, ProductView[]>();
-  for (const product of products) {
-    const key = product.categoryName || 'Uncategorised';
-    const bucket = grouped.get(key);
-    if (bucket) {
-      bucket.push(product);
-    } else {
-      grouped.set(key, [product]);
-    }
-  }
-
-  const groups = [...grouped.entries()].map(([category, items]) => ({
-    category,
-    products: sortProducts(items)
-  }));
+  const groups = groupProductsByCategory(products);
 
   return (
     <DashboardWorkspace

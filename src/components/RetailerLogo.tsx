@@ -17,7 +17,7 @@ export default function RetailerLogo({
 
   if (!source || failed) {
     return (
-      <span className="retailer-logo fallback" aria-hidden>
+      <span className="retailer-logo fallback" aria-hidden="true">
         {initial}
       </span>
     );

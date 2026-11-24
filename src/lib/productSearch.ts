@@ -40,7 +40,6 @@ export type QuotaResult = 'ok' | 'user_day' | 'user_month' | 'site_day' | 'error
 
 export const LIMITS = { userDay: 5, userMonth: 30, siteDay: 8 };
 export const CACHE_HOURS = 24;
-export const MIN_TRACKED_MATCHES = 3;
 
 const SERPAPI = 'https://serpapi.com/search.json';
 const AU_PARAMS = { gl: 'au', hl: 'en', google_domain: 'google.com.au', location: 'Australia' };

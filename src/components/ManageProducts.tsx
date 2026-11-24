@@ -61,6 +61,7 @@ export default function ManageProducts({ products }: { products: ProductView[] }
         <button
           type="button"
           className={`chip-button${filter === 'all' ? ' is-active' : ''}`}
+          aria-pressed={filter === 'all'}
           onClick={() => setFilter('all')}
         >
           All ({products.length})
@@ -68,6 +69,7 @@ export default function ManageProducts({ products }: { products: ProductView[] }
         <button
           type="button"
           className={`chip-button${filter === 'issues' ? ' is-active' : ''}`}
+          aria-pressed={filter === 'issues'}
           onClick={() => setFilter('issues')}
         >
           <TriangleAlert size={14} aria-hidden="true" />
@@ -100,7 +102,7 @@ export default function ManageProducts({ products }: { products: ProductView[] }
                     <div className="card-head-row">
                       <div className="row" style={{ flex: 1, minWidth: 0 }}>
                         <div className="row-main">
-                          <h3 className="product-name">{product.name}</h3>
+                          <h2 className="product-name">{product.name}</h2>
                           {productNeedsAttention(product) ? (
                             <span className="chip warn">Needs attention</span>
                           ) : null}
@@ -108,8 +110,8 @@ export default function ManageProducts({ products }: { products: ProductView[] }
                         <div className="price-block">
                           <span className="price-note">
                             {product.targetPrice === null
-                              ? 'No target'
-                              : `Target ${formatMoney(product.targetPrice)}`}
+                              ? 'No goal'
+                              : `Goal ${formatMoney(product.targetPrice)}`}
                           </span>
                         </div>
                       </div>
@@ -122,7 +124,11 @@ export default function ManageProducts({ products }: { products: ProductView[] }
                           )
                         }
                       >
-                        {editingId === product.id ? <X size={13} /> : <Pencil size={13} />}
+                        {editingId === product.id ? (
+                          <X size={13} aria-hidden="true" />
+                        ) : (
+                          <Pencil size={13} aria-hidden="true" />
+                        )}
                         {editingId === product.id ? 'Close' : 'Edit'}
                       </button>
                     </div>

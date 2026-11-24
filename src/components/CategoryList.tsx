@@ -5,6 +5,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEven
 import CategorySection from '@/components/CategorySection';
 import type { CategoryLayout } from '@/lib/categoryLayout';
 import {
+  categoryTone,
   moveItem,
   sortCategoryGroups,
   syncOrderList,
@@ -87,23 +88,6 @@ function captureRects(root: HTMLElement | null): Map<string, DOMRect> {
     }
   });
   return map;
-}
-
-function toneClassFor(name: string): string {
-  const tones = [
-    'tone-mint',
-    'tone-sky',
-    'tone-peach',
-    'tone-lilac',
-    'tone-sand',
-    'tone-rose',
-    'tone-teal'
-  ];
-  let hash = 0;
-  for (let i = 0; i < name.length; i += 1) {
-    hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
-  }
-  return tones[hash % tones.length];
 }
 
 export default function CategoryList({
@@ -386,6 +370,10 @@ export default function CategoryList({
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);
       window.removeEventListener('pointercancel', onPointerUp);
+      if (dragRef.current?.timer != null) {
+        window.clearTimeout(dragRef.current.timer);
+        dragRef.current.timer = null;
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- window listeners are bound once per layout mode on purpose; adding the handler would re-bind them on every render
   }, [useColumns]);
@@ -442,7 +430,7 @@ export default function CategoryList({
             offsetY,
             x,
             y,
-            toneClass: toneClassFor(category)
+            toneClass: categoryTone(category)
           });
         });
       });
@@ -482,7 +470,11 @@ export default function CategoryList({
         isDragging={dragging === group.category}
         readOnly={readOnly}
         sidePanelActive={sidePanelActive}
-        selectedProductId={selectedProductId}
+        selectedProductId={
+          selectedProductId && group.products.some((product) => product.id === selectedProductId)
+            ? selectedProductId
+            : null
+        }
         onToggleSelect={onToggleSelect}
         dragHandleProps={readOnly ? undefined : {
           onPointerDown: (event) => startPress(group.category, zone, event),

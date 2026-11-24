@@ -19,7 +19,8 @@ function EntryList({
   tone,
   entries,
   productMap,
-  onNavigate
+  onNavigate,
+  headingTag: Heading = 'h3'
 }: {
   title: string;
   icon: React.ReactNode;
@@ -27,15 +28,16 @@ function EntryList({
   entries: (OverviewEntry & { at?: string })[];
   productMap: Map<string, ProductView>;
   onNavigate?: (productId: string) => void;
+  headingTag?: 'h2' | 'h3';
 }) {
   if (entries.length === 0) return null;
 
   return (
     <div className={`tw-group tw-group-${tone}`}>
-      <h3 className="tw-group-title">
+      <Heading className="tw-group-title">
         {icon}
         <span>{title}</span>
-      </h3>
+      </Heading>
       <ul className="tw-list">
         {entries.map((entry) => {
           const prod = productMap.get(entry.productId);
@@ -125,6 +127,7 @@ export default function ThisWeekPanel({
             entries={overview.biggestDrops}
             productMap={productMap}
             onNavigate={onNavigateProduct}
+            headingTag={collapsible ? 'h2' : 'h3'}
           />
           <EntryList
             title="Newly below goal"
@@ -133,6 +136,7 @@ export default function ThisWeekPanel({
             entries={overview.newlyBelowGoal}
             productMap={productMap}
             onNavigate={onNavigateProduct}
+            headingTag={collapsible ? 'h2' : 'h3'}
           />
           <EntryList
             title="Usual price went up"
@@ -141,6 +145,7 @@ export default function ThisWeekPanel({
             entries={overview.usualPriceRises}
             productMap={productMap}
             onNavigate={onNavigateProduct}
+            headingTag={collapsible ? 'h2' : 'h3'}
           />
         </div>
       ) : null}

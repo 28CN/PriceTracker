@@ -53,10 +53,3 @@ export function getReadClient(): SupabaseClient {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY || requireEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY');
   return createClient(url, key, clientOptions);
 }
-
-// Write client for route handlers only. The secret key bypasses RLS, so this
-// must never be imported into a component that runs in the browser.
-export function getWriteClient(): SupabaseClient {
-  const url = process.env.SUPABASE_URL || requireEnv('NEXT_PUBLIC_SUPABASE_URL');
-  return createClient(url, requireEnv('SUPABASE_SERVICE_ROLE_KEY'), clientOptions);
-}

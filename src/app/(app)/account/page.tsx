@@ -11,7 +11,7 @@ import { redirect } from 'next/navigation';
 function describeLatestAlert(
   alert: { status: string; sent_at: string | null; created_at: string } | null
 ): string {
-  if (!alert) return 'No target-price email queued yet.';
+  if (!alert) return 'No goal price email queued yet.';
   if (alert.status === 'sent' && alert.sent_at) {
     const sent = new Date(alert.sent_at);
     const when = Number.isNaN(sent.getTime())
@@ -121,7 +121,7 @@ export default async function AccountPage() {
       </header>
       <div className="account-settings">
         <section className="settings-section alert-status">
-          <h2>Target price email</h2>
+          <h2>Goal price email</h2>
           <ul>
             <li>
               Contact email:{' '}

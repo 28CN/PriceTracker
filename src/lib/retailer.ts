@@ -124,10 +124,6 @@ function resolveDomain(retailerOrUrl: string): string | null {
   return findRetailer(domain)?.domain ?? domain;
 }
 
-export function isKnownRetailer(retailerOrUrl: string): boolean {
-  return hasCrawlerSupport(retailerOrUrl);
-}
-
 /** True when this shop has a dedicated crawler path, not merely a logo. */
 export function hasCrawlerSupport(retailerOrUrl: string): boolean {
   const raw = retailerOrUrl.trim();
@@ -187,11 +183,6 @@ export function retailerLogoSource(retailerOrUrl: string): RetailerLogoSource | 
     src: `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64`,
     local: false
   };
-}
-
-/** Favicon URL for a shop name or product URL. Falls back to a letter chip. */
-export function retailerLogoUrl(retailerOrUrl: string): string | null {
-  return retailerLogoSource(retailerOrUrl)?.src ?? null;
 }
 
 export function isValidHttpUrl(rawUrl: string): boolean {

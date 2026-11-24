@@ -23,6 +23,43 @@ export type CategoryGroup = {
   products: ProductView[];
 };
 
+const CATEGORY_TONES = [
+  'tone-mint',
+  'tone-sky',
+  'tone-peach',
+  'tone-lilac',
+  'tone-sand',
+  'tone-rose',
+  'tone-teal'
+] as const;
+
+/** Deterministic accent tone class for a category name. */
+export function categoryTone(name: string): string {
+  let hash = 0;
+  for (let i = 0; i < name.length; i += 1) {
+    hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+  }
+  return CATEGORY_TONES[hash % CATEGORY_TONES.length];
+}
+
+/** Group products by category (defaulting to 'Uncategorised') with items sorted per group. */
+export function groupProductsByCategory(products: ProductView[]): CategoryGroup[] {
+  const grouped = new Map<string, ProductView[]>();
+  for (const product of products) {
+    const key = product.categoryName || 'Uncategorised';
+    const bucket = grouped.get(key);
+    if (bucket) {
+      bucket.push(product);
+    } else {
+      grouped.set(key, [product]);
+    }
+  }
+  return [...grouped.entries()].map(([category, items]) => ({
+    category,
+    products: sortProducts(items)
+  }));
+}
+
 /** Pinned keep their saved order; others use otherOrder, then deals, then name. */
 export function sortCategoryGroups(
   groups: CategoryGroup[],

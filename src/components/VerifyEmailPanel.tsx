@@ -26,7 +26,7 @@ export default function VerifyEmailPanel({ token }: { token: string }) {
 
   return (
     <section className="auth-shell token-panel">
-      <span className="auth-mark">
+      <span className="auth-mark" aria-hidden="true">
         {state === 'success' ? <CheckCircle2 size={22} /> : <MailCheck size={22} />}
       </span>
       <span className="eyebrow">Email verification</span>
@@ -36,7 +36,7 @@ export default function VerifyEmailPanel({ token }: { token: string }) {
           ? 'You can now enable password recovery and price alert emails.'
           : 'Confirm that you want this address connected to your PriceTracker account.'}
       </p>
-      {state === 'error' ? <div className="form-error">{message}</div> : null}
+      {state === 'error' ? <div className="form-error" role="alert">{message}</div> : null}
       {state === 'success' ? (
         <Link href="/account" className="button auth-submit">Return to account</Link>
       ) : (

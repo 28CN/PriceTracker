@@ -99,7 +99,7 @@ export async function POST(request: Request) {
         : Number(targetPriceRaw);
 
     if (targetPrice !== null && !Number.isFinite(targetPrice)) {
-      return NextResponse.json({ error: 'Target price must be a number.' }, { status: 400 });
+      return NextResponse.json({ error: 'Goal price must be a number.' }, { status: 400 });
     }
 
     const rawImage = (body.imageUrl || '').trim();

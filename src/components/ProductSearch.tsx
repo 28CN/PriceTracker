@@ -1044,17 +1044,19 @@ function TrackPanel({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let live = true;
+    const controller = new AbortController();
     void (async () => {
       const response = await fetch('/api/search/shops', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: hit.id, token: hit.token })
+        body: JSON.stringify({ id: hit.id, token: hit.token }),
+        signal: controller.signal
       }).catch(() => null);
+      if (controller.signal.aborted) return;
       const data = (await response?.json().catch(() => null)) as
         | { offers?: ShopOffer[]; limited?: Limited }
         | null;
-      if (!live) return;
+      if (controller.signal.aborted) return;
       const list = data?.offers || [];
       setOffers(list);
       setLimited(response?.ok ? data?.limited || null : 'error');
@@ -1067,7 +1069,7 @@ function TrackPanel({
       );
     })();
     return () => {
-      live = false;
+      controller.abort();
     };
     // Load once per opened card.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1112,8 +1114,8 @@ function TrackPanel({
 
   if (!offers) {
     return (
-      <div className="track-panel">
-        <LoaderCircle className="spin" size={18} aria-label="Loading shops" />
+      <div className="track-panel" role="status" aria-label="Loading shops">
+        <LoaderCircle className="spin" size={18} aria-hidden="true" />
       </div>
     );
   }
@@ -1148,7 +1150,12 @@ function TrackPanel({
                   </label>
                 ) : (
                   <span className="track-offer-name">
-                    {already ? <Check size={15} aria-label="Already tracking" /> : null}
+                    {already ? (
+                      <>
+                        <Check size={15} aria-hidden="true" />
+                        <span className="sr-only">Already tracking </span>
+                      </>
+                    ) : null}
                     <RetailerLogo retailer={offer.shop} url={offer.url} />
                     <span>{offer.shop}</span>
                   </span>
@@ -1194,7 +1201,7 @@ function TrackPanel({
           </button>
         </div>
       ) : null}
-      {error ? <p className="hint error">{error}</p> : null}
+      {error ? <p className="hint error" role="alert">{error}</p> : null}
     </div>
   );
 }
