@@ -210,6 +210,9 @@ Redeploy after adding them so the new values are picked up.
 - **Manage** is where you create a category, add a product, and paste up to five shop
   links. The shop name is filled in from the URL. You can come back later to add more
   links, pause one, or delete it.
+- **Add from a shop page**: the bookmark button on a computer, Share on Android,
+  or a Shortcut on iPhone. All of them open `/add` with the link filled in. See
+  [`docs/ADD-FROM-SHOPS.md`](docs/ADD-FROM-SHOPS.md).
 - Shops the crawler does not check show the words **Not checked here**, with a link
   to the shop. Unknown shops still go through JSON-LD, Shopify product JSON, and
   generic price CSS. Failures are written to `crawler/pending-retailers.json` so the

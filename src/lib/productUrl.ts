@@ -21,6 +21,7 @@ const LISTING_PREFIXES = [
   '/category/',
   '/categories/',
   '/collections/',
+  '/collection/',
   '/c/',
   '/brands/',
   '/brand/',
