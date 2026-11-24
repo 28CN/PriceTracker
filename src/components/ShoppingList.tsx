@@ -1,7 +1,7 @@
 'use client';
 
-import { ArrowUpRight, X } from 'lucide-react';
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { ArrowUpRight, Search, X } from 'lucide-react';
+import { useDeferredValue, useEffect, useId, useMemo, useRef, useState } from 'react';
 
 import InfoTip from '@/components/InfoTip';
 import ProductVisual from '@/components/ProductVisual';
@@ -9,6 +9,7 @@ import RetailerLogo from '@/components/RetailerLogo';
 import { formatLastSeen, formatMoney } from '@/lib/format';
 import { productThumb } from '@/lib/productImage';
 import {
+  filterProductsByQuery,
   lowestPriceRows,
   SHOP_RECENT_DAYS,
   shopGroups,
@@ -179,6 +180,8 @@ function ShoppingListContent({
   const [tab, setTab] = useState<ShoppingListTab>(initialTab);
   const [sort, setSort] = useState<LowestSort>('deals');
   const [selectedShop, setSelectedShop] = useState<string | null>(initialShop);
+  const [query, setQuery] = useState('');
+  const deferredQuery = useDeferredValue(query);
 
   const lowestTabId = useId();
   const shopTabId = useId();
@@ -186,18 +189,33 @@ function ShoppingListContent({
   const shopPanelId = useId();
   const lowestTabRef = useRef<HTMLButtonElement>(null);
   const shopTabRef = useRef<HTMLButtonElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
-  const rows = useMemo(() => lowestPriceRows(products, sort), [products, sort]);
-  const groups = useMemo(() => shopGroups(products, referenceNow), [products, referenceNow]);
+  const hasQuery = deferredQuery.trim().length > 0;
+  const filteredProducts = useMemo(
+    () => filterProductsByQuery(products, deferredQuery),
+    [products, deferredQuery]
+  );
+
+  const rows = useMemo(() => lowestPriceRows(filteredProducts, sort), [filteredProducts, sort]);
+  const allGroups = useMemo(() => shopGroups(products, referenceNow), [products, referenceNow]);
+  const groups = useMemo(() => {
+    if (!hasQuery) return allGroups;
+    const matchedIds = new Set(filteredProducts.map((product) => product.id));
+    return allGroups.map((group) => ({
+      ...group,
+      items: group.items.filter((item) => matchedIds.has(item.product.id))
+    }));
+  }, [allGroups, filteredProducts, hasQuery]);
 
   const activeGroup = useMemo(() => {
     if (groups.length === 0) return null;
     if (selectedShop) {
       const matched = groups.find((group) => group.key === selectedShop);
-      if (matched) return matched;
+      if (matched && (!hasQuery || matched.items.length > 0)) return matched;
     }
     return groups.find((group) => group.items.length > 0) ?? groups[0];
-  }, [groups, selectedShop]);
+  }, [groups, selectedShop, hasQuery]);
 
   const activeShopKey = activeGroup?.key ?? null;
 
@@ -224,6 +242,42 @@ function ShoppingListContent({
 
       <div className="sl-scroll">
         <div className="sl-sticky">
+          <div className="sl-search">
+            <Search className="sl-search-icon" size={16} aria-hidden="true" />
+            <input
+              ref={searchInputRef}
+              type="search"
+              className="sl-search-input"
+              aria-label="Search the list"
+              placeholder="Search the list"
+              autoComplete="off"
+              spellCheck={false}
+              maxLength={120}
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Escape' && query.length > 0) {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  setQuery('');
+                }
+              }}
+            />
+            {query.length > 0 ? (
+              <button
+                type="button"
+                className="sl-search-clear"
+                aria-label="Clear search"
+                onClick={() => {
+                  setQuery('');
+                  searchInputRef.current?.focus();
+                }}
+              >
+                <X size={15} aria-hidden="true" />
+              </button>
+            ) : null}
+          </div>
+
           <div className="sl-tabs-row">
             <div
               className="sl-tabs"
@@ -297,7 +351,7 @@ function ShoppingListContent({
               <div className="sl-chips" role="group" aria-label="Shops">
                 {groups.map((group) => {
                   const count = group.items.length;
-                  const selected = group.key === activeShopKey;
+                  const selected = count > 0 && group.key === activeShopKey;
                   return (
                     <button
                       key={group.key}
@@ -336,7 +390,7 @@ function ShoppingListContent({
               </ul>
             ) : (
               <div className="sl-empty">
-                <p>Nothing tracked yet</p>
+                <p>{hasQuery ? 'No matches' : 'Nothing tracked yet'}</p>
               </div>
             )}
           </div>
@@ -359,7 +413,11 @@ function ShoppingListContent({
               </ul>
             ) : (
               <div className="sl-empty">
-                <p>Nothing priced here in the last {SHOP_RECENT_DAYS} days</p>
+                <p>
+                  {hasQuery
+                    ? 'No matches'
+                    : `Nothing priced here in the last ${SHOP_RECENT_DAYS} days`}
+                </p>
               </div>
             )}
           </div>
