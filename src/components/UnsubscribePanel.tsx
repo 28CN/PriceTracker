@@ -33,7 +33,7 @@ export default function UnsubscribePanel({ token }: { token: string }) {
       <h1>{state === 'done' ? 'Alerts paused' : 'Stop target price emails?'}</h1>
       <p>
         {state === 'done'
-          ? 'Target price emails are now off. Your watchlist and account are unchanged.'
+          ? 'Goal price emails are now off. Your watchlist and account are unchanged.'
           : 'This only disables target price emails. You can turn them back on from account settings.'}
       </p>
       {state === 'error' ? <div className="form-error" role="alert">{error}</div> : null}

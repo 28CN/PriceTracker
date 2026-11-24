@@ -110,8 +110,8 @@ export default function ManageProducts({ products }: { products: ProductView[] }
                         <div className="price-block">
                           <span className="price-note">
                             {product.targetPrice === null
-                              ? 'No target'
-                              : `Target ${formatMoney(product.targetPrice)}`}
+                              ? 'No goal'
+                              : `Goal ${formatMoney(product.targetPrice)}`}
                           </span>
                         </div>
                       </div>

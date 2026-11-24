@@ -492,7 +492,7 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
           {!EMAIL_UI_ENABLED ? <p className="email-disabled-note" role="note">{EMAIL_DISABLED_MESSAGE}</p> : null}
           <label className="choice-row">
             <span>
-              <strong>Target price alerts</strong>
+              <strong>Goal price alerts</strong>
               <small>Send when a tracked price reaches your target or less.</small>
             </span>
             <input
