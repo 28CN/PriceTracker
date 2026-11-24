@@ -10,26 +10,94 @@ import ProductDetailPanel from '@/components/ProductDetailPanel';
 import ProductSearch from '@/components/ProductSearch';
 import ThisWeekPanel from '@/components/ThisWeekPanel';
 import type { CategoryLayout } from '@/lib/categoryLayout';
+import { prefersReducedMotion } from '@/lib/motion';
 import type { OverviewResponse } from '@/lib/overview';
 import type { CategoryGroup } from '@/lib/productSort';
 import { toTrackedSearchItems } from '@/lib/trackedSearch';
 import type { ProductView } from '@/lib/types';
 
-function runViewTransition(update: () => void) {
+type DetailTransitionMode = 'open' | 'close' | 'switch';
+
+function setCardTransitionNames(productId: string | null, enabled: boolean) {
+  if (!productId || typeof document === 'undefined') return;
+  const card = document.getElementById(`p-${productId}`);
+  if (!card) return;
+  const thumb = card.querySelector<HTMLElement>('.card-thumb-slot');
+  const title = card.querySelector<HTMLElement>('.product-name');
+  if (thumb) thumb.style.viewTransitionName = enabled ? 'pt-product-thumb' : '';
+  if (title) title.style.viewTransitionName = enabled ? 'pt-product-title' : '';
+}
+
+function setPanelTransitionSuppressed(suppressed: boolean) {
+  if (typeof document === 'undefined') return;
+  const thumb = document.querySelector<HTMLElement>('.detail-panel-thumb');
+  const title = document.querySelector<HTMLElement>('.detail-panel-title-copy h2');
+  if (thumb) thumb.style.viewTransitionName = suppressed ? 'none' : '';
+  if (title) title.style.viewTransitionName = suppressed ? 'none' : '';
+}
+
+let activeVtCardId: string | null = null;
+let vtSequence = 0;
+
+function runViewTransition(
+  update: () => void,
+  options?: { mode: DetailTransitionMode; productId: string; enabled: boolean }
+) {
   if (typeof window === 'undefined' || typeof document === 'undefined') {
     update();
     return;
   }
-  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const doc = document as Document & {
     startViewTransition?: (cb: () => void) => { finished: Promise<void> };
   };
-  if (reduced || typeof doc.startViewTransition !== 'function') {
+  if (
+    prefersReducedMotion() ||
+    (options && !options.enabled) ||
+    typeof doc.startViewTransition !== 'function'
+  ) {
+    setCardTransitionNames(activeVtCardId, false);
+    setPanelTransitionSuppressed(false);
+    activeVtCardId = null;
     update();
     return;
   }
-  doc.startViewTransition(() => {
-    flushSync(update);
+
+  setCardTransitionNames(activeVtCardId, false);
+  setPanelTransitionSuppressed(false);
+
+  const seq = ++vtSequence;
+  const productId = options?.productId ?? null;
+  const mode = options?.mode ?? null;
+  activeVtCardId = productId;
+
+  if (mode === 'open' && productId) {
+    setCardTransitionNames(productId, true);
+  } else if (mode === 'switch' && productId) {
+    setPanelTransitionSuppressed(true);
+    setCardTransitionNames(productId, true);
+  }
+
+  const transition = doc.startViewTransition(() => {
+    if (mode === 'open' && productId) {
+      setCardTransitionNames(productId, false);
+      flushSync(update);
+    } else if (mode === 'switch' && productId) {
+      setCardTransitionNames(productId, false);
+      setPanelTransitionSuppressed(false);
+      flushSync(update);
+    } else if (mode === 'close' && productId) {
+      flushSync(update);
+      setCardTransitionNames(productId, true);
+    } else {
+      flushSync(update);
+    }
+  });
+
+  transition?.finished?.finally(() => {
+    if (vtSequence !== seq) return;
+    setCardTransitionNames(productId, false);
+    setPanelTransitionSuppressed(false);
+    activeVtCardId = null;
   });
 }
 
@@ -57,10 +125,12 @@ export default function DashboardWorkspace({
   const [isWide, setIsWide] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const lastTriggerRef = useRef<HTMLElement | null>(null);
-  // Read through a ref so the select handler stays the same between renders
+  // Read through refs so the select handler stays the same between renders
   // and the memoised cards do not all re-render when one is picked.
   const selectedIdRef = useRef<string | null>(null);
   selectedIdRef.current = selectedProductId;
+  const isWideRef = useRef(false);
+  isWideRef.current = isWide;
 
   useEffect(() => {
     const media = window.matchMedia('(min-width: 1200px)');
@@ -110,9 +180,12 @@ export default function DashboardWorkspace({
 
   const closeDetail = useCallback(() => {
     const closingId = selectedIdRef.current;
-    runViewTransition(() => {
-      setSelectedProductId(null);
-    });
+    runViewTransition(
+      () => {
+        setSelectedProductId(null);
+      },
+      closingId ? { mode: 'close', productId: closingId, enabled: isWideRef.current } : undefined
+    );
     window.requestAnimationFrame(() => {
       const target =
         lastTriggerRef.current && lastTriggerRef.current.isConnected
@@ -131,10 +204,14 @@ export default function DashboardWorkspace({
         closeDetail();
         return;
       }
+      const mode: DetailTransitionMode = selectedIdRef.current ? 'switch' : 'open';
       lastTriggerRef.current = triggerEl;
-      runViewTransition(() => {
-        setSelectedProductId(productId);
-      });
+      runViewTransition(
+        () => {
+          setSelectedProductId(productId);
+        },
+        { mode, productId, enabled: isWideRef.current }
+      );
     },
     [closeDetail]
   );

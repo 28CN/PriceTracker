@@ -1,11 +1,12 @@
 'use client';
 
 import InfoTip from './InfoTip';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 
 import type { PriceInsightResponse, UsualPriceStep } from '@/lib/priceInsightTypes';
 import { coverageText, lineEnd, mergePeriods, sydneyDate, type ChartPeriod } from '@/lib/chartPeriods';
 import { formatLastSeen, formatMoney } from '@/lib/format';
+import { prefersReducedMotion } from '@/lib/motion';
 import type { PricePoint, Verdict } from '@/lib/priceInsight';
 
 const W = 560;
@@ -85,6 +86,12 @@ function usualStepPath(
 
 export default function PriceChart({ productId, days = 180 }: { productId: string; days?: number }) {
   const [state, setState] = useState<State>({ status: 'loading' });
+  const [revealDone, setRevealDone] = useState(false);
+  const clipId = `pc-reveal-${useId().replace(/:/g, '')}`;
+
+  useEffect(() => {
+    if (prefersReducedMotion()) setRevealDone(true);
+  }, []);
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -262,6 +269,16 @@ export default function PriceChart({ productId, days = 180 }: { productId: strin
                 <pattern id={`pc-hatch-${productId}`} width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
                   <line x1="0" y1="0" x2="0" y2="6" className="pc-hatch-line" />
                 </pattern>
+                <clipPath id={clipId}>
+                  <rect
+                    x={0}
+                    y={0}
+                    width={W}
+                    height={H}
+                    className={revealDone ? undefined : 'pc-reveal-rect'}
+                    onAnimationEnd={() => setRevealDone(true)}
+                  />
+                </clipPath>
               </defs>
               {periodGeo.ticks.map((t) => (
                 <line key={t} x1={PAD.left} x2={W - PAD.right} y1={periodGeo.y(t)} y2={periodGeo.y(t)} className="pc-grid" />
@@ -287,23 +304,25 @@ export default function PriceChart({ productId, days = 180 }: { productId: strin
                   <line x1={PAD.left} x2={W - PAD.right} y1={periodGeo.y(product.targetPrice)} y2={periodGeo.y(product.targetPrice)} />
                 </g>
               ) : null}
-              {periodGeo.usualPath ? <path d={periodGeo.usualPath} className="pc-usual" /> : null}
-              {periodGeo.dashed ? <path d={periodGeo.dashed} className="pc-step pc-step-gap" /> : null}
-              <path d={periodGeo.solid} className="pc-step" />
-              {periodGeo.periods.map((p) =>
-                p.minPrice === null ? null : (
-                  <line
-                    key={p.start}
-                    className={p === periodGeo.lowest ? 'pc-period is-lowest' : 'pc-period'}
-                    x1={periodGeo.x(p.startMs) + 1.5}
-                    x2={periodGeo.x(p.endMs) - 1.5}
-                    y1={periodGeo.y(p.minPrice)}
-                    y2={periodGeo.y(p.minPrice)}
-                  >
-                    <title>{`${sydneyDate(p.start)} – ${sydneyDate(p.endMs - 1)}: lowest ${formatMoney(p.minPrice)}`}</title>
-                  </line>
-                )
-              )}
+              <g clipPath={`url(#${clipId})`}>
+                {periodGeo.usualPath ? <path d={periodGeo.usualPath} className="pc-usual" /> : null}
+                {periodGeo.dashed ? <path d={periodGeo.dashed} className="pc-step pc-step-gap" /> : null}
+                <path d={periodGeo.solid} className="pc-step" />
+                {periodGeo.periods.map((p) =>
+                  p.minPrice === null ? null : (
+                    <line
+                      key={p.start}
+                      className={p === periodGeo.lowest ? 'pc-period is-lowest' : 'pc-period'}
+                      x1={periodGeo.x(p.startMs) + 1.5}
+                      x2={periodGeo.x(p.endMs) - 1.5}
+                      y1={periodGeo.y(p.minPrice)}
+                      y2={periodGeo.y(p.minPrice)}
+                    >
+                      <title>{`${sydneyDate(p.start)} – ${sydneyDate(p.endMs - 1)}: lowest ${formatMoney(p.minPrice)}`}</title>
+                    </line>
+                  )
+                )}
+              </g>
             </svg>
             {periodGeo.ticks.map((t) => (
               <span key={t} className="pc-tick" style={{ top: `${(periodGeo.y(t) / H) * 100}%` }} aria-hidden="true">
@@ -360,6 +379,16 @@ export default function PriceChart({ productId, days = 180 }: { productId: strin
               <stop offset="0%" stopColor="var(--brand)" stopOpacity="0.22" />
               <stop offset="100%" stopColor="var(--brand)" stopOpacity="0" />
             </linearGradient>
+            <clipPath id={clipId}>
+              <rect
+                x={0}
+                y={0}
+                width={W}
+                height={H}
+                className={revealDone ? undefined : 'pc-reveal-rect'}
+                onAnimationEnd={() => setRevealDone(true)}
+              />
+            </clipPath>
           </defs>
           {geo.ticks.map((t) => (
             <line key={t} x1={PAD.left} x2={W - PAD.right} y1={geo.y(t)} y2={geo.y(t)} className="pc-grid" />
@@ -370,21 +399,23 @@ export default function PriceChart({ productId, days = 180 }: { productId: strin
               <line x1={PAD.left} x2={W - PAD.right} y1={geo.y(product.targetPrice)} y2={geo.y(product.targetPrice)} />
             </g>
           ) : null}
-          {geo.usualPath ? <path d={geo.usualPath} className="pc-usual" /> : null}
-          <path d={geo.area} fill={`url(#pc-fill-${productId})`} />
-          {geo.segments.map((seg, i) => (
-            <path key={i} d={seg.d} className={seg.gap ? 'pc-line pc-gap' : 'pc-line'} />
-          ))}
-          {geo.points.map((p) => (
-            <circle key={p.at} className="pc-dot" cx={geo.x(Date.parse(p.at))} cy={geo.y(p.price)} r={1.8} />
-          ))}
-          {geo.atl ? (
-            <g className="pc-atl">
-              <circle cx={geo.x(Date.parse(geo.atl.at))} cy={geo.y(geo.atl.price)} r={4} />
-              <title>All-time low {formatMoney(geo.atl.price)}</title>
-            </g>
-          ) : null}
-          <circle className="pc-now" cx={geo.x(Date.parse(geo.last.at))} cy={geo.y(geo.last.price)} r={3.5} />
+          <g clipPath={`url(#${clipId})`}>
+            {geo.usualPath ? <path d={geo.usualPath} className="pc-usual" /> : null}
+            <path d={geo.area} fill={`url(#pc-fill-${productId})`} />
+            {geo.segments.map((seg, i) => (
+              <path key={i} d={seg.d} className={seg.gap ? 'pc-line pc-gap' : 'pc-line'} />
+            ))}
+            {geo.points.map((p) => (
+              <circle key={p.at} className="pc-dot" cx={geo.x(Date.parse(p.at))} cy={geo.y(p.price)} r={1.8} />
+            ))}
+            {geo.atl ? (
+              <g className="pc-atl">
+                <circle cx={geo.x(Date.parse(geo.atl.at))} cy={geo.y(geo.atl.price)} r={4} />
+                <title>All-time low {formatMoney(geo.atl.price)}</title>
+              </g>
+            ) : null}
+            <circle className="pc-now" cx={geo.x(Date.parse(geo.last.at))} cy={geo.y(geo.last.price)} r={3.5} />
+          </g>
         </svg>
         {geo.ticks.map((t) => (
           <span key={t} className="pc-tick" style={{ top: `${(geo.y(t) / H) * 100}%` }} aria-hidden="true">

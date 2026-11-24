@@ -2,7 +2,7 @@
 
 import { ChevronDown, Pencil } from 'lucide-react';
 import dynamic from 'next/dynamic';
-import { memo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 
 import EditProductForm from '@/components/EditProductForm';
 import ProductOfferRows from '@/components/ProductOfferRows';
@@ -10,9 +10,29 @@ import ProductVisual from '@/components/ProductVisual';
 import RetailerLogo from '@/components/RetailerLogo';
 import { resolveCardPrice, shopGapLabel } from '@/lib/cardState';
 import { formatCheckedAt, formatLastSeen, formatMoney, latestTimestamp } from '@/lib/format';
+import { goalCelebrationKey, prefersReducedMotion } from '@/lib/motion';
 import { productThumb } from '@/lib/productImage';
 import { hasCrawlerSupport, retailerKey } from '@/lib/retailer';
 import type { ProductView } from '@/lib/types';
+
+const MAX_GOAL_BURSTS_PER_LOAD = 3;
+const GOAL_SPARK_COUNT = 8;
+let goalBurstsThisLoad = 0;
+
+function GoalBurst({ onDone }: { onDone: () => void }) {
+  useEffect(() => {
+    const id = window.setTimeout(onDone, 640);
+    return () => window.clearTimeout(id);
+  }, [onDone]);
+
+  return (
+    <span className="goal-burst" aria-hidden="true">
+      {Array.from({ length: GOAL_SPARK_COUNT }, (_, idx) => (
+        <span key={idx} className={`goal-spark goal-spark-${idx + 1}`} />
+      ))}
+    </span>
+  );
+}
 
 const PriceChart = dynamic(() => import('@/components/PriceChart'), {
   loading: () => (
@@ -60,7 +80,10 @@ const ProductCard = memo(function ProductCard({
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [showGoalBurst, setShowGoalBurst] = useState(false);
   const openBtnRef = useRef<HTMLButtonElement>(null);
+  const goalRef = useRef<HTMLSpanElement>(null);
+  const handleGoalBurstDone = useCallback(() => setShowGoalBurst(false), []);
 
   const activeLinks = product.links.filter((link) => link.isActive);
   const cardPrice = resolveCardPrice({
@@ -73,6 +96,41 @@ const ProductCard = memo(function ProductCard({
     product.targetPrice !== null &&
     lowestFreshPrice !== null &&
     lowestFreshPrice <= product.targetPrice;
+
+  useEffect(() => {
+    if (!hitsTarget || lowestFreshPrice === null) return;
+    if (prefersReducedMotion()) return;
+    if (goalBurstsThisLoad >= MAX_GOAL_BURSTS_PER_LOAD) return;
+    const el = goalRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+
+    const storageKey = goalCelebrationKey(product.id, lowestFreshPrice);
+    try {
+      if (window.sessionStorage.getItem(storageKey) === '1') return;
+    } catch {
+      // Ignore restricted sessionStorage.
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+        observer.disconnect();
+        if (prefersReducedMotion() || goalBurstsThisLoad >= MAX_GOAL_BURSTS_PER_LOAD) return;
+        try {
+          if (window.sessionStorage.getItem(storageKey) === '1') return;
+          window.sessionStorage.setItem(storageKey, '1');
+        } catch {
+          // Proceed even when storage is unavailable.
+        }
+        goalBurstsThisLoad += 1;
+        setShowGoalBurst(true);
+      },
+      { threshold: 0.25 }
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hitsTarget, lowestFreshPrice, product.id]);
   const shopGap = shopGapLabel(freshOffers, formatMoney);
   const headlineLink = allUnavailable
     ? activeLinks.length === 1
@@ -125,18 +183,23 @@ const ProductCard = memo(function ProductCard({
               }
             }}
           >
-            <ProductVisual
-              key={thumb?.proxied || product.id}
-              source={thumb}
-              name={product.name}
-              category={product.categoryName}
-            />
+            <span className="card-thumb-slot">
+              <ProductVisual
+                key={thumb?.proxied || product.id}
+                source={thumb}
+                name={product.name}
+                category={product.categoryName}
+              />
+            </span>
             <span className="product-title-copy">
               <h2 className="product-name">{product.name}</h2>
               {product.categoryName ? <span className="chip">{product.categoryName}</span> : null}
               {product.targetPrice !== null ? (
                 <span className={`goal-line${hitsTarget ? ' is-at-goal' : ''}`}>
-                  {hitsTarget ? 'Below goal' : 'Goal'} {formatMoney(product.targetPrice)}
+                  <span ref={goalRef} className="goal-line-text">
+                    {hitsTarget ? 'Below goal' : 'Goal'} {formatMoney(product.targetPrice)}
+                    {showGoalBurst ? <GoalBurst onDone={handleGoalBurstDone} /> : null}
+                  </span>
                 </span>
               ) : null}
             </span>
