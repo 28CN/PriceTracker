@@ -26,6 +26,7 @@ All work lands on `main` through squash-merged pull requests.
 | #26 to #31 | Minimal UI copy, card and chart refresh, search and track, motion polish. |
 | #32 | Card price alignment, shorter landing, one query for latest prices, functions pinned to `hnd1`. |
 | #33 | Stale prices shown muted with `Last seen`, per-shop usual price that follows lasting rises, desktop dashboard (summary strip, This week panel, side detail), search rebuild. |
+| #34 | Kangaroo hero, calmer style, steadier dashboard, this handoff document. |
 
 PR #1 (beta shop search page) is still open and not part of `main`.
 
@@ -41,6 +42,13 @@ PR #1 (beta shop search page) is still open and not part of `main`.
   `usualPrice`, `priceInsight`, `overview`, `searchMatch`, `trackedSearch`).
 - API routes: `src/app/api/*`. Server timing helper: `src/lib/serverTiming.ts`.
 - Crawler: `crawler/main.py` (Python, Playwright).
+- The **View example** list is the `demo-shop` account's real products in
+  production, not static fixtures. Everyday Australian pantry and household
+  staples were added in `supabase/migrations/202611240001_demo_au_staples.sql`
+  so the scheduled GitHub Actions crawl can record real price history.
+  Those new links use Coles and Woolworths, which the cloud run can reach.
+  Kmart, Target, Big W, Toymate, Bunnings and Chemist Warehouse are skipped
+  in CI and are better left to the local crawl.
 
 ## Where things run
 
