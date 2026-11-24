@@ -6,7 +6,8 @@ import { FormEvent, KeyboardEvent, useEffect, useId, useRef, useState } from 're
 import {
   getPasswordValidityMessage,
   getUsernameValidityMessage,
-  readCapsLock
+  readCapsLock,
+  safeNextPath
 } from '@/lib/authValidation';
 import { EMAIL_DISABLED_MESSAGE, isEmailUiEnabled } from '@/lib/emailFeature';
 import InfoTip from './InfoTip';
@@ -17,10 +18,6 @@ type AuthPanelProps = {
   mode: 'login' | 'register';
   nextPath?: string;
 };
-
-function safeNextPath(value: string | undefined): string {
-  return value?.startsWith('/') && !value.startsWith('//') ? value : '/';
-}
 
 export default function AuthPanel({ mode, nextPath }: AuthPanelProps) {
   const usernameId = useId();

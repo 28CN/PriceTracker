@@ -6,6 +6,7 @@ import {
   PASSWORD_LONG_MESSAGE,
   PASSWORD_SHORT_MESSAGE,
   readCapsLock,
+  safeNextPath,
   USERNAME_INVALID_MESSAGE
 } from './authValidation';
 
@@ -59,5 +60,20 @@ describe('readCapsLock', () => {
     expect(readCapsLock({ getModifierState: (key) => key === 'CapsLock' })).toBe(true);
     expect(readCapsLock({ getModifierState: () => false })).toBe(false);
     expect(readCapsLock({})).toBe(false);
+  });
+});
+
+describe('safeNextPath', () => {
+  test('keeps same-site paths, with their query', () => {
+    expect(safeNextPath('/add?url=https%3A%2F%2Fwww.coles.com.au%2Fproduct%2Fx')).toBe(
+      '/add?url=https%3A%2F%2Fwww.coles.com.au%2Fproduct%2Fx'
+    );
+  });
+
+  test('refuses other sites', () => {
+    expect(safeNextPath('//evil.example')).toBe('/');
+    expect(safeNextPath('/\\evil.example')).toBe('/');
+    expect(safeNextPath('https://evil.example')).toBe('/');
+    expect(safeNextPath(undefined)).toBe('/');
   });
 });

@@ -36,3 +36,10 @@ export function readCapsLock(event: {
     ? event.getModifierState('CapsLock')
     : false;
 }
+
+/** Where to go after signing in: same-site paths only, never another site. */
+export function safeNextPath(value: string | null | undefined): string {
+  // Browsers read "/\x" like "//x", which is another site.
+  if (!value || !value.startsWith('/') || value.startsWith('//') || value.startsWith('/\\')) return '/';
+  return value;
+}
