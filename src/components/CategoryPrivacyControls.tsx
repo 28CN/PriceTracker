@@ -3,7 +3,7 @@
 import InfoTip from './InfoTip';
 import { Eye, EyeOff } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 
 import type { CategoryView } from '@/lib/types';
 
@@ -13,6 +13,7 @@ export default function CategoryPrivacyControls({
   categories: CategoryView[];
 }) {
   const router = useRouter();
+  const baseId = useId();
   const [pending, setPending] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,29 +42,34 @@ export default function CategoryPrivacyControls({
         On a public list, categories show unless you hide them. Products without a category always show.
       </InfoTip>
       <div className="category-privacy-list">
-        {categories.map((category) => (
-          <label key={category.id} className="category-privacy-row">
-            <span>
-              {category.isPublic ? <Eye size={15} /> : <EyeOff size={15} />}
-              {category.name}
-            </span>
-            <button
-              type="button"
-              role="switch"
-              className={`toggle-switch${category.isPublic ? ' is-on' : ''}`}
-              aria-checked={category.isPublic}
-              disabled={pending === category.id}
-              onClick={() => update(category, !category.isPublic)}
-            >
-              <span className="toggle-knob" />
-              <span className="sr-only">
-                {category.isPublic ? 'Shown on public profile' : 'Hidden on public profile'}
+        {categories.map((category) => {
+          const labelId = `${baseId}-${category.id}`;
+          return (
+            <div key={category.id} className="category-privacy-row">
+              <span id={labelId}>
+                {category.isPublic ? (
+                  <Eye size={15} aria-hidden="true" />
+                ) : (
+                  <EyeOff size={15} aria-hidden="true" />
+                )}
+                {category.name}
               </span>
-            </button>
-          </label>
-        ))}
+              <button
+                type="button"
+                role="switch"
+                className={`toggle-switch${category.isPublic ? ' is-on' : ''}`}
+                aria-labelledby={labelId}
+                aria-checked={category.isPublic}
+                disabled={pending === category.id}
+                onClick={() => update(category, !category.isPublic)}
+              >
+                <span className="toggle-knob" aria-hidden="true" />
+              </button>
+            </div>
+          );
+        })}
       </div>
-      {error ? <div className="form-error">{error}</div> : null}
+      {error ? <div className="form-error" role="alert">{error}</div> : null}
     </div>
   );
 }

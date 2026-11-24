@@ -20,17 +20,22 @@ export default function AdminMfaPanel() {
   const [pending, setPending] = useState(false);
 
   useEffect(() => {
+    let active = true;
     void (async () => {
       const [{ data: factors }, { data: assurance }] = await Promise.all([
         supabase.auth.mfa.listFactors(),
         supabase.auth.mfa.getAuthenticatorAssuranceLevel()
       ]);
+      if (!active) return;
       const verified = factors?.totp.find(
         (factor: { id: string; status: string }) => factor.status === 'verified'
       );
       setFactorId(verified?.id || null);
       setAal(assurance?.currentLevel || 'aal1');
     })();
+    return () => {
+      active = false;
+    };
   }, [supabase]);
 
   async function beginEnrolment() {
@@ -81,7 +86,7 @@ export default function AdminMfaPanel() {
 
   return (
     <section className="settings-section admin-mfa">
-      <span className="eyebrow"><ShieldCheck size={14} /> Administrator security</span>
+      <span className="eyebrow"><ShieldCheck size={14} aria-hidden="true" /> Administrator security</span>
       <h2>Authenticator app</h2>
       {factorId && aal === 'aal2' ? (
         <div className="form-success">MFA verified. Administrator actions are unlocked.</div>
@@ -123,7 +128,7 @@ export default function AdminMfaPanel() {
           </button>
         </form>
       ) : null}
-      {message ? <p className="hint">{message}</p> : null}
+      {message ? <p className="hint" role="status">{message}</p> : null}
     </section>
   );
 }

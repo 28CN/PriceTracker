@@ -99,14 +99,15 @@ export default function NotificationsBell() {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const wrapRef = useRef<HTMLDivElement>(null);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (signal?: AbortSignal) => {
     try {
-      const response = await fetch('/api/notifications', { cache: 'no-store' });
+      const response = await fetch('/api/notifications', { cache: 'no-store', signal });
       const data = (await response.json()) as {
         events?: CrawlEventView[];
         unread?: number;
         error?: string;
       };
+      if (signal?.aborted) return;
 
       if (!response.ok) {
         throw new Error(data.error || 'Could not load notifications.');
@@ -116,12 +117,15 @@ export default function NotificationsBell() {
       setUnread(data.unread || 0);
       setError(null);
     } catch (loadError) {
+      if (signal?.aborted) return;
       setError(loadError instanceof Error ? loadError.message : 'Unknown error');
     }
   }, []);
 
   useEffect(() => {
-    void load();
+    const controller = new AbortController();
+    void load(controller.signal);
+    return () => controller.abort();
   }, [load]);
 
   useEffect(() => {
@@ -238,7 +242,7 @@ export default function NotificationsBell() {
                   title={event.isRead ? 'Already read' : 'Mark as read'}
                 >
                   <p>{event.message}</p>
-                  <time>
+                  <time dateTime={event.createdAt}>
                     {formatWhen(event.createdAt)}
                     {event.resolved ? <span className="event-resolved">Resolved</span> : null}
                   </time>
@@ -284,7 +288,7 @@ export default function NotificationsBell() {
             ) : null}
           </div>
 
-          {error ? <p className="hint error">{error}</p> : null}
+          {error ? <p className="hint error" role="alert">{error}</p> : null}
 
           {!error && events.length === 0 ? (
             <p className="hint">Nothing to report. Every link is behaving itself.</p>

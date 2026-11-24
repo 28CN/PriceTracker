@@ -272,6 +272,7 @@ export default function EditProductForm({ product, onClose }: Props) {
         <input
           type="url"
           inputMode="url"
+          aria-label="Custom photo link"
           placeholder="Or paste an image URL (https://...)"
           value={pastedImage}
           onChange={(event) => setPastedImage(event.target.value)}
@@ -288,6 +289,7 @@ export default function EditProductForm({ product, onClose }: Props) {
             <input
               type="url"
               inputMode="url"
+              aria-label={`Shop link ${index + 1}`}
               value={link.url}
               onChange={(event) => {
                 const url = event.target.value;
@@ -306,6 +308,7 @@ export default function EditProductForm({ product, onClose }: Props) {
             />
             <input
               type="text"
+              aria-label={`Shop name ${index + 1}`}
               placeholder="Shop"
               value={link.retailer}
               onChange={(event) => {
@@ -331,7 +334,7 @@ export default function EditProductForm({ product, onClose }: Props) {
                 )
               }
             >
-              {link.isActive ? <Pause size={15} /> : <Play size={15} />}
+              {link.isActive ? <Pause size={15} aria-hidden="true" /> : <Play size={15} aria-hidden="true" />}
               {link.isActive ? 'Pause' : 'Resume'}
             </button>
             <button
@@ -340,7 +343,7 @@ export default function EditProductForm({ product, onClose }: Props) {
               disabled={busy}
               onClick={() => removeLink(link.id)}
             >
-              <Trash2 size={15} />
+              <Trash2 size={15} aria-hidden="true" />
               Delete
             </button>
           </div>
@@ -354,6 +357,7 @@ export default function EditProductForm({ product, onClose }: Props) {
         <input
           type="url"
           inputMode="url"
+          aria-label="New shop link"
           placeholder="https://www.toymate.com.au/..."
           value={newUrl}
           onChange={(event) => {
@@ -365,6 +369,7 @@ export default function EditProductForm({ product, onClose }: Props) {
         />
         <input
           type="text"
+          aria-label="New shop name"
           placeholder="Shop"
           value={newRetailer}
           onChange={(event) => setNewRetailer(event.target.value)}
@@ -373,17 +378,21 @@ export default function EditProductForm({ product, onClose }: Props) {
 
       <div className="form-actions" style={{ marginTop: 12 }}>
         <button type="button" className="button" onClick={onClose} disabled={busy}>
-          <X size={15} />
+          <X size={15} aria-hidden="true" />
           Cancel
         </button>
         <button type="submit" className="button primary" disabled={busy}>
-          <Save size={15} />
+          <Save size={15} aria-hidden="true" />
           {busy ? 'Saving...' : 'Save changes'}
         </button>
       </div>
 
       {feedback ? (
-        <p className={`hint ${feedback.tone === 'error' ? 'error' : 'ok'}`} style={{ marginTop: 8 }}>
+        <p
+          className={`hint ${feedback.tone === 'error' ? 'error' : 'ok'}`}
+          role={feedback.tone === 'error' ? 'alert' : 'status'}
+          style={{ marginTop: 8 }}
+        >
           {feedback.text}
         </p>
       ) : null}

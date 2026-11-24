@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { FormEvent, KeyboardEvent, useEffect, useId, useRef, useState } from 'react';
 import {
   getPasswordValidityMessage,
-  getUsernameValidityMessage
+  getUsernameValidityMessage,
+  readCapsLock
 } from '@/lib/authValidation';
 import { EMAIL_DISABLED_MESSAGE, isEmailUiEnabled } from '@/lib/emailFeature';
 import InfoTip from './InfoTip';
@@ -21,15 +22,10 @@ function safeNextPath(value: string | undefined): string {
   return value?.startsWith('/') && !value.startsWith('//') ? value : '/';
 }
 
-function readCapsLock(event: KeyboardEvent<HTMLInputElement>): boolean {
-  return typeof event.getModifierState === 'function'
-    ? event.getModifierState('CapsLock')
-    : false;
-}
-
 export default function AuthPanel({ mode, nextPath }: AuthPanelProps) {
   const usernameId = useId();
   const passwordId = useId();
+  const phoneId = useId();
   const errorRef = useRef<HTMLDivElement>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [capsLockOn, setCapsLockOn] = useState(false);
@@ -184,7 +180,7 @@ export default function AuthPanel({ mode, nextPath }: AuthPanelProps) {
               aria-pressed={showPassword}
               title={showPassword ? 'Hide password' : 'Show password'}
             >
-              {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+              {showPassword ? <EyeOff size={17} aria-hidden="true" /> : <Eye size={17} aria-hidden="true" />}
             </button>
           </span>
           <small className="caps-lock-hint" aria-live="polite">
@@ -211,10 +207,12 @@ export default function AuthPanel({ mode, nextPath }: AuthPanelProps) {
                     : EMAIL_DISABLED_MESSAGE}
                 </small>
               </label>
-              <label className="field">
-                <span>Mobile number</span>
+              <div className="field">
+                <span className="field-label-row">
+                  <label htmlFor={phoneId}>Mobile number</label>
+                </span>
                 <span className="phone-field">
-                  <select name="country" defaultValue="AU" aria-label="Country">
+                  <select name="country" defaultValue="AU" aria-label="Country code">
                     <option value="AU">AU +61</option>
                     <option value="NZ">NZ +64</option>
                     <option value="GB">UK +44</option>
@@ -223,6 +221,7 @@ export default function AuthPanel({ mode, nextPath }: AuthPanelProps) {
                     <option value="CN">CN +86</option>
                   </select>
                   <input
+                    id={phoneId}
                     name="phone"
                     type="tel"
                     autoComplete="tel-national"
@@ -230,7 +229,7 @@ export default function AuthPanel({ mode, nextPath }: AuthPanelProps) {
                   />
                 </span>
                 <small>We will only verify it if you enable SMS features later.</small>
-              </label>
+              </div>
             </div>
           </details>
         ) : (

@@ -26,7 +26,7 @@ export default function UnsubscribePanel({ token }: { token: string }) {
 
   return (
     <section className="auth-shell">
-      <span className="auth-mark">
+      <span className="auth-mark" aria-hidden="true">
         {state === 'done' ? <CheckCircle2 size={22} /> : <BellOff size={22} />}
       </span>
       <span className="eyebrow">Email preferences</span>
@@ -36,7 +36,7 @@ export default function UnsubscribePanel({ token }: { token: string }) {
           ? 'Target price emails are now off. Your watchlist and account are unchanged.'
           : 'This only disables target price emails. You can turn them back on from account settings.'}
       </p>
-      {state === 'error' ? <div className="form-error">{error}</div> : null}
+      {state === 'error' ? <div className="form-error" role="alert">{error}</div> : null}
       {state === 'done' ? (
         <Link className="button auth-submit" href="/">Return to PriceTracker</Link>
       ) : (

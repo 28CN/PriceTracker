@@ -174,12 +174,14 @@ export default function AddProductForm({ categories }: { categories: CategoryVie
           <input
             type="url"
             inputMode="url"
+            aria-label={`Shop link ${index + 1}`}
             placeholder="https://www.toymate.com.au/..."
             value={link.url}
             onChange={(event) => updateLink(index, { url: event.target.value })}
           />
           <input
             type="text"
+            aria-label={`Shop name ${index + 1}`}
             placeholder="Shop"
             value={link.retailer}
             onChange={(event) => updateLink(index, { retailer: event.target.value })}
@@ -208,7 +210,11 @@ export default function AddProductForm({ categories }: { categories: CategoryVie
           Add another shop link
         </button>
         <button type="submit" className="button primary" disabled={isSaving}>
-          {isSaving ? <LoaderCircle className="spin" size={16} /> : <Save size={16} />}
+          {isSaving ? (
+            <LoaderCircle className="spin" size={16} aria-hidden="true" />
+          ) : (
+            <Save size={16} aria-hidden="true" />
+          )}
           {isSaving ? 'Saving...' : 'Save product'}
         </button>
       </div>
@@ -220,7 +226,11 @@ export default function AddProductForm({ categories }: { categories: CategoryVie
       ) : null}
 
       {feedback ? (
-        <p className={`hint ${feedback.tone === 'error' ? 'error' : 'ok'}`} style={{ marginTop: 10 }}>
+        <p
+          className={`hint ${feedback.tone === 'error' ? 'error' : 'ok'}`}
+          role={feedback.tone === 'error' ? 'alert' : 'status'}
+          style={{ marginTop: 10 }}
+        >
           {feedback.text}
         </p>
       ) : null}

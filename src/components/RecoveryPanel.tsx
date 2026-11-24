@@ -59,7 +59,7 @@ export default function RecoveryPanel({
   const requestDisabled = !resetting && !EMAIL_UI_ENABLED;
   return (
     <section className="auth-shell">
-      <span className="auth-mark"><KeyRound size={22} /></span>
+      <span className="auth-mark" aria-hidden="true"><KeyRound size={22} /></span>
       <span className="eyebrow">Account recovery</span>
       <h1>{resetting ? 'Choose a new password' : 'Reset your password'}</h1>
       <p>
@@ -116,7 +116,7 @@ export default function RecoveryPanel({
           {requestDisabled ? (
             <p className="email-disabled-note" role="note">{EMAIL_DISABLED_MESSAGE}</p>
           ) : null}
-          {error ? <div className="form-error">{error}</div> : null}
+          {error ? <div className="form-error" role="alert">{error}</div> : null}
           <button className="button auth-submit" type="submit" disabled={pending || requestDisabled || (resetting && !token)}>
             {pending ? 'Please wait…' : resetting ? 'Set new password' : 'Send reset link'}
           </button>
