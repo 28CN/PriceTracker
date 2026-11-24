@@ -6280,3 +6280,235 @@ button.product-search-onlist-mark:hover {
   outline: none;
   box-shadow: var(--ring);
 }
+
+
+/* Subtle motion polish ----------------------------------------------------- */
+
+.count-up {
+  position: relative;
+  display: inline-block;
+}
+
+.count-up-value {
+  display: inline-block;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Chart draw-in via SVG clipPath scaleX */
+.pc-line:not(.pc-gap) {
+  stroke-dasharray: none;
+  stroke-dashoffset: 0;
+  animation: none;
+}
+
+@keyframes pc-clip-reveal {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.pc-reveal-rect {
+  transform-origin: 0 0;
+  animation: pc-clip-reveal 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Below-goal celebration burst */
+.goal-line-text {
+  position: relative;
+  display: inline-block;
+}
+
+.goal-burst {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.goal-spark {
+  position: absolute;
+  left: 36%;
+  top: 50%;
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--success);
+  pointer-events: none;
+  animation: goal-spark-out 600ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.goal-spark-1 { --dx: -24px; --dy: -16px; }
+.goal-spark-2 { --dx: -8px; --dy: -22px; width: 3px; height: 3px; }
+.goal-spark-3 { --dx: 12px; --dy: -20px; }
+.goal-spark-4 { --dx: 26px; --dy: -10px; width: 3px; height: 3px; }
+.goal-spark-5 { --dx: 24px; --dy: 12px; }
+.goal-spark-6 { --dx: 8px; --dy: 20px; width: 3px; height: 3px; }
+.goal-spark-7 { --dx: -12px; --dy: 18px; }
+.goal-spark-8 { --dx: -26px; --dy: 6px; width: 3px; height: 3px; }
+
+@keyframes goal-spark-out {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) translate(0, 0) scale(0.4);
+  }
+  18% {
+    opacity: 0.95;
+    transform: translate(-50%, -50%) translate(calc(var(--dx) * 0.45), calc(var(--dy) * 0.45)) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) translate(var(--dx), var(--dy)) scale(0.25);
+  }
+}
+
+/* Top-bar logo kangaroo easter egg */
+.roo-easter-stage {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 12px;
+  height: 84px;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 60;
+}
+
+.roo-easter-track {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 40px;
+  height: 40px;
+  animation: roo-easter-across 1600ms linear forwards;
+}
+
+.roo-easter-hop {
+  width: 40px;
+  height: 40px;
+  animation: roo-easter-hop 1600ms linear forwards;
+}
+
+.roo-easter-img {
+  display: block;
+  width: 40px;
+  height: 40px;
+  transform: scaleX(-1);
+}
+
+@keyframes roo-easter-across {
+  0% {
+    opacity: 0;
+    transform: translate3d(-48px, 0, 0);
+  }
+  6% {
+    opacity: 1;
+  }
+  94% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(calc(100vw + 48px), 0, 0);
+  }
+}
+
+@keyframes roo-easter-hop {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(-6deg);
+    animation-timing-function: cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+  16.5% {
+    transform: translate3d(0, -34px, 0) rotate(2deg);
+    animation-timing-function: cubic-bezier(0.55, 0.06, 0.68, 0.19);
+  }
+  33% {
+    transform: translate3d(0, 0, 0) rotate(-6deg);
+    animation-timing-function: cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+  50% {
+    transform: translate3d(0, -38px, 0) rotate(2deg);
+    animation-timing-function: cubic-bezier(0.55, 0.06, 0.68, 0.19);
+  }
+  66.5% {
+    transform: translate3d(0, 0, 0) rotate(-6deg);
+    animation-timing-function: cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+  83.5% {
+    transform: translate3d(0, -34px, 0) rotate(2deg);
+    animation-timing-function: cubic-bezier(0.55, 0.06, 0.68, 0.19);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+}
+
+/* Smooth card-to-detail view transitions */
+.card-thumb-slot,
+.detail-panel-thumb {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+@media (min-width: 1200px) and (prefers-reduced-motion: no-preference) {
+  .detail-panel-thumb {
+    view-transition-name: pt-product-thumb;
+  }
+
+  .detail-panel-title-copy h2 {
+    view-transition-name: pt-product-title;
+  }
+}
+
+::view-transition-group(pt-product-thumb),
+::view-transition-group(pt-product-title) {
+  animation-duration: 240ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+::view-transition-old(pt-product-thumb),
+::view-transition-new(pt-product-thumb) {
+  animation-duration: 200ms;
+  animation-timing-function: ease-out;
+}
+
+::view-transition-image-pair(pt-product-title) {
+  overflow: clip;
+}
+
+::view-transition-old(pt-product-title),
+::view-transition-new(pt-product-title) {
+  animation-duration: 180ms;
+  animation-timing-function: ease-out;
+  height: 100%;
+  object-fit: none;
+  object-position: left top;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pc-reveal-rect {
+    animation: none;
+    transform: none;
+  }
+
+  .goal-burst,
+  .roo-easter-stage {
+    display: none;
+  }
+
+  .detail-panel-thumb,
+  .detail-panel-title-copy h2 {
+    view-transition-name: none;
+  }
+
+  ::view-transition-group(pt-product-thumb),
+  ::view-transition-old(pt-product-thumb),
+  ::view-transition-new(pt-product-thumb),
+  ::view-transition-group(pt-product-title),
+  ::view-transition-old(pt-product-title),
+  ::view-transition-new(pt-product-title) {
+    animation: none;
+  }
+}
