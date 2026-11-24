@@ -6207,3 +6207,34 @@ button.product-search-onlist-mark:hover {
     animation: none;
   }
 }
+
+/* Add from shops ----------------------------------------------------------- */
+
+.add-notice {
+  margin: 0 0 14px;
+}
+
+.add-existing {
+  padding: 14px 16px;
+}
+
+.add-product-form {
+  transition: box-shadow 160ms ease-out;
+}
+
+.add-product-form.is-drop-target {
+  box-shadow: var(--ring);
+}
+
+.section-title .info-tip {
+  margin-left: 6px;
+  vertical-align: middle;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .add-product-form {
+    transition: none;
+  }
+}
