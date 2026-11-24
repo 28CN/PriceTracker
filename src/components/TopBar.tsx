@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { getViewer } from '@/lib/auth';
 
 import AccountMenu from './AccountMenu';
+import BrandLogo from './BrandLogo';
 import ExitDemoButton from './ExitDemoButton';
 import NotificationsBell from './NotificationsBell';
 import RefreshButton from './RefreshButton';
@@ -25,14 +26,7 @@ export default async function TopBar() {
           </span>
           </ExitDemoButton>
         ) : (
-          <Link href="/" className="brand-link" aria-label="PriceTracker home">
-          <span className="brand-mark" aria-hidden="true">
-            <ChartNoAxesCombined size={21} />
-          </span>
-          <p className="brand">
-            Price<span>Tracker</span>
-          </p>
-          </Link>
+          <BrandLogo />
         )}
         <div className="topbar-actions">
           {viewer?.isDemo ? null : viewer ? (

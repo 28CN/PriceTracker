@@ -67,12 +67,14 @@ export default function ProductDetailPanel({
     >
       <header className="detail-panel-head">
         <div className="detail-panel-title-wrap">
-          <ProductVisual
-            key={thumb?.proxied || product.id}
-            source={thumb}
-            name={product.name}
-            category={product.categoryName}
-          />
+          <span className="detail-panel-thumb">
+            <ProductVisual
+              key={thumb?.proxied || product.id}
+              source={thumb}
+              name={product.name}
+              category={product.categoryName}
+            />
+          </span>
           <div className="detail-panel-title-copy">
             <h2 id="detail-panel-heading" ref={headingRef} tabIndex={-1}>
               {product.name}

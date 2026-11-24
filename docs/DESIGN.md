@@ -123,6 +123,26 @@ One headline, then **Start tracking**, **View example**, and **Sign in**, alongs
 
 Cards and the deal dialog fade in briefly. The dialog is a native `<dialog>` opened with `showModal()`, so Escape, focus, and the backdrop come from the browser. Scroll gestures inside it do not chain to the page. `prefers-reduced-motion: reduce` turns the animation off.
 
+A few small moments of delight, each once and each off under reduced motion
+(CSS media query and a `matchMedia` check where JavaScript drives it). Only
+`transform` and `opacity` move, so nothing shifts the layout.
+
+- **Counting numbers:** the summary tiles count up to their value in about
+  600 ms (`src/components/CountUp.tsx`, easing in `src/lib/motion.ts`). The
+  width is reserved in `ch` with tabular figures, and screen readers get only
+  the final number.
+- **Chart draw-in:** a price chart reveals its lines left to right the first
+  time it appears, through a clip rectangle scaled with `transform`. Hovering
+  or changing the period does not replay it.
+- **Below goal sparkle:** the first time a below-goal card scrolls into view in
+  a session, eight tiny dots burst from the Goal line. At most three per page
+  load, remembered per product and price in `sessionStorage`.
+- **Photo morph:** on wide screens the card photo and title move into the
+  detail panel with a View Transition (`view-transition-name` is set on one
+  card at a time).
+- **Kangaroo:** tap the logo three times quickly and a kangaroo hops along the
+  bottom of the screen.
+
 ## Rejected
 
 - Truncating shop names to 140px, or hiding them on a phone. The name is the point of the card.
