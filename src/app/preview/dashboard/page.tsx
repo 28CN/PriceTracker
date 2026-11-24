@@ -36,7 +36,6 @@ function link(partial: {
   };
 }
 
-const REFERENCE_NOW = Date.parse('2026-11-24T00:00:00.000Z');
 const FRESH_AT = '2026-11-22T02:00:00.000Z';
 const STALE_NEW_AT = '2026-10-28T02:00:00.000Z';
 const STALE_OLD_AT = '2026-10-21T02:00:00.000Z';
@@ -182,8 +181,7 @@ const sampleProducts: ProductView[] = [
         retailer: 'Coles',
         url: 'https://www.coles.com.au/product/finish-quantum-60',
         price: 32,
-        at: STALE_OLD_AT,
-        stale: true
+        at: FRESH_AT
       })
     ]
   },
@@ -366,7 +364,6 @@ export default async function DashboardPreviewPage({
       accountHref={null}
       loadError={null}
       initialOverview={overview === 'fetch' ? null : sampleOverview}
-      referenceNow={REFERENCE_NOW}
     />
   );
 }

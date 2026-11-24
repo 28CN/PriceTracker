@@ -97,37 +97,6 @@ Shelf prices rise permanently over time. Comparing today's price against a fixed
 
 Worked example: a Matchbox car at Woolworths is $3.50 for 6 weeks, then $4.00 on 3 Nov and 10 Nov. Two consecutive weekly checks at $4.00 spanning 7 days move the usual price up to $4.00 from 3 Nov (shown as a dashed step line and `Usual price went up to $4.00 · 3 Nov` below the chart). When a $3.00 week arrives afterwards, it is judged against $4.00 as a real discount (25% below usual), not compared against the old $3.50.
 
-## Shopping list
-
-Tap **Tracked** on the dashboard to open the shopping list. It answers two
-questions a shopper has on the way out.
-
-- **Lowest prices**: one row per tracked item with its single lowest current
-  price, the shop (every shop when two are tied), the Goal once, and a Below goal
-  badge. Deals come first; an A–Z toggle is there for a long list. When only old
-  prices exist, the newest one is shown muted with `Last seen <date>`, the same
-  rule as the cards.
-- **By shop**: pick a shop chip to see what that shop is selling now, at that
-  shop's price. A saved link is not proof the shop still sells it (Coles stopped
-  stocking some Matchbox cars, for example), so an item only appears when that
-  shop gave us a price in the last `SHOP_RECENT_DAYS` (14) days and is not marked
-  sold out. Prices 8 to 14 days old are kept but muted with `Last seen`; they
-  never win **Cheapest**. Chips show a count; a shop with nothing current stays
-  visible but disabled, so its absence is not a mystery.
-
-**Share list** (top of the window) turns the open tab into plain text: on a
-phone it opens the share sheet, elsewhere it copies to the clipboard and says
-"Copied". The By shop tab ends with a **Total** for that shop, so two shops can
-be compared for the whole list (an idea shoppers asked for on OzBargain and in
-apps like GroceryFlow). For Coles and Woolworths the InfoTip adds that new
-specials start every Wednesday, which is when both chains change their weekly
-catalogue.
-
-The logic is pure and tested in `src/lib/shoppingList.ts`. It uses the product
-list the dashboard already has: no new query. The dialog is loaded on first
-open (`next/dynamic`), keeps one size on both tabs, and the open view is kept
-in the address (`?list=lowest`, `?list=shop&shop=coles`) with
-`history.replaceState`, so it can be bookmarked without a page reload.
 
 ## Search
 
@@ -139,8 +108,6 @@ Search splits into two groups inside one combobox so finding something you alrea
 **Shop nicknames:** `woolies` finds Woolworths items, `bigw` Big W, `jb` JB Hi-Fi and `chemist` Chemist Warehouse (a short alias list in `src/lib/trackedSearch.ts`).
 
 **Keyboard:** `/` puts the cursor in the search box from anywhere on the dashboard, unless you are already typing or a window is open.
-
-**Inside the Shopping list:** a search box at the top filters both tabs with the same matcher, so `matchbx` and `woolies` work there too. Shop chip counts follow the filter. The query is not kept in the address.
 
 The shared cache only holds what someone has searched live before. On 23 Nov 2026 it held one search (`lego classic`, 12 results) plus two shop lists, so `hotwheels` or `matchbox` correctly finds nothing there until someone presses **Search shops** for it.
 
@@ -162,3 +129,4 @@ Cards and the deal dialog fade in briefly. The dialog is a native `<dialog>` ope
 - Saying **Checking soon** whenever a date is missing.
 - Putting the owner's real list on the public home page and calling it popular.
 - A shared cache of private pages. A faster page that shows the wrong person's prices is not faster in any sense that matters.
+- A shopping list window (lowest price per item, items by shop, share, totals). Built in PRs #35, #37 and #38, then removed: the shops' own apps already keep lists, so it added little here.
