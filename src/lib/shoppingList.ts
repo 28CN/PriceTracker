@@ -1,5 +1,5 @@
 import { resolveCardPrice } from './cardState';
-import { retailerKey } from './retailer';
+import { detectRetailer, retailerKey } from './retailer';
 import type { LinkView, ProductView } from './types';
 
 /**
@@ -80,6 +80,11 @@ export function shopKeyFor(link: Pick<LinkView, 'retailer' | 'url'>): string {
   );
 }
 
+/** The shop's proper name for a known website ("The Reject Shop", not "Rejectshop"). */
+export function shopNameFor(link: Pick<LinkView, 'retailer' | 'url'>): string {
+  return retailerKey(link.url) ? detectRetailer(link.url) : link.retailer;
+}
+
 /** True when this link gave us a price within the window and is not marked sold out. */
 export function isRecentlySold(link: LinkView, now: number = Date.now(), days = SHOP_RECENT_DAYS): boolean {
   if (!link.isActive || link.stockStatus === 'unavailable') return false;
@@ -123,7 +128,7 @@ export function shopGroups(products: ProductView[], now: number = Date.now(), da
     for (const link of product.links) {
       if (!link.isActive) continue;
       const key = shopKeyFor(link);
-      if (!groups.has(key)) groups.set(key, { key, name: link.retailer, sampleUrl: link.url, items: [] });
+      if (!groups.has(key)) groups.set(key, { key, name: shopNameFor(link), sampleUrl: link.url, items: [] });
       if (!isRecentlySold(link, now, days)) continue;
       const best = perShop.get(key);
       if (

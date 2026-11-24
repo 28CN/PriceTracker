@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { isRecentlySold, lowestPriceRows, shopGroups, shopKeyFor, SHOP_RECENT_DAYS } from './shoppingList';
+import { isRecentlySold, lowestPriceRows, shopGroups, shopKeyFor, shopNameFor, SHOP_RECENT_DAYS } from './shoppingList';
 import type { LinkView, ProductView } from './types';
 
 const NOW = Date.parse('2026-11-24T00:00:00.000Z');
@@ -146,5 +146,10 @@ describe('shopKeyFor', () => {
   it('groups by the shop website first', () => {
     expect(shopKeyFor({ retailer: 'coles supermarket', url: 'https://www.coles.com.au/x' })).toBe('coles');
     expect(shopKeyFor({ retailer: 'Corner Store', url: 'https://corner.example/x' })).toBe('cornerstore');
+  });
+
+  it('uses the proper shop name for a known website', () => {
+    expect(shopNameFor({ retailer: 'Rejectshop', url: 'https://www.therejectshop.com.au/p/1' })).toBe('The Reject Shop');
+    expect(shopNameFor({ retailer: 'Corner Store', url: 'https://corner.example/x' })).toBe('Corner Store');
   });
 });

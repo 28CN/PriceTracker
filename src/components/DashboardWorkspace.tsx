@@ -18,7 +18,8 @@ import { toTrackedSearchItems } from '@/lib/trackedSearch';
 import type { ProductView } from '@/lib/types';
 
 // Loaded on first open so the dashboard does not pay for it up front.
-const ShoppingList = dynamic(() => import('@/components/ShoppingList'), { ssr: false });
+const loadShoppingList = () => import('@/components/ShoppingList');
+const ShoppingList = dynamic(loadShoppingList, { ssr: false });
 
 function runViewTransition(update: () => void) {
   if (typeof window === 'undefined' || typeof document === 'undefined') {
@@ -153,6 +154,14 @@ export default function DashboardWorkspace({
     },
     [closeDetail]
   );
+
+  // Fetch the list's code once the page is idle, so the first tap opens at once.
+  useEffect(() => {
+    const idle = window.requestIdleCallback ?? ((cb: () => void) => window.setTimeout(cb, 1500));
+    idle(() => {
+      void loadShoppingList();
+    });
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
