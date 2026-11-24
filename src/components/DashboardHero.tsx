@@ -97,7 +97,8 @@ export default function DashboardHero({
   title = 'Your tracked prices',
   showSummaryStrip = false,
   overview = null,
-  overviewStatus = 'ready'
+  overviewStatus = 'ready',
+  onOpenList
 }: {
   products: ProductView[];
   accountHref: string | null;
@@ -105,6 +106,7 @@ export default function DashboardHero({
   showSummaryStrip?: boolean;
   overview?: OverviewResponse | null;
   overviewStatus?: 'loading' | 'ready' | 'error';
+  onOpenList?: () => void;
 }) {
   const deals = useMemo(() => {
     return products.flatMap((product) => {
@@ -155,22 +157,47 @@ export default function DashboardHero({
           </div>
 
           <div className="summary-strip" role="region" aria-label="Summary">
-            <div className="summary-tile">
-              <div className="summary-tile-head">
-                <span className="summary-tile-icon">
-                  <Package size={16} aria-hidden="true" />
-                </span>
-                <span className="summary-tile-label">Tracked</span>
+            {onOpenList ? (
+              <button
+                type="button"
+                className="summary-tile is-interactive"
+                onClick={onOpenList}
+                aria-haspopup="dialog"
+              >
+                <div className="summary-tile-head">
+                  <span className="summary-tile-icon">
+                    <Package size={16} aria-hidden="true" />
+                  </span>
+                  <span className="summary-tile-label">Tracked</span>
+                  <ChevronRight className="summary-tile-chevron" size={16} aria-hidden="true" />
+                </div>
+                <div className="summary-tile-body">
+                  <strong className="summary-tile-value">{products.length}</strong>
+                  <Sparkline
+                    points={overview?.sparklines.tracked ?? null}
+                    tone="brand"
+                    loading={isLoadingOverview}
+                  />
+                </div>
+              </button>
+            ) : (
+              <div className="summary-tile">
+                <div className="summary-tile-head">
+                  <span className="summary-tile-icon">
+                    <Package size={16} aria-hidden="true" />
+                  </span>
+                  <span className="summary-tile-label">Tracked</span>
+                </div>
+                <div className="summary-tile-body">
+                  <strong className="summary-tile-value">{products.length}</strong>
+                  <Sparkline
+                    points={overview?.sparklines.tracked ?? null}
+                    tone="brand"
+                    loading={isLoadingOverview}
+                  />
+                </div>
               </div>
-              <div className="summary-tile-body">
-                <strong className="summary-tile-value">{products.length}</strong>
-                <Sparkline
-                  points={overview?.sparklines.tracked ?? null}
-                  tone="brand"
-                  loading={isLoadingOverview}
-                />
-              </div>
-            </div>
+            )}
 
             <button
               type="button"

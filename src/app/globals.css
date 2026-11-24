@@ -6221,3 +6221,443 @@ button.product-search-onlist-mark:hover {
     animation: none;
   }
 }
+
+/* Shopping list dialog --------------------------------------------------- */
+
+dialog.shopping-list-dialog {
+  width: min(640px, calc(100vw - 32px));
+  max-height: min(760px, calc(100dvh - 36px));
+  overflow: hidden;
+}
+
+dialog.shopping-list-dialog[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+.sl-head {
+  flex-shrink: 0;
+  padding: var(--space-3) var(--space-4);
+}
+
+.sl-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.sl-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--line);
+}
+
+.sl-tabs-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.sl-tabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-3);
+}
+
+.sl-tab {
+  min-height: 34px;
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-sm);
+  font-weight: 650;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: opacity 140ms ease, transform 140ms ease;
+}
+
+.sl-tab:hover {
+  color: var(--text);
+}
+
+.sl-tab.is-active {
+  background: var(--surface-2);
+  color: var(--text);
+  box-shadow: var(--shadow-1);
+}
+
+.sl-tab:focus-visible,
+.sl-sort-btn:focus-visible,
+.sl-chip:focus-visible,
+.sl-row.is-link:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+
+.sl-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-1);
+}
+
+.sl-sort-btn {
+  min-height: 28px;
+  padding: 0 var(--space-2);
+  border: 0;
+  border-radius: calc(var(--radius-sm) - 2px);
+  background: transparent;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-xs);
+  font-weight: 650;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: opacity 140ms ease, transform 140ms ease;
+}
+
+.sl-sort-btn:hover {
+  color: var(--text);
+}
+
+.sl-sort-btn.is-active {
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+.sl-shop-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.sl-shop-bar .info-tip {
+  flex-shrink: 0;
+}
+
+.sl-shop-bar .info-tip-bubble {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+
+.sl-chips {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1;
+  min-width: 0;
+  padding: 2px 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.sl-chips::-webkit-scrollbar {
+  display: none;
+}
+
+.sl-chip {
+  flex: 0 0 auto;
+  scroll-snap-align: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-1);
+  color: var(--text);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-sm);
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: opacity 140ms ease, transform 140ms ease;
+}
+
+.sl-chip:hover:not(:disabled) {
+  background: var(--surface-3);
+}
+
+.sl-chip.is-selected {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+  color: var(--text);
+}
+
+.sl-chip:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.sl-chip-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  line-height: 1;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.sl-chip.is-selected .sl-chip-count {
+  background: var(--surface-2);
+  color: var(--brand);
+}
+
+.sl-body {
+  padding: var(--space-2) var(--space-3) var(--space-4);
+}
+
+.sl-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.sl-item + .sl-item {
+  border-top: 1px solid var(--line);
+}
+
+.sl-row {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 56px;
+  padding: var(--space-2) var(--space-2);
+  border-radius: var(--radius-md);
+  color: inherit;
+  text-decoration: none;
+}
+
+.sl-row.is-link {
+  cursor: pointer;
+  transition: opacity 140ms ease, transform 140ms ease;
+}
+
+.sl-row.is-link:hover {
+  background: var(--surface-3);
+}
+
+.sl-thumb {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+}
+
+.sl-thumb .product-thumb,
+.sl-thumb .product-thumb.is-ready {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+}
+
+.sl-thumb .product-thumb-placeholder svg {
+  width: 18px;
+  height: 18px;
+}
+
+.sl-row-main {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.sl-name {
+  font-size: var(--fs-sm);
+  line-height: var(--lh-sm);
+  font-weight: 650;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.sl-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px var(--space-2);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-xs);
+  color: var(--muted);
+}
+
+.sl-shop,
+.sl-goal {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.sl-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: var(--fs-xs);
+  line-height: var(--lh-xs);
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.sl-badge.is-success {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.sl-badge.is-cheapest {
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+.sl-row-price {
+  flex-shrink: 0;
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.sl-price-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.sl-price {
+  font-size: var(--fs-md);
+  line-height: var(--lh-md);
+  font-weight: 740;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.sl-price.is-deal {
+  color: var(--success);
+}
+
+.sl-price.is-stale {
+  color: var(--muted);
+  font-weight: 650;
+}
+
+.sl-ext {
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.sl-last-seen {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-xs);
+  white-space: nowrap;
+}
+
+.sl-state {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-sm);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.sl-empty {
+  padding: var(--space-7) var(--space-4);
+  text-align: center;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-sm);
+}
+
+.sl-empty p {
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  dialog.shopping-list-dialog {
+    width: 100%;
+    max-width: 100%;
+    max-height: 90dvh;
+    margin: auto 0 0 0;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    border-left: 0;
+    border-right: 0;
+    border-bottom: 0;
+  }
+
+  .sl-sticky {
+    padding: var(--space-3);
+  }
+
+  .sl-tabs-row {
+    gap: var(--space-2);
+  }
+
+  .sl-body {
+    padding: var(--space-2) var(--space-2) var(--space-4);
+  }
+
+  .sl-row {
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-1);
+  }
+
+  .sl-price {
+    font-size: var(--fs-base);
+    line-height: var(--lh-base);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  dialog.shopping-list-dialog,
+  dialog.shopping-list-dialog::backdrop,
+  .sl-tab,
+  .sl-sort-btn,
+  .sl-chip,
+  .sl-row.is-link {
+    transition: none;
+  }
+}
+
+/* Same size on both tabs and every shop, so the window does not jump. */
+dialog.shopping-list-dialog[open] {
+  height: min(620px, calc(100dvh - 36px));
+}
+
+@media (max-width: 640px) {
+  dialog.shopping-list-dialog[open] {
+    height: 85dvh;
+  }
+}

@@ -116,6 +116,20 @@ What the numbers say, honestly:
 
 These are lab numbers on one machine, not field data from production.
 
+## Shopping list
+
+First Load JS for `/` went from 136 kB to 137 kB (`next build` output on this
+machine). The extra kilobyte is the Tracked tile button and the loader stub; the
+shopping list itself is a separate chunk (`next/dynamic`, `ssr: false`) fetched
+when the browser is idle after the dashboard loads (`requestIdleCallback`). It
+works from the products already on the page, so opening it makes no network
+request, and the lists are only computed while it is open (`useMemo`).
+
+Measured on the PR #35 preview, demo account (23 items), headless Chrome on the
+agent machine, `performance.now()` from the click until the first row is in the
+DOM: first open 320 ms, later opens 9 to 10 ms. One run each, so read these as
+rough.
+
 ## What would be a bad shortcut
 
 - Deleting or truncating `price_history` to make the list faster.
