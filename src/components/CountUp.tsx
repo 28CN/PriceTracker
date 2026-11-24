@@ -66,9 +66,13 @@ export default function CountUp({
   const target = Number.isFinite(value) ? Math.round(value) : 0;
   const display = useCountUp(target, durationMs);
   const minCh = minChForCount(target);
+  // The server sends the final number. Keep it hidden until counting starts,
+  // so it does not show, drop to 0 and climb again (motion users only, CSS).
+  const [ready, setReady] = useState(false);
+  useEffect(() => setReady(true), []);
 
   return (
-    <span className="count-up">
+    <span className="count-up" data-ready={ready ? '' : undefined}>
       <span className="sr-only">{target}</span>
       <span
         className="count-up-value"

@@ -5989,6 +5989,13 @@ button.product-search-onlist-mark:hover {
   font-variant-numeric: tabular-nums;
 }
 
+/* Hidden until the count starts, so the final number never flashes first. */
+@media (prefers-reduced-motion: no-preference) {
+  .count-up:not([data-ready]) .count-up-value {
+    opacity: 0;
+  }
+}
+
 /* Chart draw-in via SVG clipPath scaleX */
 .pc-line:not(.pc-gap) {
   stroke-dasharray: none;
