@@ -1,5 +1,7 @@
 import { resolveCardPrice } from './cardState';
 import { detectRetailer, retailerKey } from './retailer';
+import { matchPreparedCandidate, prepareCandidate, prepareQuery } from './searchMatch';
+import { toTrackedSearchItem, trackedSearchCandidate } from './trackedSearch';
 import type { LinkView, ProductView } from './types';
 
 /**
@@ -166,4 +168,16 @@ export function shopGroups(products: ProductView[], now: number = Date.now(), da
     });
   }
   return list.sort((a, b) => b.items.length - a.items.length || a.name.localeCompare(b.name, 'en-AU'));
+}
+
+/** Filter tracked products with the dashboard search matcher, keeping original order. */
+export function filterProductsByQuery(products: readonly ProductView[], query: string): ProductView[] {
+  const trimmed = query.trim();
+  if (!trimmed) return [...products];
+  const preparedQuery = prepareQuery(trimmed);
+  if (!preparedQuery) return [];
+  return products.filter((product) => {
+    const candidate = trackedSearchCandidate(toTrackedSearchItem(product));
+    return matchPreparedCandidate(preparedQuery, prepareCandidate(candidate)) !== null;
+  });
 }
