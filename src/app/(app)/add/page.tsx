@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 
 import AddProductForm from '@/components/AddProductForm';
+import AddTools from '@/components/AddTools';
 import { requireViewer } from '@/lib/auth';
 import { cleanHttpUrl } from '@/lib/productUrl';
 import { fetchCategories, fetchProducts } from '@/lib/queries';
@@ -83,6 +84,8 @@ export default async function AddPage({ searchParams }: { searchParams: Promise<
           savedHref="/"
         />
       )}
+
+      <AddTools />
     </main>
   );
 }

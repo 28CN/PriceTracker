@@ -6245,3 +6245,92 @@ button.product-search-onlist-mark:hover {
     transition: none;
   }
 }
+
+.add-tools {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-1);
+}
+
+.add-tools-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.add-tools-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.specials-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.specials-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 4px 10px 4px 6px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 13px;
+  text-decoration: none;
+  transition: transform 140ms ease-out, opacity 140ms ease-out;
+}
+
+.specials-link:hover {
+  transform: translateY(-1px);
+}
+
+.specials-link:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+
+.specials-link-shop {
+  font-weight: 650;
+}
+
+.specials-link-label {
+  color: var(--muted);
+}
+
+.bookmarklet-button {
+  cursor: grab;
+}
+
+/* Bookmarks bars are a computer thing; phones use Share instead. */
+@media (hover: none) {
+  .add-tools-bookmark {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .specials-link {
+    transition: none;
+  }
+
+  .specials-link:hover {
+    transform: none;
+  }
+}

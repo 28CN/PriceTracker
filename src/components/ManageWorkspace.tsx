@@ -4,6 +4,7 @@ import { Link2, LayoutDashboard, PackagePlus, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import AddProductForm from '@/components/AddProductForm';
+import AddTools from '@/components/AddTools';
 import ManageProducts from '@/components/ManageProducts';
 import ProductSearch from '@/components/ProductSearch';
 import { toTrackedSearchItems } from '@/lib/trackedSearch';
@@ -84,6 +85,7 @@ export default function ManageWorkspace({
           ) : (
             <AddProductForm categories={categories} />
           )}
+          <AddTools />
         </section>
       )}
     </div>
