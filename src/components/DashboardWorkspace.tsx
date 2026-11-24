@@ -1,5 +1,6 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
@@ -8,12 +9,16 @@ import CategoryList from '@/components/CategoryList';
 import DashboardHero from '@/components/DashboardHero';
 import ProductDetailPanel from '@/components/ProductDetailPanel';
 import ProductSearch from '@/components/ProductSearch';
+import type { ShoppingListTab } from '@/components/ShoppingList';
 import ThisWeekPanel from '@/components/ThisWeekPanel';
 import type { CategoryLayout } from '@/lib/categoryLayout';
 import type { OverviewResponse } from '@/lib/overview';
 import type { CategoryGroup } from '@/lib/productSort';
 import { toTrackedSearchItems } from '@/lib/trackedSearch';
 import type { ProductView } from '@/lib/types';
+
+// Loaded on first open so the dashboard does not pay for it up front.
+const ShoppingList = dynamic(() => import('@/components/ShoppingList'), { ssr: false });
 
 function runViewTransition(update: () => void) {
   if (typeof window === 'undefined' || typeof document === 'undefined') {
@@ -40,7 +45,8 @@ export default function DashboardWorkspace({
   isDemo,
   accountHref,
   loadError,
-  initialOverview
+  initialOverview,
+  referenceNow
 }: {
   products: ProductView[];
   groups: CategoryGroup[];
@@ -49,7 +55,16 @@ export default function DashboardWorkspace({
   accountHref: string | null;
   loadError: string | null;
   initialOverview?: OverviewResponse | null;
+  referenceNow?: number;
 }) {
+  const [clientNow] = useState<number>(() => referenceNow ?? Date.now());
+  const effectiveNow = referenceNow ?? clientNow;
+  const [listOpen, setListOpen] = useState(false);
+  const [listLoaded, setListLoaded] = useState(false);
+  const [listInitial, setListInitial] = useState<{ tab: ShoppingListTab; shop: string | null }>({
+    tab: 'lowest',
+    shop: null
+  });
   const [overview, setOverview] = useState<OverviewResponse | null>(initialOverview ?? null);
   const [overviewStatus, setOverviewStatus] = useState<'loading' | 'ready' | 'error'>(
     initialOverview || products.length === 0 ? 'ready' : 'loading'
@@ -139,6 +154,29 @@ export default function DashboardWorkspace({
     [closeDetail]
   );
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const listParam = params.get('list');
+    if (listParam === 'lowest' || listParam === 'shop') {
+      setListInitial({
+        tab: listParam,
+        shop: listParam === 'shop' ? params.get('shop') : null
+      });
+      setListLoaded(true);
+      setListOpen(true);
+    }
+  }, []);
+
+  const handleOpenList = useCallback(() => {
+    setListInitial({ tab: 'lowest', shop: null });
+    setListLoaded(true);
+    setListOpen(true);
+  }, []);
+
+  const handleCloseList = useCallback(() => {
+    setListOpen(false);
+  }, []);
+
   const handleNavigateProduct = useCallback((productId: string) => {
     window.dispatchEvent(new CustomEvent('pt:reveal-product', { detail: productId }));
   }, []);
@@ -151,7 +189,19 @@ export default function DashboardWorkspace({
         showSummaryStrip
         overview={overview}
         overviewStatus={overviewStatus}
+        onOpenList={handleOpenList}
       />
+
+      {listLoaded ? (
+        <ShoppingList
+          open={listOpen}
+          products={products}
+          referenceNow={effectiveNow}
+          initialTab={listInitial.tab}
+          initialShop={listInitial.shop}
+          onClose={handleCloseList}
+        />
+      ) : null}
 
       <div className="dashboard-mobile-week">
         <ThisWeekPanel
