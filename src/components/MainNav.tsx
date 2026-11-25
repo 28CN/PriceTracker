@@ -1,6 +1,6 @@
 'use client';
 
-import { BookOpen, House, LayoutDashboard, PackagePlus, Scale, type LucideIcon } from 'lucide-react';
+import { BookOpen, House, LayoutDashboard, PackagePlus, Scale, Tag, type LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -11,6 +11,7 @@ const ICONS: Record<NavItemKey, LucideIcon> = {
   dashboard: LayoutDashboard,
   add: PackagePlus,
   compare: Scale,
+  deals: Tag,
   about: BookOpen
 };
 
@@ -27,7 +28,7 @@ export default function MainNav({
   placement: 'top' | 'bottom';
 }) {
   const pathname = usePathname() || '/';
-  const items = navItemsFor(signedIn);
+  const items = navItemsFor(signedIn).filter((item) => placement === 'top' || item.onPhone !== false);
 
   return (
     <nav className={`main-nav main-nav-${placement}`} aria-label="Main">

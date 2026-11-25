@@ -1,4 +1,4 @@
-export type NavItemKey = 'home' | 'dashboard' | 'add' | 'compare' | 'about';
+export type NavItemKey = 'home' | 'dashboard' | 'add' | 'compare' | 'deals' | 'about';
 
 export type NavItem = {
   key: NavItemKey;
@@ -6,13 +6,16 @@ export type NavItem = {
   label: string;
   /** Other paths that count as this page, e.g. /manage for Add. */
   alsoActiveOn?: string[];
+  /** False when the phone tab bar has no room; the page stays in the top bar and menus. */
+  onPhone?: boolean;
 };
 
-/** Only pages that exist. Visitors who are not signed in see Home and About. */
+/** Only pages that exist. Visitors who are not signed in see Home, Deals and About. */
 export function navItemsFor(signedIn: boolean): NavItem[] {
   if (!signedIn) {
     return [
       { key: 'home', href: '/', label: 'Home' },
+      { key: 'deals', href: '/deals', label: 'Deals' },
       { key: 'about', href: '/about', label: 'About' }
     ];
   }
@@ -20,7 +23,9 @@ export function navItemsFor(signedIn: boolean): NavItem[] {
     { key: 'dashboard', href: '/', label: 'Dashboard' },
     { key: 'add', href: '/add', label: 'Add', alsoActiveOn: ['/manage'] },
     { key: 'compare', href: '/compare', label: 'Compare' },
-    { key: 'about', href: '/about', label: 'About' }
+    { key: 'deals', href: '/deals', label: 'Deals' },
+    // Five do not fit the phone bar; About is in the account menu there.
+    { key: 'about', href: '/about', label: 'About', onPhone: false }
   ];
 }
 

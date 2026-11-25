@@ -6863,3 +6863,347 @@ button.product-search-onlist-mark:hover {
     display: none;
   }
 }
+
+/* The account menu's About link is for phones, where the tab bar has no room. */
+@media (min-width: 761px) {
+  .account-menu-about {
+    display: none !important;
+  }
+}
+
+/* Deals --------------------------------------------------------------------- */
+
+.deals-page {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.deals-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+  margin-top: var(--space-2);
+}
+
+.deals-head h1 {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: var(--fs-xl);
+  line-height: var(--lh-xl);
+  letter-spacing: -0.03em;
+}
+
+.deals-source {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+
+.deals-source a,
+.deals-footer a {
+  color: inherit;
+  font-weight: 600;
+}
+
+.deals-tabs {
+  display: inline-flex;
+  gap: var(--space-1);
+  justify-self: start;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-2);
+}
+
+.deals-tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 40px;
+  padding: 0 var(--space-4);
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.deals-tabs button.is-active {
+  background: var(--surface-1);
+  color: var(--text);
+  box-shadow: var(--shadow-1);
+}
+
+.deals-tabs button:focus-visible,
+.deals-chips button:focus-visible,
+.deals-segment button:focus-visible,
+.deals-match-toggle:focus-visible,
+.deal-title:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+
+.deals-count {
+  min-width: 22px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--line);
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.deals-panel {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.deals-toolbar {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.deals-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.deals-chips button,
+.deals-segment button,
+.deals-match-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-1);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+
+.deals-chips button[aria-pressed='true'],
+.deals-segment button[aria-pressed='true'],
+.deals-match-toggle[aria-pressed='true'] {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+  color: var(--brand);
+  font-weight: 600;
+}
+
+.deals-chips button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.deals-chips .retailer-logo {
+  width: 16px;
+  height: 16px;
+}
+
+.deals-sort {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.deals-segment {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.deals-match-toggle {
+  color: var(--success);
+}
+
+.deals-note,
+.deals-empty {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+
+.deal-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.deal-card {
+  display: grid;
+  align-content: start;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface-1);
+  box-shadow: var(--shadow-1);
+}
+
+.deal-card.is-match {
+  border-color: color-mix(in srgb, var(--success) 40%, var(--line));
+}
+
+.deal-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+
+.deal-shop {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.deal-shop .retailer-logo {
+  width: 16px;
+  height: 16px;
+}
+
+.deal-badge {
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+}
+
+.deal-badge.is-new {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.deal-title {
+  color: var(--text);
+  font-size: var(--fs-md);
+  font-weight: 600;
+  line-height: 1.35;
+  text-decoration: none;
+  border-radius: 4px;
+  overflow-wrap: anywhere;
+}
+
+.deal-title:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.deal-title svg {
+  margin-left: 4px;
+  color: var(--muted);
+  vertical-align: -1px;
+}
+
+.deal-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--fs-sm);
+}
+
+.deal-price {
+  color: var(--text);
+  font-size: var(--fs-lg);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.deal-votes,
+.deal-ends {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.deal-votes.is-hot {
+  background: var(--success-soft);
+  color: var(--success);
+  font-weight: 700;
+}
+
+.deal-ends.is-soon {
+  background: var(--warn-soft);
+  color: color-mix(in srgb, var(--warn) 70%, var(--text));
+}
+
+.deal-match {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  color: var(--success);
+  font-size: var(--fs-sm);
+}
+
+.deal-match svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.deals-footer {
+  padding-top: var(--space-2);
+}
+
+@media (max-width: 760px) {
+  .deal-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .deals-tabs {
+    justify-self: stretch;
+  }
+
+  .deals-tabs button {
+    flex: 1 1 0;
+    justify-content: center;
+    padding: 0 var(--space-2);
+  }
+
+  /* One swipeable row of shops instead of a tall block of chips. */
+  .deals-chips {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    margin: 0 calc(-1 * var(--space-4));
+    padding: 2px var(--space-4);
+    scrollbar-width: none;
+  }
+
+  .deals-chips::-webkit-scrollbar {
+    display: none;
+  }
+
+  .deals-chips button {
+    flex: none;
+  }
+}

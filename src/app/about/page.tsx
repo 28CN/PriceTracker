@@ -20,10 +20,10 @@ const SPEED = [
 ];
 
 const TESTS = [
-  { kind: 'Unit and route tests (Vitest)', count: '309' },
-  { kind: 'Database checks (pgTAP: access rules, triggers)', count: '80' },
-  { kind: 'Crawler tests (pytest)', count: '11' },
-  { kind: 'Database migrations, re-applied in CI', count: '22' }
+  { kind: 'Unit and route tests (Vitest)', count: '331' },
+  { kind: 'Database checks (pgTAP: access rules, triggers)', count: '90' },
+  { kind: 'Crawler and deals feed tests (pytest)', count: '17' },
+  { kind: 'Database migrations, re-applied in CI', count: '23' }
 ];
 
 const DECISIONS = [
