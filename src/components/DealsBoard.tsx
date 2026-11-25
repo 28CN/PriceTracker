@@ -60,6 +60,8 @@ function DealThumb({ src, href }: { src: string | null; href: string }) {
   );
 }
 
+const shopSite = (domain: string) => `https://www.${domain}/`;
+
 function syncUrl(tab: DealTab, shop: string | null) {
   const params = new URLSearchParams();
   if (tab !== 'shops') params.set('tab', tab);
@@ -113,6 +115,7 @@ export default function DealsBoard({
   }, [deals, tab, shop, sort, onlyMatches]);
 
   const shops = DEAL_SHOPS.filter((item) => item.tab === tab);
+  const selectedShop = shop ? dealShop(shop) : null;
   const staleHere = staleShops.filter((key) => shops.some((item) => item.key === key));
 
   const chooseTab = (next: DealTab) => {
@@ -195,6 +198,12 @@ export default function DealsBoard({
                 </button>
               );
             })}
+            {selectedShop ? (
+              <a className="deals-shop-site" href={shopSite(selectedShop.domain)} target="_blank" rel="noopener noreferrer">
+                {selectedShop.domain}
+                <ExternalLink size={13} aria-hidden="true" />
+              </a>
+            ) : null}
           </div>
           <div className="deals-sort">
             <div className="deals-segment" role="group" aria-label="Sort">
@@ -240,10 +249,23 @@ export default function DealsBoard({
                 <li key={deal.id} className={`deal-card${deal.match ? ' is-match' : ''}`}>
                   <div className="deal-body">
                   <div className="deal-top">
-                    <span className="deal-shop">
-                      <RetailerLogo retailer={info?.name ?? deal.shop} url={info ? `https://${info.domain}` : null} />
-                      {info?.name ?? deal.shop}
-                    </span>
+                    {info ? (
+                      <a
+                        className="deal-shop"
+                        href={shopSite(info.domain)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={`${info.name} website`}
+                      >
+                        <RetailerLogo retailer={info.name} url={`https://${info.domain}`} />
+                        {info.name}
+                      </a>
+                    ) : (
+                      <span className="deal-shop">
+                        <RetailerLogo retailer={deal.shop} url={null} />
+                        {deal.shop}
+                      </span>
+                    )}
                     <time dateTime={deal.postedAt}>{deal.posted}</time>
                     {deal.isNew ? <span className="deal-badge is-new">New</span> : null}
                   </div>
