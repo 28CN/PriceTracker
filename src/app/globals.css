@@ -8098,12 +8098,25 @@ a.deal-shop:focus-visible,
   }
 }
 
-@media (min-width: 1100px) {
+/* Wide screens: the computer card gets the full row so its screenshots stay readable. */
+@media (min-width: 860px) {
   .install-platforms {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .install-card {
-    height: 100%;
+  .install-card.is-computer {
+    grid-column: 1 / -1;
+  }
+
+  .install-card.is-computer .install-steps {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
+    grid-template-rows: auto 1fr;
+    column-gap: var(--space-6);
+    align-items: start;
+  }
+
+  .install-card.is-computer .install-steps li:last-child {
+    grid-column: 2;
+    grid-row: 1 / span 2;
   }
 }

@@ -89,7 +89,7 @@ export default function InstallPage() {
       </section>
 
       <section className="install-platforms" aria-label="Install steps by device">
-        <article className="about-section glass-surface install-card">
+        <article className="about-section glass-surface install-card is-computer">
           <h2 className="install-card-title">
             <Monitor size={18} aria-hidden="true" />
             Computer: Chrome or Edge
@@ -101,7 +101,7 @@ export default function InstallPage() {
                 {/* eslint-disable-next-line @next/next/no-img-element -- small pre-sized WebP, lazy below the fold */}
                 <img
                   src="/install/desktop-install-icon.webp"
-                  width={580}
+                  width={350}
                   height={66}
                   loading="lazy"
                   decoding="async"
@@ -115,8 +115,8 @@ export default function InstallPage() {
                 {/* eslint-disable-next-line @next/next/no-img-element -- small pre-sized WebP, lazy below the fold */}
                 <img
                   src="/install/desktop-install-dialog.webp"
-                  width={490}
-                  height={200}
+                  width={482}
+                  height={190}
                   loading="lazy"
                   decoding="async"
                   alt="Browser dialog asking to install PriceTracker with an Install button"
