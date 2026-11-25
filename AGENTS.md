@@ -49,6 +49,22 @@ run, open items and what to ask the owner for.
 - Identity: user.name `Ruoilin Li`, user.email `noreply@users.noreply.github.com`.
 - No rebase, no force-push, no history rewriting.
 
+## Changes from the owner or Antigravity
+
+The owner sometimes edits the site herself with Antigravity (or by hand). Agents
+cannot see those conversations, so the repository is the shared memory:
+
+- Every change, from anyone, goes in as a commit pushed to GitHub (a branch or
+  `main`) with a clear one-line message saying what changed and why.
+- Each change also adds one short line at the top of `docs/CHANGELOG.md`
+  (date, who, what). No code walkthroughs; the diff has the details.
+- Agents start every session with `git pull`, then read `docs/CHANGELOG.md` and
+  `git log --oneline <last known SHA>..HEAD` (plus `git diff --stat` for that
+  range). Open only the files that changed. Do not re-read the whole codebase.
+- When you finish, add your own CHANGELOG line and report the SHA you ended at,
+  so the next session knows where to start.
+- Non-expert step-by-step guide (Windows + Antigravity): `docs/WORKING-WITH-ANTIGRAVITY.md`.
+
 ## Docs
 
 - English. Never invent numbers: only report measurements you actually took,

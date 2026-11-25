@@ -6,6 +6,14 @@ first; this file adds the history, where things run, and what to ask the owner f
 The repository is public. Never put secrets, passwords, email addresses or
 vault ids in this file, in commits, or in pull request text.
 
+## Starting a session
+
+1. `git pull` on `main`.
+2. Read the top of `docs/CHANGELOG.md`: owner and Antigravity edits land there too.
+3. `git log --oneline <last known SHA>..HEAD` and `git diff --stat <last known SHA>..HEAD`.
+   Open only what changed; the rest is as described in this file.
+4. Finish with a CHANGELOG line and the SHA you ended at.
+
 ## History
 
 All work lands on `main` through squash-merged pull requests.
@@ -27,6 +35,11 @@ All work lands on `main` through squash-merged pull requests.
 | #32 | Card price alignment, shorter landing, one query for latest prices, functions pinned to `hnd1`. |
 | #33 | Stale prices shown muted with `Last seen`, per-shop usual price that follows lasting rises, desktop dashboard (summary strip, This week panel, side detail), search rebuild. |
 | #34 | Kangaroo hero, calmer style, steadier dashboard, this handoff document. |
+| #35 to #45 | Search and account polish, one-click add from shop links. |
+| #46 | Main navigation (top on desktop, bottom bar on phones) and a public About page. |
+| #47 | Compare: your list at Coles vs Woolworths, with unit prices. |
+| #48, #49 | Deals page from OzBargain shop feeds (GitHub Action every 6 hours), thumbnails and was/now saving. |
+| #50 | Home shortcut cards, CHANGELOG and the Antigravity working guide. |
 
 PR #1 (beta shop search page) is still open and not part of `main`.
 
