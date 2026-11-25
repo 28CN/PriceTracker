@@ -7040,7 +7040,7 @@ button.product-search-onlist-mark:hover {
   font-size: var(--fs-sm);
 }
 
-.deal-list {
+.deals-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-3);
@@ -7051,8 +7051,9 @@ button.product-search-onlist-mark:hover {
 
 .deal-card {
   display: grid;
-  align-content: start;
-  gap: var(--space-2);
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--space-3);
   padding: var(--space-4);
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
@@ -7176,7 +7177,7 @@ button.product-search-onlist-mark:hover {
 }
 
 @media (max-width: 760px) {
-  .deal-list {
+  .deals-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 
@@ -7403,5 +7404,70 @@ button.product-search-onlist-mark:hover {
 
   .home-shortcuts.is-compact .home-shortcut-desc {
     display: none;
+
+/* Deal cards: text on the left, a fixed-size thumbnail on the right. */
+.deal-body {
+  display: grid;
+  align-content: start;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.deal-thumb {
+  display: grid;
+  place-items: center;
+  width: 96px;
+  height: 96px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-strong);
+  color: var(--muted);
+}
+
+.deal-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.deal-was {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.deal-save {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--success-soft);
+  color: var(--success);
+  font-weight: 700;
+}
+
+/* Wide screens: three columns of deals. */
+@media (min-width: 1100px) {
+  .deals-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .deal-card {
+    gap: var(--space-2);
+    padding: var(--space-3);
+  }
+
+  .deal-thumb {
+    width: 64px;
+    height: 64px;
+  }
+
+  .deal-title {
+    font-size: var(--fs-sm);
+  }
+
+  .deal-price {
+    font-size: var(--fs-md);
   }
 }

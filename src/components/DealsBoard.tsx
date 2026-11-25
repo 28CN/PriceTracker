@@ -1,11 +1,11 @@
 'use client';
 
-import { CircleCheck, Clock, ExternalLink, ThumbsUp } from 'lucide-react';
+import { CircleCheck, Clock, ExternalLink, Tag, ThumbsUp } from 'lucide-react';
 import { useMemo, useState, type KeyboardEvent } from 'react';
 
 import InfoTip from '@/components/InfoTip';
 import RetailerLogo from '@/components/RetailerLogo';
-import { DEAL_SHOPS, dealShop, type DealTab } from '@/lib/deals';
+import { DEAL_SHOPS, dealShop, type DealSaving, type DealTab } from '@/lib/deals';
 
 export type DealView = {
   id: number;
@@ -15,12 +15,16 @@ export type DealView = {
   tab: DealTab;
   votes: number;
   price: string | null;
+  saving: DealSaving | null;
+  image: string | null;
   postedAt: string;
   posted: string;
   timeLeft: string | null;
   endsSoon: boolean;
   isNew: boolean;
   match: string | null;
+  /** The same item at another shop on your list, when sizes agree. */
+  elsewhere: { shop: string; price: string } | null;
 };
 
 type Sort = 'new' | 'votes';
@@ -31,6 +35,30 @@ const TABS: { key: DealTab; label: string }[] = [
 ];
 
 const HOT_VOTES = 50;
+
+/** Fixed-size thumbnail; a plain tag icon when there is no image or it fails. */
+function DealThumb({ src, href }: { src: string | null; href: string }) {
+  const [failed, setFailed] = useState(false);
+  return (
+    <a className="deal-thumb" href={href} target="_blank" rel="noopener noreferrer" tabIndex={-1} aria-hidden="true">
+      {src && !failed ? (
+        // eslint-disable-next-line @next/next/no-img-element -- OzBargain-hosted thumbnail, fixed size, lazy
+        <img
+          src={src}
+          alt=""
+          width={96}
+          height={96}
+          loading="lazy"
+          decoding="async"
+          referrerPolicy="no-referrer"
+          onError={() => setFailed(true)}
+        />
+      ) : (
+        <Tag size={22} aria-hidden="true" />
+      )}
+    </a>
+  );
+}
 
 function syncUrl(tab: DealTab, shop: string | null) {
   const params = new URLSearchParams();
@@ -205,11 +233,12 @@ export default function DealsBoard({
             {shop ? `No current deals at ${dealShop(shop)?.name ?? shop}.` : 'No current deals here yet.'}
           </p>
         ) : (
-          <ul className="deal-list">
+          <ul className="deals-grid">
             {visible.map((deal) => {
               const info = dealShop(deal.shop);
               return (
                 <li key={deal.id} className={`deal-card${deal.match ? ' is-match' : ''}`}>
+                  <div className="deal-body">
                   <div className="deal-top">
                     <span className="deal-shop">
                       <RetailerLogo retailer={info?.name ?? deal.shop} url={info ? `https://${info.domain}` : null} />
@@ -225,6 +254,13 @@ export default function DealsBoard({
                   </a>
                   <div className="deal-meta">
                     {deal.price ? <span className="deal-price">{deal.price}</span> : null}
+                    {deal.saving?.was ? (
+                      <s className="deal-was">
+                        <span className="sr-only">was </span>
+                        {deal.saving.was}
+                      </s>
+                    ) : null}
+                    {deal.saving?.percent ? <span className="deal-save">Save {deal.saving.percent}%</span> : null}
                     <span className={`deal-votes${deal.votes >= HOT_VOTES ? ' is-hot' : ''}`}>
                       <ThumbsUp size={13} aria-hidden="true" />
                       {deal.votes}
@@ -242,9 +278,17 @@ export default function DealsBoard({
                       <CircleCheck size={14} aria-hidden="true" />
                       <span>
                         On your list: <b>{deal.match}</b>
+                        {deal.elsewhere ? (
+                          <>
+                            {' '}
+                            · {deal.elsewhere.shop} {deal.elsewhere.price}
+                          </>
+                        ) : null}
                       </span>
                     </p>
                   ) : null}
+                  </div>
+                  <DealThumb src={deal.image} href={deal.url} />
                 </li>
               );
             })}
