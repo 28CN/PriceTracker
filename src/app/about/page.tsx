@@ -1,76 +1,56 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { Download } from 'lucide-react';
 
 import { getViewer } from '@/lib/auth';
-import { SUPPORTED_RETAILERS } from '@/lib/retailer';
 
 export const metadata: Metadata = {
-  title: 'About · PriceTracker',
-  description: 'How PriceTracker is built: architecture, measured speed, tests and design decisions.'
+  title: 'Guide · PriceTracker',
+  description: 'How to use PriceTracker: add products, set a Goal, read the chart, compare shops, deals and the app.'
 };
 
-const REPO_URL = 'https://github.com/28CN/PriceTracker';
-
-// Numbers are measured, not estimated. Update the date when they are re-run.
-const MEASURED_ON = '25 Nov 2026';
-
-const SPEED = [
-  { page: 'Home page', desktop: '1.5 s', phone: '1.3 s' },
-  { page: 'Example list after sign-in', desktop: '2.5 s', phone: '2.2 s' }
+const JUMP_LINKS = [
+  { href: '#start', label: 'Get started' },
+  { href: '#goal', label: 'Set a Goal' },
+  { href: '#chart', label: 'Price chart' },
+  { href: '#compare', label: 'Compare' },
+  { href: '#deals', label: 'Deals' },
+  { href: '#add-from-shops', label: 'Add from a shop' },
+  { href: '#install', label: 'Install the app' }
 ];
 
-const TESTS = [
-  { kind: 'Unit and route tests (Vitest)', count: '331' },
-  { kind: 'Database checks (pgTAP: access rules, triggers)', count: '90' },
-  { kind: 'Crawler and deals feed tests (pytest)', count: '17' },
-  { kind: 'Database migrations, re-applied in CI', count: '23' }
-];
-
-const DECISIONS = [
+const CHART_LABELS = [
   {
-    title: 'The database decides who sees what',
-    body: 'Every table has row-level security. Pages read with the signed-in person’s own session, so a bug in a page cannot show someone else’s list.',
-    cost: 'Access rules need careful review, so CI tests them.'
+    name: 'Real discount',
+    tone: 'is-good',
+    detail: 'Below the usual price.'
   },
   {
-    title: 'Free scheduled jobs instead of a queue',
-    body: 'GitHub Actions checks prices twice a week, or when asked. Logs and screenshots are kept for each run.',
-    cost: 'A check takes a few minutes to start.'
+    name: 'Raised before the drop',
+    tone: 'is-warn',
+    detail: 'The shop put the price up first, so the drop is not a real saving.'
   },
   {
-    title: 'Old prices stay visible',
-    body: 'A price older than a week is shown muted with “Last seen” and its date. The cheapest shop only uses fresh prices.',
-    cost: 'Cards carry one extra line.'
+    name: 'Usual price',
+    tone: 'is-neutral',
+    detail: 'In line with the normal price at that shop.'
   },
   {
-    title: 'A read-only example account',
-    body: 'Anyone can try the site without signing up. The database blocks every change by that account.',
-    cost: 'Its sample list has to be kept up to date.'
-  },
-  {
-    title: 'Shops that block robots are checked from a home PC',
-    body: 'Some shops refuse cloud browsers. Those are checked on a schedule from a desktop instead of paying for proxies.',
-    cost: 'Those prices depend on that PC being on.'
-  },
-  {
-    title: 'Email is off by a database switch',
-    body: 'A database trigger refuses to queue mail while email is off, even if some code forgets to check.',
-    cost: 'Turning it on is a database change, not a button.'
+    name: 'Not enough history yet',
+    tone: 'is-muted',
+    detail: 'Needs more weekly checks before calling a discount.'
   }
 ];
 
-export default async function AboutPage() {
-  // Signed-in people already have a list; the example would sign them out of it.
+export default async function GuidePage() {
   const viewer = await getViewer();
 
   return (
-    <main className="about-page">
+    <main className="about-page guide-page">
       <header className="about-hero glass-surface">
-        <p className="about-kicker">Case study</p>
-        <h1>How PriceTracker works</h1>
+        <h1>How to use PriceTracker</h1>
         <p className="about-lede">
-          It watches prices at {SUPPORTED_RETAILERS.length} Australian shops and shows the cheapest one, how it compares
-          with the usual price, and when it drops below your goal.
+          Add the products you buy, set a Goal price and see when a shop has a real saving.
         </p>
         <div className="about-actions">
           {viewer ? (
@@ -78,132 +58,174 @@ export default async function AboutPage() {
               My list
             </Link>
           ) : (
-            <form action="/demo" method="post" className="demo-form">
-              <button className="button primary" type="submit">
-                View example
-              </button>
-            </form>
+            <>
+              <Link className="button primary" href="/register">
+                Start tracking
+              </Link>
+              <form action="/demo" method="post" className="demo-form">
+                <button className="button" type="submit">
+                  View example
+                </button>
+              </form>
+            </>
           )}
-          <a className="button" href={REPO_URL} target="_blank" rel="noreferrer">
-            Source code
-          </a>
         </div>
       </header>
 
-      <section className="about-section glass-surface" aria-labelledby="about-shots">
-        <h2 id="about-shots">Screenshots</h2>
-        <div className="about-shots">
-          <figure className="about-shot about-shot-wide">
-            {/* eslint-disable-next-line @next/next/no-img-element -- small pre-sized WebP, lazy below the fold */}
-            <img
-              src="/about/dashboard-desktop-light.webp"
-              width={1440}
-              height={900}
-              loading="lazy"
-              decoding="async"
-              alt="Example list on a laptop: summary tiles, product cards with the cheapest shop, and a price chart beside them"
-            />
-            <figcaption>Laptop, light theme</figcaption>
-          </figure>
-          <figure className="about-shot about-shot-phone">
-            {/* eslint-disable-next-line @next/next/no-img-element -- small pre-sized WebP, lazy below the fold */}
-            <img
-              src="/about/dashboard-phone-dark.webp"
-              width={780}
-              height={1688}
-              loading="lazy"
-              decoding="async"
-              alt="Example list on a phone in the dark theme"
-            />
-            <figcaption>Phone, dark theme</figcaption>
-          </figure>
-        </div>
-      </section>
+      <nav className="guide-jump" aria-label="Guide sections">
+        {JUMP_LINKS.map((item) => (
+          <a key={item.href} className="guide-jump-link" href={item.href}>
+            {item.label}
+          </a>
+        ))}
+      </nav>
 
-      <section className="about-section glass-surface" aria-labelledby="about-arch">
-        <h2 id="about-arch">How it fits together</h2>
-        <ol className="about-arch">
-          <li>
-            <strong>Website</strong>
-            <span>Next.js on Vercel (Tokyo)</span>
-          </li>
-          <li>
-            <strong>Accounts and prices</strong>
-            <span>Supabase Postgres, row-level security on every table</span>
-          </li>
-          <li>
-            <strong>Price checks</strong>
-            <span>Python and Playwright, run by GitHub Actions</span>
-          </li>
-          <li>
-            <strong>Tests on every change</strong>
-            <span>Types, lint, unit, crawler and database tests in CI</span>
-          </li>
-        </ol>
-        <p className="about-note">
-          Each price check adds a row to the price history. History is never deleted, so charts and “usual price” use
-          every check.
-        </p>
-      </section>
+      <div className="guide-grid">
+        <section id="start" className="about-section glass-surface guide-section" aria-labelledby="guide-start">
+          <h2 id="guide-start">Get started</h2>
+          <ol className="guide-steps">
+            <li>Make a free account, or try the example list first.</li>
+            <li>
+              On <strong>Add</strong>, paste a link to a product page from a shop, or search the shops by name.
+            </li>
+            <li>
+              Prices are checked twice a week. Each card shows the cheapest shop and when the price was last checked.
+            </li>
+          </ol>
+        </section>
 
-      <section className="about-section glass-surface" aria-labelledby="about-speed">
-        <h2 id="about-speed">Measured speed</h2>
-        <div className="about-table-wrap">
-          <table className="about-table">
-            <caption>Time until the main content shows (median of 5 loads)</caption>
-            <thead>
-              <tr>
-                <th scope="col">Page</th>
-                <th scope="col">Laptop width</th>
-                <th scope="col">Phone width</th>
-              </tr>
-            </thead>
-            <tbody>
-              {SPEED.map((row) => (
-                <tr key={row.page}>
-                  <th scope="row">{row.page}</th>
-                  <td>{row.desktop}</td>
-                  <td>{row.phone}</td>
-                </tr>
+        <section id="goal" className="about-section glass-surface guide-section" aria-labelledby="guide-goal">
+          <h2 id="guide-goal">Set a Goal</h2>
+          <div className="guide-copy">
+            <p>Your Goal is the price you would be happy to pay.</p>
+            <p>
+              When a shop&rsquo;s current price is at or under it, the card shows{' '}
+              <span className="guide-tag is-good">Below goal</span> in green and it counts in the{' '}
+              <strong>Below goal</strong> tile at the top of your list.
+            </p>
+            <p>
+              To change it, open the card and tap <strong>Edit</strong>.
+            </p>
+          </div>
+        </section>
+
+        <section
+          id="chart"
+          className="about-section glass-surface guide-section guide-span-2"
+          aria-labelledby="guide-chart"
+        >
+          <h2 id="guide-chart">Read the price chart</h2>
+          <div className="guide-chart-layout">
+            <div className="guide-copy">
+              <p>Open a card to see its chart.</p>
+              <p>
+                The solid line is the lowest price each sale week. The dashed line is the usual price at the cheapest
+                shop.
+              </p>
+              <p className="about-note">
+                A price older than a week is shown faded with <strong>Last seen</strong> and its date.
+              </p>
+            </div>
+            <ul className="guide-labels">
+              {CHART_LABELS.map((item) => (
+                <li key={item.name}>
+                  <span className={`guide-tag ${item.tone}`}>{item.name}</span>
+                  <span>{item.detail}</span>
+                </li>
               ))}
-            </tbody>
-          </table>
-        </div>
-        <p className="about-note">
-          Measured on {MEASURED_ON} on the live site with headless Chrome on a fast connection (Largest Contentful
-          Paint). The sign-in time includes signing in. Layout shift stayed under 0.01. Phones on mobile data will be
-          slower.
-        </p>
-      </section>
+            </ul>
+          </div>
+        </section>
 
-      <section className="about-section glass-surface" aria-labelledby="about-tests">
-        <h2 id="about-tests">Tests</h2>
-        <ul className="about-counts">
-          {TESTS.map((row) => (
-            <li key={row.kind}>
-              <b>{row.count}</b>
-              <span>{row.kind}</span>
-            </li>
-          ))}
-        </ul>
-        <p className="about-note">
-          Counted on {MEASURED_ON}. CI also compares the database rules with production and fails if they differ.
-        </p>
-      </section>
+        <section id="compare" className="about-section glass-surface guide-section" aria-labelledby="guide-compare">
+          <h2 id="guide-compare">Compare Coles and Woolworths</h2>
+          <div className="guide-copy">
+            <p>
+              <strong>Compare</strong> puts everything on your list that both shops sell side by side.
+            </p>
+            <p>It shows prices per kg, litre or item where the size is known, and the total for each shop.</p>
+          </div>
+        </section>
 
-      <section className="about-section glass-surface" aria-labelledby="about-decisions">
-        <h2 id="about-decisions">Design decisions</h2>
-        <ul className="about-decisions">
-          {DECISIONS.map((item) => (
-            <li key={item.title}>
-              <h3>{item.title}</h3>
-              <p>{item.body}</p>
-              <p className="about-cost">Trade-off: {item.cost}</p>
-            </li>
-          ))}
-        </ul>
-      </section>
+        <section id="deals" className="about-section glass-surface guide-section" aria-labelledby="guide-deals">
+          <h2 id="guide-deals">Deals</h2>
+          <div className="guide-copy">
+            <p>Bargains posted on OzBargain for the shops we check and big online shops.</p>
+            <p>
+              Filter by shop, sort by newest or most votes. <strong>On my list</strong> marks deals that match
+              something you track.
+            </p>
+            <p>A deal opens on OzBargain; the shop name opens the shop&rsquo;s website.</p>
+          </div>
+        </section>
 
+        <section
+          id="add-from-shops"
+          className="about-section glass-surface guide-section guide-span-2"
+          aria-labelledby="guide-add-from-shops"
+        >
+          <h2 id="guide-add-from-shops">Add straight from a shop</h2>
+          <div className="guide-devices">
+            <div className="guide-device-card">
+              <h3>Computer</h3>
+              <p>
+                On the <strong>Add</strong> page, drag the <strong>Add to PriceTracker</strong> button to your
+                bookmarks bar, then click it on any product page.
+              </p>
+            </div>
+
+            <div className="guide-device-card">
+              <h3>Android</h3>
+              <p>
+                Install the app (see below), then in a shop&rsquo;s app or Chrome tap <strong>Share</strong>, then{' '}
+                <strong>PriceTracker</strong>.
+              </p>
+            </div>
+
+            <div className="guide-device-card">
+              <h3>iPhone and iPad</h3>
+              <ol className="guide-steps is-compact">
+                <li>
+                  In <strong>Shortcuts</strong> tap <strong>+</strong>, name it <strong>Add to PriceTracker</strong>,
+                  and turn on <strong>Show in Share Sheet</strong> for URLs.
+                </li>
+                <li>
+                  Add <strong>URL Encode</strong> with <strong>Shortcut Input</strong>.
+                </li>
+                <li>
+                  Add <strong>Open URLs</strong> with{' '}
+                  <code className="guide-code">https://pricetracker-au.vercel.app/add?url=</code> followed by the
+                  encoded text.
+                </li>
+                <li>
+                  In Safari, tap <strong>Share</strong>, then <strong>Add to PriceTracker</strong>.
+                </li>
+              </ol>
+            </div>
+          </div>
+        </section>
+
+        <section
+          id="install"
+          className="about-section glass-surface guide-section guide-span-2 guide-install-banner"
+          aria-labelledby="guide-install"
+        >
+          <div>
+            <h2 id="guide-install">Install the app</h2>
+            <p className="guide-install-text">
+              Put PriceTracker on your computer or phone home screen with no app store and no browser extension.
+            </p>
+          </div>
+          <Link className="button" href="/install">
+            <Download size={16} aria-hidden="true" />
+            How to install
+          </Link>
+        </section>
+      </div>
+
+      <p className="guide-built-link">
+        <Link href="/about/built">How PriceTracker is built</Link>
+      </p>
     </main>
   );
 }

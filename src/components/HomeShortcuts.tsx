@@ -37,8 +37,8 @@ const SHORTCUTS: ShortcutItem[] = [
   {
     key: 'about',
     href: '/about',
-    title: 'About',
-    description: 'How it is built',
+    title: 'Guide',
+    description: 'How to use it',
     icon: BookOpen
   }
 ];

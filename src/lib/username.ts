@@ -12,6 +12,7 @@ export const RESERVED_USERNAMES = new Set([
   'demo',
   'forgot-password',
   'insights',
+  'install',
   'login',
   'logout',
   'manage',
