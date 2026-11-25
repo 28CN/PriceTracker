@@ -1,7 +1,7 @@
 'use client';
 
 import { CircleCheck, Clock, ExternalLink, Tag, ThumbsUp } from 'lucide-react';
-import { useMemo, useState, type KeyboardEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 
 import InfoTip from '@/components/InfoTip';
 import RetailerLogo from '@/components/RetailerLogo';
@@ -39,11 +39,18 @@ const HOT_VOTES = 50;
 /** Fixed-size thumbnail; a plain tag icon when there is no image or it fails. */
 function DealThumb({ src, href }: { src: string | null; href: string }) {
   const [failed, setFailed] = useState(false);
+  const imgRef = useRef<HTMLImageElement>(null);
+  // An image that failed before hydration never reaches onError; check once on mount.
+  useEffect(() => {
+    const img = imgRef.current;
+    if (img && img.complete && img.naturalWidth === 0) setFailed(true);
+  }, []);
   return (
     <a className="deal-thumb" href={href} target="_blank" rel="noopener noreferrer" tabIndex={-1} aria-hidden="true">
       {src && !failed ? (
         // eslint-disable-next-line @next/next/no-img-element -- OzBargain-hosted thumbnail, fixed size, lazy
         <img
+          ref={imgRef}
           src={src}
           alt=""
           width={96}
