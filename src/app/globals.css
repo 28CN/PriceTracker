@@ -6684,6 +6684,10 @@ button.product-search-onlist-mark:hover {
   white-space: nowrap;
 }
 
+.compare-left-out-note .info-tip-bubble {
+  white-space: normal;
+}
+
 .compare-summary,
 .compare-empty,
 .compare-table-wrap {
