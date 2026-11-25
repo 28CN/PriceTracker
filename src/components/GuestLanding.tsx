@@ -91,7 +91,7 @@ export default function GuestLanding() {
 
       <footer className="site-footer">
         <p>
-          <Link href="/about">How PriceTracker is built</Link>
+          <Link href="/about/built">How PriceTracker is built</Link>
         </p>
         <p>
           Kangaroo animation by{' '}

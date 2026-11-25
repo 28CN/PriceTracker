@@ -1,6 +1,6 @@
 'use client';
 
-import { BookOpen, House, LayoutDashboard, PackagePlus, Scale, Tag, type LucideIcon } from 'lucide-react';
+import { BookOpen, Download, House, LayoutDashboard, PackagePlus, Scale, Tag, type LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -12,7 +12,8 @@ const ICONS: Record<NavItemKey, LucideIcon> = {
   add: PackagePlus,
   compare: Scale,
   deals: Tag,
-  about: BookOpen
+  about: BookOpen,
+  install: Download
 };
 
 /**

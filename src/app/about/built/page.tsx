@@ -5,7 +5,7 @@ import { getViewer } from '@/lib/auth';
 import { SUPPORTED_RETAILERS } from '@/lib/retailer';
 
 export const metadata: Metadata = {
-  title: 'About · PriceTracker',
+  title: 'How PriceTracker is built · PriceTracker',
   description: 'How PriceTracker is built: architecture, measured speed, tests and design decisions.'
 };
 
@@ -59,7 +59,7 @@ const DECISIONS = [
   }
 ];
 
-export default async function AboutPage() {
+export default async function BuiltPage() {
   // Signed-in people already have a list; the example would sign them out of it.
   const viewer = await getViewer();
 

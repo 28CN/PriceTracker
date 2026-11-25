@@ -25,7 +25,7 @@ from urllib.parse import urlparse
 
 import requests
 
-USER_AGENT = "PriceTrackerDeals/1.0 (+https://pricetracker-au.vercel.app/about)"
+USER_AGENT = "PriceTrackerDeals/1.0 (+https://pricetracker-au.vercel.app/about/built)"
 FEED_URL = "https://www.ozbargain.com.au/deals/{domain}/feed"
 OZB_NS = "{https://www.ozbargain.com.au}"
 PAUSE_SECONDS = 2.0  # between feeds, to be polite

@@ -3,6 +3,7 @@ import { Figtree } from 'next/font/google';
 
 import AmbientBackground from '@/components/AmbientBackground';
 import TopBar from '@/components/TopBar';
+import { INSTALL_CAPTURE_SCRIPT } from '@/lib/installCapture';
 
 import './globals.css';
 
@@ -86,6 +87,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               "try{var t=localStorage.getItem('pricetracker.theme')||'system';document.documentElement.dataset.theme=t;document.documentElement.style.colorScheme=t==='system'?(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):t;var m=document.querySelector('meta[name=\"color-scheme\"]');if(!m){m=document.createElement('meta');m.name='color-scheme';document.head.appendChild(m);}m.content=t==='system'?'light dark':t;}catch(e){}"
           }}
         />
+        <script dangerouslySetInnerHTML={{ __html: INSTALL_CAPTURE_SCRIPT }} />
       </head>
       <body>
         <div className="app-shell">

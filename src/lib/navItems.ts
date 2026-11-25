@@ -1,4 +1,4 @@
-export type NavItemKey = 'home' | 'dashboard' | 'add' | 'compare' | 'deals' | 'about';
+export type NavItemKey = 'home' | 'dashboard' | 'add' | 'compare' | 'deals' | 'about' | 'install';
 
 export type NavItem = {
   key: NavItemKey;
@@ -10,13 +10,14 @@ export type NavItem = {
   onPhone?: boolean;
 };
 
-/** Only pages that exist. Visitors who are not signed in see Home, Deals and About. */
+/** Only pages that exist. Visitors who are not signed in see Home, Deals, Guide and Install. */
 export function navItemsFor(signedIn: boolean): NavItem[] {
   if (!signedIn) {
     return [
       { key: 'home', href: '/', label: 'Home' },
       { key: 'deals', href: '/deals', label: 'Deals' },
-      { key: 'about', href: '/about', label: 'About' }
+      { key: 'about', href: '/about', label: 'Guide' },
+      { key: 'install', href: '/install', label: 'Install' }
     ];
   }
   return [
@@ -24,8 +25,9 @@ export function navItemsFor(signedIn: boolean): NavItem[] {
     { key: 'add', href: '/add', label: 'Add', alsoActiveOn: ['/manage'] },
     { key: 'compare', href: '/compare', label: 'Compare' },
     { key: 'deals', href: '/deals', label: 'Deals' },
-    // Five do not fit the phone bar; About is in the account menu there.
-    { key: 'about', href: '/about', label: 'About', onPhone: false }
+    // More than four do not fit the phone bar; Guide and Install are in the account menu there.
+    { key: 'about', href: '/about', label: 'Guide', onPhone: false },
+    { key: 'install', href: '/install', label: 'Install', onPhone: false }
   ];
 }
 
