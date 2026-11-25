@@ -7404,6 +7404,8 @@ button.product-search-onlist-mark:hover {
 
   .home-shortcuts.is-compact .home-shortcut-desc {
     display: none;
+  }
+}
 
 /* Deal cards: text on the left, a fixed-size thumbnail on the right. */
 .deal-body {
