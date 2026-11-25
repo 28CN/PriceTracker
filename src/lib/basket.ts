@@ -1,21 +1,21 @@
-import { retailerKey } from './retailer';
-import type { LinkView, ProductView } from './types';
+import { retailerKey } from "./retailer";
+import type { LinkView, ProductView } from "./types";
 
 /** The two supermarkets compared. Other shops are left out of the basket. */
 export const BASKET_SHOPS = [
-  { key: 'coles', name: 'Coles' },
-  { key: 'woolworths', name: 'Woolworths' }
+  { key: "coles", name: "Coles" },
+  { key: "woolworths", name: "Woolworths" },
 ] as const;
 
-export type BasketShopKey = (typeof BASKET_SHOPS)[number]['key'];
+export type BasketShopKey = (typeof BASKET_SHOPS)[number]["key"];
 
 /** What one shop says about one product. */
 export type ShopCell =
-  | { kind: 'not_tracked' }
-  | { kind: 'fresh'; price: number; at: string | null; url: string }
-  | { kind: 'stale'; price: number; at: string | null; url: string }
-  | { kind: 'unavailable'; url: string }
-  | { kind: 'no_price'; url: string };
+  | { kind: "not_tracked" }
+  | { kind: "fresh"; price: number; at: string | null; url: string }
+  | { kind: "stale"; price: number; at: string | null; url: string }
+  | { kind: "unavailable"; url: string }
+  | { kind: "no_price"; url: string };
 
 export type BasketRow = {
   product: ProductView;
@@ -51,46 +51,70 @@ function timestamp(iso: string | null): number {
 /** Best answer from one shop's links: cheapest fresh, else newest stale, else unavailable, else no price. */
 export function shopCellFor(links: LinkView[]): ShopCell {
   const active = links.filter((link) => link.isActive);
-  if (active.length === 0) return { kind: 'not_tracked' };
+  if (active.length === 0) return { kind: "not_tracked" };
 
   let fresh: LinkView | null = null;
   let stale: LinkView | null = null;
   let unavailable: LinkView | null = null;
 
   for (const link of active) {
-    if (link.stockStatus === 'unavailable') {
+    if (link.stockStatus === "unavailable") {
       unavailable ??= link;
       continue;
     }
-    if (link.latestPrice === null || !Number.isFinite(link.latestPrice)) continue;
+    if (link.latestPrice === null || !Number.isFinite(link.latestPrice))
+      continue;
     if (!link.priceStale) {
-      if (!fresh || link.latestPrice < (fresh.latestPrice as number)) fresh = link;
+      if (!fresh || link.latestPrice < (fresh.latestPrice as number))
+        fresh = link;
     } else if (!stale || timestamp(link.latestAt) > timestamp(stale.latestAt)) {
       stale = link;
     }
   }
 
-  if (fresh) return { kind: 'fresh', price: fresh.latestPrice as number, at: fresh.latestAt, url: fresh.url };
-  if (unavailable) return { kind: 'unavailable', url: unavailable.url };
-  if (stale) return { kind: 'stale', price: stale.latestPrice as number, at: stale.latestAt, url: stale.url };
-  return { kind: 'no_price', url: active[0].url };
+  if (fresh)
+    return {
+      kind: "fresh",
+      price: fresh.latestPrice as number,
+      at: fresh.latestAt,
+      url: fresh.url,
+    };
+  if (unavailable) return { kind: "unavailable", url: unavailable.url };
+  if (stale)
+    return {
+      kind: "stale",
+      price: stale.latestPrice as number,
+      at: stale.latestAt,
+      url: stale.url,
+    };
+  return { kind: "no_price", url: active[0].url };
 }
 
 export function basketRowFor(product: ProductView): BasketRow | null {
-  const byShop: Record<BasketShopKey, LinkView[]> = { coles: [], woolworths: [] };
+  const byShop: Record<BasketShopKey, LinkView[]> = {
+    coles: [],
+    woolworths: [],
+  };
   for (const link of product.links) {
     const key = retailerKey(link.retailer) ?? retailerKey(link.url);
-    if (key === 'coles' || key === 'woolworths') byShop[key].push(link);
+    if (key === "coles" || key === "woolworths") byShop[key].push(link);
   }
   if (byShop.coles.length === 0 && byShop.woolworths.length === 0) return null;
 
-  const cells = { coles: shopCellFor(byShop.coles), woolworths: shopCellFor(byShop.woolworths) };
-  if (cells.coles.kind === 'not_tracked' && cells.woolworths.kind === 'not_tracked') return null;
+  const cells = {
+    coles: shopCellFor(byShop.coles),
+    woolworths: shopCellFor(byShop.woolworths),
+  };
+  if (
+    cells.coles.kind === "not_tracked" &&
+    cells.woolworths.kind === "not_tracked"
+  )
+    return null;
 
-  let cheapest: BasketRow['cheapest'] = null;
+  let cheapest: BasketRow["cheapest"] = null;
   for (const { key } of BASKET_SHOPS) {
     const cell = cells[key];
-    if (cell.kind === 'fresh' && (!cheapest || cell.price < cheapest.price)) {
+    if (cell.kind === "fresh" && (!cheapest || cell.price < cheapest.price)) {
       cheapest = { shop: key, price: cell.price };
     }
   }
@@ -99,12 +123,14 @@ export function basketRowFor(product: ProductView): BasketRow | null {
     product,
     cells,
     cheapest,
-    inBasket: cells.coles.kind === 'fresh' && cells.woolworths.kind === 'fresh'
+    inBasket: cells.coles.kind === "fresh" && cells.woolworths.kind === "fresh",
   };
 }
 
 export function summariseBasket(products: ProductView[]): BasketSummary {
-  const rows = products.map(basketRowFor).filter((row): row is BasketRow => row !== null);
+  const rows = products
+    .map(basketRowFor)
+    .filter((row): row is BasketRow => row !== null);
   // Compared products first, then the rest; keep list order inside each group.
   rows.sort((a, b) => Number(b.inBasket) - Number(a.inBasket));
 
@@ -113,7 +139,12 @@ export function summariseBasket(products: ProductView[]): BasketSummary {
   let split = 0;
   let comparedCount = 0;
   for (const row of rows) {
-    if (!row.inBasket || row.cells.coles.kind !== 'fresh' || row.cells.woolworths.kind !== 'fresh') continue;
+    if (
+      !row.inBasket ||
+      row.cells.coles.kind !== "fresh" ||
+      row.cells.woolworths.kind !== "fresh"
+    )
+      continue;
     comparedCount += 1;
     coles += cents(row.cells.coles.price);
     woolworths += cents(row.cells.woolworths.price);
@@ -121,16 +152,24 @@ export function summariseBasket(products: ProductView[]): BasketSummary {
   }
 
   const cheaperShop: BasketShopKey | null =
-    comparedCount === 0 || coles === woolworths ? null : coles < woolworths ? 'coles' : 'woolworths';
+    comparedCount === 0 || coles === woolworths
+      ? null
+      : coles < woolworths
+        ? "coles"
+        : "woolworths";
   const bestSingle = Math.min(coles, woolworths);
 
   return {
     rows,
     comparedCount,
     leftOutCount: rows.length - comparedCount,
-    totals: { coles: coles / 100, woolworths: woolworths / 100, split: split / 100 },
+    totals: {
+      coles: coles / 100,
+      woolworths: woolworths / 100,
+      split: split / 100,
+    },
     cheaperShop,
     splitSaving: (bestSingle - split) / 100,
-    shopGap: Math.abs(coles - woolworths) / 100
+    shopGap: Math.abs(coles - woolworths) / 100,
   };
 }

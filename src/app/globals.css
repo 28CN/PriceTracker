@@ -6662,11 +6662,26 @@ button.product-search-onlist-mark:hover {
   gap: var(--space-4);
 }
 
-.compare-hero h1 {
+.compare-title {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  margin: 0;
+  margin: var(--space-2) 0 0;
+  font-size: var(--fs-xl);
+  line-height: var(--lh-xl);
+  letter-spacing: -0.03em;
+}
+
+/* Let InfoTip bubbles spill out of the card. */
+.compare-summary {
+  overflow: visible;
+}
+
+.compare-left-out-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
 }
 
 .compare-summary,
@@ -6765,7 +6780,7 @@ button.product-search-onlist-mark:hover {
 
 .compare-table thead th + th,
 .compare-cell {
-  width: 26%;
+  width: 20%;
   text-align: right;
 }
 
