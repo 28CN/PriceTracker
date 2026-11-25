@@ -6,6 +6,7 @@ import { getViewer } from '@/lib/auth';
 import AccountMenu from './AccountMenu';
 import BrandLogo from './BrandLogo';
 import ExitDemoButton from './ExitDemoButton';
+import MainNav from './MainNav';
 import NotificationsBell from './NotificationsBell';
 import RefreshButton from './RefreshButton';
 import ThemeToggle from './ThemeToggle';
@@ -14,6 +15,7 @@ export default async function TopBar() {
   const viewer = await getViewer();
 
   return (
+    <>
     <header className="topbar">
       <div className="topbar-inner">
         {viewer?.isDemo ? (
@@ -28,6 +30,7 @@ export default async function TopBar() {
         ) : (
           <BrandLogo />
         )}
+        <MainNav signedIn={Boolean(viewer)} placement="top" />
         <div className="topbar-actions">
           {viewer?.isDemo ? null : viewer ? (
             <Link className="button topbar-manage" href="/manage">
@@ -62,5 +65,7 @@ export default async function TopBar() {
         </div>
       ) : null}
     </header>
+    <MainNav signedIn={Boolean(viewer)} placement="bottom" />
+    </>
   );
 }
