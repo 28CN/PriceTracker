@@ -6334,3 +6334,109 @@ button.product-search-onlist-mark:hover {
     transform: none;
   }
 }
+
+/* Main navigation ---------------------------------------------------------- */
+
+.main-nav ul {
+  display: flex;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.main-nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-weight: 600;
+  text-decoration: none;
+  border-radius: var(--radius-md);
+}
+
+.main-nav-link:hover {
+  color: var(--text);
+}
+
+.main-nav-link.is-active {
+  color: var(--brand);
+}
+
+.main-nav-link:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+
+.main-nav-top {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin-left: var(--space-5);
+}
+
+.main-nav-top ul {
+  gap: var(--space-1);
+}
+
+.main-nav-top .main-nav-link {
+  min-height: 38px;
+  padding: 0 var(--space-3);
+  font-size: var(--fs-sm);
+}
+
+.main-nav-top .main-nav-link.is-active {
+  background: var(--brand-soft);
+}
+
+.main-nav-bottom {
+  display: none;
+}
+
+@media (max-width: 760px) {
+  .main-nav-top {
+    display: none;
+  }
+
+  .main-nav-bottom {
+    display: block;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 30;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    background: var(--topbar-bg);
+    border-top: 1px solid var(--line);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  .main-nav-bottom ul {
+    justify-content: space-around;
+  }
+
+  .main-nav-bottom li {
+    flex: 1 1 0;
+  }
+
+  .main-nav-bottom .main-nav-link {
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+    width: 100%;
+    min-height: 58px;
+    font-size: var(--fs-xs);
+  }
+
+  .main-nav-bottom .main-nav-link.is-active svg {
+    transform: translateY(-1px);
+  }
+
+  /* Room for the tab bar, so it never covers the end of a page. */
+  .page {
+    padding-bottom: calc(var(--space-8) + 58px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .roo-easter-stage {
+    bottom: calc(70px + env(safe-area-inset-bottom, 0px));
+  }
+}

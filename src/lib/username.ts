@@ -1,15 +1,21 @@
 const USERNAME_PATTERN = /^[a-z0-9](?:[a-z0-9-]{1,28}[a-z0-9])$/;
 
 export const RESERVED_USERNAMES = new Set([
+  'about',
   'account',
+  'add',
   'admin',
   'api',
   'auth',
+  'compare',
+  'deals',
   'demo',
   'forgot-password',
+  'insights',
   'login',
   'logout',
   'manage',
+  'preview',
   'privacy',
   'register',
   'reset-password',
@@ -17,6 +23,7 @@ export const RESERVED_USERNAMES = new Set([
   'settings',
   'signup',
   'support',
+  'trip',
   'unsubscribe',
   'verify-email',
   'www'
