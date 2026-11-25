@@ -42,3 +42,6 @@ user_security | user_security_pkey | CREATE UNIQUE INDEX user_security_pkey ON p
 product_search_cache | product_search_cache_pkey | CREATE UNIQUE INDEX product_search_cache_pkey ON public.product_search_cache USING btree (query_key)
 product_search_usage | product_search_usage_day | CREATE INDEX product_search_usage_day ON public.product_search_usage USING btree (day)
 product_search_usage | product_search_usage_pkey | CREATE UNIQUE INDEX product_search_usage_pkey ON public.product_search_usage USING btree (user_id, day)
+ozb_deals | ozb_deals_pkey | CREATE UNIQUE INDEX ozb_deals_pkey ON public.ozb_deals USING btree (node_id)
+ozb_deals | ozb_deals_tab_posted | CREATE INDEX ozb_deals_tab_posted ON public.ozb_deals USING btree (tab, posted_at DESC)
+ozb_feed_status | ozb_feed_status_pkey | CREATE UNIQUE INDEX ozb_feed_status_pkey ON public.ozb_feed_status USING btree (shop)

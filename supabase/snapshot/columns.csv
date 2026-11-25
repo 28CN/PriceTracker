@@ -146,3 +146,20 @@ product_search_cache,results,jsonb,NO
 product_search_usage,calls,integer,NO
 product_search_usage,day,date,NO
 product_search_usage,user_id,uuid,NO
+ozb_deals,node_id,bigint,NO
+ozb_deals,title,text,NO
+ozb_deals,deal_url,text,NO
+ozb_deals,shop,text,NO
+ozb_deals,tab,text,NO
+ozb_deals,votes_pos,integer,NO
+ozb_deals,votes_neg,integer,NO
+ozb_deals,posted_at,timestamp with time zone,NO
+ozb_deals,starts_at,timestamp with time zone,YES
+ozb_deals,expires_at,timestamp with time zone,YES
+ozb_deals,is_expired,boolean,NO
+ozb_deals,first_seen_at,timestamp with time zone,NO
+ozb_deals,fetched_at,timestamp with time zone,NO
+ozb_feed_status,shop,text,NO
+ozb_feed_status,last_attempt_at,timestamp with time zone,NO
+ozb_feed_status,last_ok_at,timestamp with time zone,YES
+ozb_feed_status,item_count,integer,NO

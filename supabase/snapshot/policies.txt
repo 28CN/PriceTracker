@@ -56,3 +56,5 @@ user_preferences | demo users cannot update | UPDATE | RESTRICTIVE | authenticat
 user_preferences | users manage own preferences | ALL | PERMISSIVE | authenticated | (user_id = ( SELECT auth.uid() AS uid)) | (user_id = ( SELECT auth.uid() AS uid))
 user_roles | users read own roles | SELECT | PERMISSIVE | authenticated | (user_id = ( SELECT auth.uid() AS uid)) | -
 user_security | users read own security state | SELECT | PERMISSIVE | authenticated | (user_id = ( SELECT auth.uid() AS uid)) | -
+ozb_deals | deals are public | SELECT | PERMISSIVE | anon,authenticated | true | -
+ozb_feed_status | feed status is public | SELECT | PERMISSIVE | anon,authenticated | true | -

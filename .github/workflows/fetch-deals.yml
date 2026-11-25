@@ -1,0 +1,35 @@
+name: Fetch OzBargain deals
+
+# Shop feeds from OzBargain (/deals/<domain>/feed) for the /deals page.
+# Four runs a day, about 14 small requests each, two seconds apart.
+on:
+  schedule:
+    - cron: "23 */6 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: fetch-deals
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: crawler/requirements.txt
+      # Only what the feed job needs; no browser.
+      - run: pip install supabase==2.31.0 requests==2.34.2
+      - run: python deals.py
+        working-directory: crawler
