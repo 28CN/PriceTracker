@@ -6427,8 +6427,15 @@ button.product-search-onlist-mark:hover {
     font-size: var(--fs-xs);
   }
 
+  /* Same box for every icon, so the active pill never moves anything. */
+  .main-nav-bottom .main-nav-link svg {
+    box-sizing: content-box;
+    padding: 3px 16px;
+    border-radius: 999px;
+  }
+
   .main-nav-bottom .main-nav-link.is-active svg {
-    transform: translateY(-1px);
+    background: var(--brand-soft);
   }
 
   /* Room for the tab bar, so it never covers the end of a page. */
