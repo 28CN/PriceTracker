@@ -3348,7 +3348,11 @@ select {
 }
 
 .roo-travel.is-static { animation: none; }
-.is-route-start { animation-name: roo-route-start; animation-duration: 5.8s; }
+.is-route-start { animation-name: roo-route-start; animation-duration: 10s; }
+/* With motion on, the waiting kangaroo sits off the shelf and hops in once ready. */
+@media (prefers-reduced-motion: no-preference) {
+  .roo-travel.is-static { transform: translate3d(-44cqw, -8cqw, 0); }
+}
 .is-route-0 { animation-name: roo-route-a; animation-duration: 11s; }
 .is-route-1 { animation-name: roo-route-b; animation-duration: 12.4s; }
 .is-route-2 { animation-name: roo-route-c; animation-duration: 10.6s; }
@@ -3512,23 +3516,40 @@ select {
 }
 
 @keyframes roo-route-start {
+  /* Starts off the shelf on the left, so the GIF's first frames are never seen. */
   0% {
-    transform: translate3d(36cqw, -31cqw, 0) rotate(0deg);
+    transform: translate3d(-44cqw, -8cqw, 0) rotate(-8deg);
+    animation-timing-function: linear;
+  }
+  10% {
+    transform: translate3d(-36cqw, -8cqw, 0) rotate(-8deg);
+    animation-timing-function: cubic-bezier(0.25, 0.55, 0.4, 1);
+  }
+  22% {
+    transform: translate3d(-8cqw, -12cqw, 0) rotate(-2deg);
     animation-timing-function: cubic-bezier(0.16, 0.7, 0.3, 1);
   }
-  20% {
-    transform: translate3d(48cqw, -4cqw, 0) rotate(6deg);
+  32% {
+    transform: translate3d(14cqw, -37cqw, 0) rotate(6deg);
     animation-timing-function: linear;
   }
   42% {
+    transform: translate3d(36cqw, -31cqw, 0) rotate(0deg);
+    animation-timing-function: cubic-bezier(0.16, 0.7, 0.3, 1);
+  }
+  54% {
+    transform: translate3d(48cqw, -4cqw, 0) rotate(6deg);
+    animation-timing-function: linear;
+  }
+  66% {
     transform: translate3d(62cqw, -8cqw, 0) rotate(-3deg);
     animation-timing-function: cubic-bezier(0.16, 0.7, 0.3, 1);
   }
-  68% {
+  81% {
     transform: translate3d(80cqw, -35cqw, 0) rotate(-6deg);
     animation-timing-function: linear;
   }
-  84% {
+  91% {
     transform: translate3d(92cqw, -30cqw, 0) rotate(2deg);
     animation-timing-function: cubic-bezier(0.2, 0.55, 0.4, 1);
   }
