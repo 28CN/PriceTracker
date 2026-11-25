@@ -1,7 +1,7 @@
 'use client';
 
 import { CircleCheck, Clock, ExternalLink, Tag, ThumbsUp } from 'lucide-react';
-import { useMemo, useState, type KeyboardEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 
 import InfoTip from '@/components/InfoTip';
 import RetailerLogo from '@/components/RetailerLogo';
@@ -39,11 +39,18 @@ const HOT_VOTES = 50;
 /** Fixed-size thumbnail; a plain tag icon when there is no image or it fails. */
 function DealThumb({ src, href }: { src: string | null; href: string }) {
   const [failed, setFailed] = useState(false);
+  const imgRef = useRef<HTMLImageElement>(null);
+  // An image that failed before hydration never reaches onError; check once on mount.
+  useEffect(() => {
+    const img = imgRef.current;
+    if (img && img.complete && img.naturalWidth === 0) setFailed(true);
+  }, []);
   return (
     <a className="deal-thumb" href={href} target="_blank" rel="noopener noreferrer" tabIndex={-1} aria-hidden="true">
       {src && !failed ? (
         // eslint-disable-next-line @next/next/no-img-element -- OzBargain-hosted thumbnail, fixed size, lazy
         <img
+          ref={imgRef}
           src={src}
           alt=""
           width={96}
@@ -59,6 +66,8 @@ function DealThumb({ src, href }: { src: string | null; href: string }) {
     </a>
   );
 }
+
+const shopSite = (domain: string) => `https://www.${domain}/`;
 
 function syncUrl(tab: DealTab, shop: string | null) {
   const params = new URLSearchParams();
@@ -113,6 +122,7 @@ export default function DealsBoard({
   }, [deals, tab, shop, sort, onlyMatches]);
 
   const shops = DEAL_SHOPS.filter((item) => item.tab === tab);
+  const selectedShop = shop ? dealShop(shop) : null;
   const staleHere = staleShops.filter((key) => shops.some((item) => item.key === key));
 
   const chooseTab = (next: DealTab) => {
@@ -195,6 +205,12 @@ export default function DealsBoard({
                 </button>
               );
             })}
+            {selectedShop ? (
+              <a className="deals-shop-site" href={shopSite(selectedShop.domain)} target="_blank" rel="noopener noreferrer">
+                {selectedShop.domain}
+                <ExternalLink size={13} aria-hidden="true" />
+              </a>
+            ) : null}
           </div>
           <div className="deals-sort">
             <div className="deals-segment" role="group" aria-label="Sort">
@@ -240,10 +256,23 @@ export default function DealsBoard({
                 <li key={deal.id} className={`deal-card${deal.match ? ' is-match' : ''}`}>
                   <div className="deal-body">
                   <div className="deal-top">
-                    <span className="deal-shop">
-                      <RetailerLogo retailer={info?.name ?? deal.shop} url={info ? `https://${info.domain}` : null} />
-                      {info?.name ?? deal.shop}
-                    </span>
+                    {info ? (
+                      <a
+                        className="deal-shop"
+                        href={shopSite(info.domain)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={`${info.name} website`}
+                      >
+                        <RetailerLogo retailer={info.name} url={`https://${info.domain}`} />
+                        {info.name}
+                      </a>
+                    ) : (
+                      <span className="deal-shop">
+                        <RetailerLogo retailer={deal.shop} url={null} />
+                        {deal.shop}
+                      </span>
+                    )}
                     <time dateTime={deal.postedAt}>{deal.posted}</time>
                     {deal.isNew ? <span className="deal-badge is-new">New</span> : null}
                   </div>
