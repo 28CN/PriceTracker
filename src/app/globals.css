@@ -7207,3 +7207,201 @@ button.product-search-onlist-mark:hover {
     flex: none;
   }
 }
+
+/* Home shortcuts */
+
+.guest-home .home-shortcuts {
+  grid-column: 1 / -1;
+}
+
+.home-shortcuts-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.home-shortcuts-grid > li {
+  display: flex;
+  min-width: 0;
+}
+
+.home-shortcut-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  width: 100%;
+  min-width: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface-2);
+  color: var(--text);
+  box-shadow: var(--shadow-1);
+  text-decoration: none;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.home-shortcut-card:hover {
+  text-decoration: none;
+}
+
+.home-shortcut-card:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+
+@media (hover: hover) {
+  .home-shortcut-card:hover {
+    border-color: color-mix(in srgb, var(--brand) 38%, var(--line));
+    box-shadow: var(--shadow-2);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .home-shortcut-card {
+    transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+  }
+}
+
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .home-shortcut-card:hover {
+    transform: translateY(-2px);
+  }
+}
+
+.home-shortcut-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+.home-shortcut-card.is-deals .home-shortcut-icon {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.home-shortcut-card.is-compare .home-shortcut-icon {
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+.home-shortcut-card.is-add .home-shortcut-icon {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.home-shortcut-card.is-about .home-shortcut-icon {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+.home-shortcut-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.home-shortcut-title {
+  color: var(--text);
+  font-size: var(--fs-md);
+  line-height: var(--lh-md);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.home-shortcut-desc {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-sm);
+}
+
+.home-shortcuts.is-compact {
+  margin-top: var(--space-3);
+}
+
+.home-shortcuts.is-compact .home-shortcut-card {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 66px;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+}
+
+@media (min-width: 960px) {
+  .home-shortcuts.is-compact .home-shortcut-card {
+    padding: var(--space-3) var(--space-4);
+  }
+}
+
+.home-shortcuts.is-compact .home-shortcut-icon {
+  width: 36px;
+  height: 36px;
+}
+
+.home-shortcuts.is-compact .home-shortcut-title {
+  font-size: var(--fs-base);
+  line-height: var(--lh-sm);
+}
+
+.home-shortcuts.is-compact .home-shortcut-desc {
+  font-size: var(--fs-xs);
+  line-height: var(--lh-xs);
+}
+
+@media (max-width: 760px) {
+  .home-shortcuts-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-2);
+  }
+
+  .home-shortcut-card {
+    gap: var(--space-2);
+    padding: var(--space-3);
+    border-radius: var(--radius-md);
+  }
+
+  .home-shortcut-icon {
+    width: 36px;
+    height: 36px;
+  }
+
+  .home-shortcut-title {
+    font-size: var(--fs-base);
+  }
+
+  .home-shortcut-desc {
+    font-size: var(--fs-xs);
+    line-height: var(--lh-xs);
+  }
+
+  .home-shortcuts.is-compact .home-shortcut-card {
+    min-height: 52px;
+    padding: var(--space-2) var(--space-3);
+    gap: var(--space-2);
+  }
+
+  .home-shortcuts.is-compact .home-shortcut-icon {
+    width: 32px;
+    height: 32px;
+  }
+
+  .home-shortcuts.is-compact .home-shortcut-title {
+    font-size: var(--fs-sm);
+  }
+
+  .home-shortcuts.is-compact .home-shortcut-desc {
+    display: none;
+  }
+}

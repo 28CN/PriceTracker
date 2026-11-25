@@ -6,6 +6,7 @@ import { flushSync } from 'react-dom';
 
 import CategoryList from '@/components/CategoryList';
 import DashboardHero from '@/components/DashboardHero';
+import HomeShortcuts from '@/components/HomeShortcuts';
 import ProductDetailPanel from '@/components/ProductDetailPanel';
 import ProductSearch from '@/components/ProductSearch';
 import ThisWeekPanel from '@/components/ThisWeekPanel';
@@ -229,6 +230,8 @@ export default function DashboardWorkspace({
         overview={overview}
         overviewStatus={overviewStatus}
       />
+
+      <HomeShortcuts signedIn />
 
       <div className="dashboard-mobile-week">
         <ThisWeekPanel

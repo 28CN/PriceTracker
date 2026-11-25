@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Store } from 'lucide-react';
 
+import HomeShortcuts from '@/components/HomeShortcuts';
 import InfoTip from '@/components/InfoTip';
 import KangarooPriceAnimation from '@/components/KangarooPriceAnimation';
 import RetailerLogo from '@/components/RetailerLogo';
@@ -36,6 +37,8 @@ export default function GuestLanding() {
 
         <KangarooPriceAnimation />
       </section>
+
+      <HomeShortcuts signedIn={false} />
 
       <section className="guest-example glass-surface" aria-label="Example">
         <figure className="example-card">
