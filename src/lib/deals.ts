@@ -1,4 +1,5 @@
 import { matchPreparedCandidate, normalizeSearchText, prepareCandidate, prepareQuery } from './searchMatch';
+import { parseUnitSize } from './unitPrice';
 
 export type DealTab = 'shops' | 'online';
 
@@ -15,6 +16,7 @@ export type DealRow = {
   starts_at: string | null;
   expires_at: string | null;
   first_seen_at: string;
+  image_url: string | null;
 };
 
 export type FeedStatusRow = { shop: string; last_ok_at: string | null; last_attempt_at: string };
@@ -112,6 +114,51 @@ export function priceFromTitle(title: string): string | null {
   return null;
 }
 
+export type DealSaving = {
+  /** The earlier price as written in the title, e.g. "$1.65". */
+  was: string | null;
+  /** Whole percent saved, from was vs now or a "58% off" in the title. */
+  percent: number | null;
+};
+
+const toAmount = (raw: string) => Number(raw.replace(/[$,\s]/g, ''));
+
+/**
+ * Was-price and saving from the title: "(Was $1.65)", "RRP $75", "58% off",
+ * "½ Price". Nothing is guessed: an estimate of the old price is never shown.
+ */
+export function savingFromTitle(title: string, price: string | null): DealSaving | null {
+  const wasMatch = /\b(?:was|rrp|usually|normally)\b\s*:?\s*(\$\s?\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|\$\s?\d+(?:\.\d{1,2})?)/i.exec(
+    title
+  );
+  const now = price ? toAmount(price) : NaN;
+  if (wasMatch && Number.isFinite(now)) {
+    const was = toAmount(wasMatch[1]);
+    if (was > now && now > 0) {
+      return { was: `$${wasMatch[1].replace(/[$\s]/g, '')}`, percent: Math.round(((was - now) / was) * 100) };
+    }
+  }
+  if (!price) return null;
+  const percentMatch = /(\d{1,2})\s?%\s?off\b/i.exec(title);
+  if (percentMatch) {
+    const percent = Number(percentMatch[1]);
+    if (percent > 0 && percent < 100) return { was: null, percent };
+  }
+  if (/(?:½|\bhalf)\s?price\b/i.test(title)) return { was: null, percent: 50 };
+  return null;
+}
+
+/**
+ * True when a deal and a tracked product are the same size, so their prices
+ * can be compared: both sizes read the same, or neither name has one.
+ */
+export function sameSize(productName: string, dealTitle: string): boolean {
+  const a = parseUnitSize(productName);
+  const b = parseUnitSize(dealTitle.replace(/\$\s?\d[\d,.]*/g, ' '));
+  if (!a && !b) return true;
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
 const STOP_WORDS = new Set(['the', 'and', 'with', 'for', 'pack', 'of', 'x', 'new']);
 
 /** Words that say what the product is: no sizes, counts or filler. */
@@ -129,15 +176,15 @@ function coreWords(name: string): string[] {
  */
 export function matchDealsToProducts(
   deals: readonly Pick<DealRow, 'node_id' | 'title'>[],
-  productNames: readonly string[]
-): Map<number, string> {
-  const queries = productNames
-    .map((name) => {
+  products: readonly { id: string; name: string }[]
+): Map<number, { id: string; name: string }> {
+  const queries = products
+    .map(({ id, name }) => {
       const words = coreWords(name);
       const tries = [words];
       if (words.length >= 3) tries.push(words.slice(1));
       return {
-        name,
+        product: { id, name },
         prepared: tries
           .filter((tryWords) => tryWords.length >= 2)
           .map((tryWords) => prepareQuery(tryWords.join(' ')))
@@ -146,7 +193,7 @@ export function matchDealsToProducts(
     })
     .filter((entry) => entry.prepared.length > 0);
 
-  const matches = new Map<number, string>();
+  const matches = new Map<number, { id: string; name: string }>();
   for (const deal of deals) {
     const candidate = prepareCandidate({ name: deal.title });
     for (const entry of queries) {
@@ -155,7 +202,7 @@ export function matchDealsToProducts(
         return match !== null && match.kind !== 'fuzzy';
       });
       if (hit) {
-        matches.set(deal.node_id, entry.name);
+        matches.set(deal.node_id, entry.product);
         break;
       }
     }

@@ -7,6 +7,8 @@ import {
   matchDealsToProducts,
   postedAgoLabel,
   priceFromTitle,
+  sameSize,
+  savingFromTitle,
   timeLeftLabel
 } from './deals';
 
@@ -75,13 +77,13 @@ describe('matchDealsToProducts', () => {
     'Hot Wheels Super Rigs',
     'Milo Malt Powder 1kg',
     'Huggies Ultra Dry Nappies Boys Size 4 36 pack'
-  ];
+  ].map((name, index) => ({ id: `p${index}`, name }));
 
   it('finds deals for tracked products, also without the brand word', () => {
     const matches = matchDealsToProducts(deals, products);
-    expect(matches.get(1)).toBe("Arnott's Tim Tam Original 200g");
-    expect(matches.get(3)).toBe('Hot Wheels Super Rigs');
-    expect(matches.get(4)).toBe('Milo Malt Powder 1kg');
+    expect(matches.get(1)?.name).toBe("Arnott's Tim Tam Original 200g");
+    expect(matches.get(3)?.id).toBe('p1');
+    expect(matches.get(4)?.name).toBe('Milo Malt Powder 1kg');
   });
 
   it('does not match on one shared word', () => {
@@ -101,5 +103,29 @@ describe('DEAL_SHOPS', () => {
     const keys = DEAL_SHOPS.map((shop) => shop.key);
     expect(new Set(keys).size).toBe(keys.length);
     expect(DEAL_SHOPS.filter((shop) => shop.tab === 'shops')).toHaveLength(9);
+  });
+});
+
+describe('savingFromTitle', () => {
+  it.each([
+    ['Vetta Pasta 500g $0.41 (Was $1.65) @ Coles', '$0.41', { was: '$1.65', percent: 75 }],
+    ['Betrayal at House on The Hill $15 (RRP $75) in-Store Only', '$15', { was: '$75', percent: 80 }],
+    ['Garmin Watch $1,198 (Was $1,499) Delivered', '$1,198', { was: '$1,499', percent: 20 }],
+    ['58% off Hydralyte Tablets 40 Pack $11.00 @ Coles', '$11.00', { was: null, percent: 58 }],
+    ['½ Price: Suntory Boss Iced Coffee $7.35 @ Woolworths', '$7.35', { was: null, percent: 50 }],
+    ['PlayStation 5 Disc Console $999 + Delivery', '$999', null],
+    ['Up to 40% off Selected LEGO Sets', null, null],
+    ['Odd title $20 (Was $15)', '$20', null]
+  ])('%s', (title, price, expected) => {
+    expect(savingFromTitle(title, price)).toEqual(expected);
+  });
+});
+
+describe('sameSize', () => {
+  it('compares only the same size', () => {
+    expect(sameSize('Milo Malt Powder 1kg', 'Milo Malt Powder 1kg $11 @ Woolworths')).toBe(true);
+    expect(sameSize('Milo Malt Powder 1kg', 'Milo Malt Powder 460g $6 @ Coles')).toBe(false);
+    expect(sameSize('Hot Wheels Basic Car', 'Hot Wheels 10 Pack Basic Cars $9 @ Target')).toBe(false);
+    expect(sameSize('Hot Wheels Super Rigs', 'Hot Wheels Super Rigs $9.60 @ Target')).toBe(true);
   });
 });
