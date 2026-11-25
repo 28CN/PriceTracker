@@ -30,6 +30,15 @@ FEED_URL = "https://www.ozbargain.com.au/deals/{domain}/feed"
 OZB_NS = "{https://www.ozbargain.com.au}"
 PAUSE_SECONDS = 2.0  # between feeds, to be polite
 KEEP_DAYS = 30
+OG_FETCH_LIMIT = 10  # deal pages fetched per run for a missing image
+OG_PAUSE_SECONDS = 3.0
+MEDIA_NS = "{http://search.yahoo.com/mrss/}"
+_IMAGE_URL = re.compile(r"^https://files\.ozbargain\.com\.au/[A-Za-z0-9/._?=&%-]+$")
+_OG_IMAGE = re.compile(
+    r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']'
+    r'|<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:image["\']',
+    re.I,
+)
 
 
 @dataclass(frozen=True)
@@ -71,6 +80,19 @@ def shop_for_url(url: str | None) -> Feed | None:
         if host == feed.domain or host.endswith("." + feed.domain):
             return feed
     return None
+
+
+def clean_image_url(url: str | None) -> str | None:
+    """Only OzBargain's own image host, https, and a sane length."""
+    url = unescape((url or "").strip())
+    if len(url) > 400 or not _IMAGE_URL.match(url):
+        return None
+    return url
+
+
+def og_image_from_html(html: str) -> str | None:
+    match = _OG_IMAGE.search(html)
+    return clean_image_url(match.group(1) or match.group(2)) if match else None
 
 
 def _parse_iso(value: str | None) -> str | None:
@@ -115,6 +137,13 @@ def parse_feed(xml_text: str, feed: Feed, now: datetime | None = None) -> list[d
         # A deal in the Coles feed can be "Coles price match @ Amazon": file it
         # under the shop the deal actually links to, when that is one we list.
         owner = shop_for_url(attrs.get("url")) or feed
+        thumb = item.find(f"{MEDIA_NS}thumbnail")
+        enclosure = item.find("enclosure")
+        image = (
+            clean_image_url(attrs.get("image"))
+            or clean_image_url(thumb.get("url") if thumb is not None else None)
+            or clean_image_url(enclosure.get("url") if enclosure is not None else None)
+        )
         rows.append(
             {
                 "node_id": int(match.group(1)),
@@ -128,6 +157,7 @@ def parse_feed(xml_text: str, feed: Feed, now: datetime | None = None) -> list[d
                 "starts_at": _parse_iso(attrs.get("starting")),
                 "expires_at": expires_at,
                 "is_expired": ended,
+                "image_url": image,
                 "fetched_at": now.isoformat(),
             }
         )
@@ -147,6 +177,28 @@ def fetch_feed(session: requests.Session, feed: Feed) -> str | None:
         if attempt == 0:
             time.sleep(5)
     return None
+
+
+def fill_missing_images(session: requests.Session, rows: list[dict], known: dict[int, str]) -> int:
+    """Use a stored image, else the deal page's og:image, for a few deals per run."""
+    fetched = 0
+    for row in rows:
+        if row["image_url"]:
+            continue
+        if known.get(row["node_id"]):
+            row["image_url"] = known[row["node_id"]]
+            continue
+        if fetched >= OG_FETCH_LIMIT or row["is_expired"]:
+            continue
+        fetched += 1
+        time.sleep(OG_PAUSE_SECONDS)
+        try:
+            response = session.get(row["deal_url"], timeout=20, headers={"Accept": "text/html"})
+            if response.status_code == 200:
+                row["image_url"] = og_image_from_html(response.text[:200_000])
+        except requests.RequestException as error:
+            print(f"[deals] og:image {row['node_id']}: {type(error).__name__}", file=sys.stderr)
+    return fetched
 
 
 def merge_rows(rows: list[dict]) -> list[dict]:
@@ -197,6 +249,14 @@ def main() -> int:
     from supabase import create_client  # only needed when writing
 
     client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    missing = [row["node_id"] for row in rows if not row["image_url"]]
+    known: dict[int, str] = {}
+    if missing:
+        stored = client.table("ozb_deals").select("node_id, image_url").in_("node_id", missing).execute()
+        known = {r["node_id"]: r["image_url"] for r in (stored.data or []) if r.get("image_url")}
+    pages = fill_missing_images(session, rows, known)
+    if pages:
+        print(f"[deals] looked up {pages} deal pages for a missing image")
     if rows:
         # first_seen_at keeps its default on insert and is never sent, so an
         # update leaves the first time we saw the deal alone.

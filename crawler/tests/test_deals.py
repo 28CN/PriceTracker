@@ -15,6 +15,7 @@ SAMPLE = """<?xml version="1.0" encoding="utf-8"?>
  <link>https://www.ozbargain.com.au/node/1001</link>
  <description><![CDATA[<img src="https://files.example/1.jpg"/><p>Long description</p>]]></description>
  <ozb:meta comment-count="3" expiry="2026-12-02T00:00:00+11:00" starting="2026-11-25T00:00:00+11:00" votes-pos="20" votes-neg="1" url="https://www.coles.com.au/product/x" image="https://files.example/1.jpg" />
+ <media:thumbnail url="https://files.ozbargain.com.au/n/01/1001l.jpg?h=abc" />
  <pubDate>Tue, 24 Nov 2026 21:54:51 +1100</pubDate>
 </item>
 <item>
@@ -58,6 +59,7 @@ def test_parse_feed_keeps_only_safe_fields():
         "starts_at": "2026-11-24T13:00:00+00:00",
         "expires_at": "2026-12-01T13:00:00+00:00",
         "is_expired": False,
+        "image_url": "https://files.ozbargain.com.au/n/01/1001l.jpg?h=abc",
         "fetched_at": NOW.isoformat(),
     }
     for row in rows:
@@ -93,3 +95,42 @@ def test_every_feed_has_a_valid_shop_key():
     for feed in deals.FEEDS:
         assert feed.tab in {"shops", "online"}
         assert 2 <= len(feed.shop) <= 30 and feed.shop.isalnum()
+
+
+def test_images_only_from_ozbargain():
+    assert deals.clean_image_url("https://files.ozbargain.com.au/n/1/2l.jpg?h=a&amp;b=1") == (
+        "https://files.ozbargain.com.au/n/1/2l.jpg?h=a&b=1"
+    )
+    assert deals.clean_image_url("http://files.ozbargain.com.au/n/1/2l.jpg") is None
+    assert deals.clean_image_url("https://files.ozbargain.com.au.evil.example/x.jpg") is None
+    assert deals.clean_image_url("https://files.ozbargain.com.au/x.jpg\"onerror=") is None
+    assert deals.clean_image_url(None) is None
+
+
+def test_og_image_is_read_in_either_attribute_order():
+    a = '<meta property="og:image" content="https://files.ozbargain.com.au/n/9/9l.jpg">'
+    b = "<meta content='https://files.ozbargain.com.au/n/9/9l.jpg' property='og:image' />"
+    assert deals.og_image_from_html(a) == deals.og_image_from_html(b) == "https://files.ozbargain.com.au/n/9/9l.jpg"
+    assert deals.og_image_from_html('<meta property="og:image" content="https://evil.example/x.jpg">') is None
+
+
+def test_missing_images_use_stored_then_a_few_page_lookups(monkeypatch):
+    rows = [
+        {"node_id": 1, "image_url": None, "is_expired": False, "deal_url": "https://www.ozbargain.com.au/node/1"},
+        {"node_id": 2, "image_url": None, "is_expired": False, "deal_url": "https://www.ozbargain.com.au/node/2"},
+    ]
+    calls = []
+
+    class Response:
+        status_code = 200
+        text = '<meta property="og:image" content="https://files.ozbargain.com.au/n/2/2l.jpg">'
+
+    class Session:
+        def get(self, url, **kwargs):
+            calls.append(url)
+            return Response()
+
+    monkeypatch.setattr(deals.time, "sleep", lambda seconds: None)
+    fetched = deals.fill_missing_images(Session(), rows, {1: "https://files.ozbargain.com.au/n/1/1l.jpg"})
+    assert fetched == 1 and calls == ["https://www.ozbargain.com.au/node/2"]
+    assert rows[0]["image_url"].endswith("/1l.jpg") and rows[1]["image_url"].endswith("/2l.jpg")

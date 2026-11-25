@@ -159,6 +159,7 @@ ozb_deals,expires_at,timestamp with time zone,YES
 ozb_deals,is_expired,boolean,NO
 ozb_deals,first_seen_at,timestamp with time zone,NO
 ozb_deals,fetched_at,timestamp with time zone,NO
+ozb_deals,image_url,text,YES
 ozb_feed_status,shop,text,NO
 ozb_feed_status,last_attempt_at,timestamp with time zone,NO
 ozb_feed_status,last_ok_at,timestamp with time zone,YES

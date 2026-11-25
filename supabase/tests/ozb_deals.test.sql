@@ -2,7 +2,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions;
-select plan(10);
+select plan(12);
 
 select ok((select relrowsecurity from pg_class where oid = 'public.ozb_deals'::regclass), 'RLS on ozb_deals');
 select ok((select relrowsecurity from pg_class where oid = 'public.ozb_feed_status'::regclass), 'RLS on ozb_feed_status');
@@ -24,6 +24,16 @@ select throws_ok(
   $$insert into public.ozb_deals (node_id, title, deal_url, shop, tab, posted_at)
     values (2, 'x', 'https://evil.example/node/2', 'coles', 'shops', now())$$,
   '23514', null, 'deal links must point at an OzBargain deal page');
+
+select throws_ok(
+  $$insert into public.ozb_deals (node_id, title, deal_url, shop, tab, posted_at, image_url)
+    values (3, 'x', 'https://www.ozbargain.com.au/node/3', 'coles', 'shops', now(), 'https://evil.example/a.jpg')$$,
+  '23514', null, 'deal images must come from OzBargain''s image host');
+
+select lives_ok(
+  $$insert into public.ozb_deals (node_id, title, deal_url, shop, tab, posted_at, image_url)
+    values (4, 'x', 'https://www.ozbargain.com.au/node/4', 'coles', 'shops', now(), 'https://files.ozbargain.com.au/n/65/985265l.jpg?h=dde80d1b')$$,
+  'an OzBargain image URL is accepted');
 
 select * from finish();
 rollback;
