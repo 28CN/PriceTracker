@@ -20,7 +20,7 @@ const SPEED = [
 ];
 
 const TESTS = [
-  { kind: 'Unit and route tests (Vitest)', count: '273' },
+  { kind: 'Unit and route tests (Vitest)', count: '309' },
   { kind: 'Database checks (pgTAP: access rules, triggers)', count: '80' },
   { kind: 'Crawler tests (pytest)', count: '11' },
   { kind: 'Database migrations, re-applied in CI', count: '22' }

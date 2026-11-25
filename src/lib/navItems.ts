@@ -1,4 +1,4 @@
-export type NavItemKey = 'home' | 'dashboard' | 'add' | 'about';
+export type NavItemKey = 'home' | 'dashboard' | 'add' | 'compare' | 'about';
 
 export type NavItem = {
   key: NavItemKey;
@@ -19,6 +19,7 @@ export function navItemsFor(signedIn: boolean): NavItem[] {
   return [
     { key: 'dashboard', href: '/', label: 'Dashboard' },
     { key: 'add', href: '/add', label: 'Add', alsoActiveOn: ['/manage'] },
+    { key: 'compare', href: '/compare', label: 'Compare' },
     { key: 'about', href: '/about', label: 'About' }
   ];
 }
