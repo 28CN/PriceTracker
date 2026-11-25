@@ -1,6 +1,6 @@
 'use client';
 
-import { LogOut, Settings, UserRound } from 'lucide-react';
+import { BookOpen, LogOut, Settings, UserRound } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 
@@ -77,6 +77,10 @@ export default function AccountMenu({
               Public profile
             </Link>
           ) : null}
+          <Link href="/about" className="account-menu-about" onClick={() => setOpen(false)}>
+            <BookOpen size={15} aria-hidden="true" />
+            About PriceTracker
+          </Link>
           <button type="button" onClick={logout} disabled={pending}>
             <LogOut size={15} aria-hidden="true" />
             {pending ? 'Signing out…' : 'Sign out'}

@@ -4,18 +4,18 @@ import { isNavItemActive, navItemsFor } from './navItems';
 
 describe('navItemsFor', () => {
   it('shows visitors only public pages', () => {
-    expect(navItemsFor(false).map((item) => item.href)).toEqual(['/', '/about']);
+    expect(navItemsFor(false).map((item) => item.href)).toEqual(['/', '/deals', '/about']);
   });
 
   it('shows signed-in people their pages, at most four for the phone bar', () => {
     const items = navItemsFor(true);
-    expect(items.map((item) => item.label)).toEqual(['Dashboard', 'Add', 'Compare', 'About']);
-    expect(items.length).toBeLessThanOrEqual(4);
+    expect(items.map((item) => item.label)).toEqual(['Dashboard', 'Add', 'Compare', 'Deals', 'About']);
+    expect(items.filter((item) => item.onPhone !== false).length).toBeLessThanOrEqual(4);
   });
 });
 
 describe('isNavItemActive', () => {
-  const [dashboard, add, compare, about] = navItemsFor(true);
+  const [dashboard, add, compare, deals, about] = navItemsFor(true);
 
   it('marks Dashboard only on the home page', () => {
     expect(isNavItemActive(dashboard, '/')).toBe(true);
@@ -28,5 +28,6 @@ describe('isNavItemActive', () => {
     expect(isNavItemActive(add, '/address')).toBe(false);
     expect(isNavItemActive(about, '/about')).toBe(true);
     expect(isNavItemActive(compare, '/compare')).toBe(true);
+    expect(isNavItemActive(deals, '/deals')).toBe(true);
   });
 });
