@@ -6654,3 +6654,212 @@ button.product-search-onlist-mark:hover {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* Compare shops ------------------------------------------------------------ */
+
+.compare-page {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.compare-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 0;
+  font-size: var(--fs-xl);
+  line-height: var(--lh-xl);
+  letter-spacing: -0.03em;
+}
+
+/* Let InfoTip bubbles spill out of the card. */
+.compare-summary {
+  overflow: visible;
+}
+
+.compare-left-out-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.compare-left-out-note .info-tip-bubble {
+  white-space: normal;
+}
+
+.compare-summary,
+.compare-empty,
+.compare-table-wrap {
+  border-radius: var(--radius-lg);
+  padding: clamp(var(--space-4), 3vw, var(--space-5));
+}
+
+.compare-empty p {
+  margin: 0 0 var(--space-3);
+  color: var(--muted);
+}
+
+.compare-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.compare-tiles li {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+
+.compare-tiles li.is-best {
+  border-color: color-mix(in srgb, var(--success) 45%, var(--line));
+  background: var(--success-soft);
+}
+
+.compare-tile-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+
+.compare-tiles b {
+  font-size: var(--fs-xl);
+  font-variant-numeric: tabular-nums;
+}
+
+.compare-tiles li.is-best b {
+  color: var(--success);
+}
+
+.compare-verdict {
+  margin: var(--space-3) 0 0;
+}
+
+.compare-verdict b {
+  color: var(--success);
+}
+
+.compare-scope {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin: var(--space-1) 0 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+
+.compare-table-wrap {
+  overflow-x: auto;
+}
+
+.compare-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+}
+
+.compare-table th,
+.compare-table td {
+  padding: var(--space-2) var(--space-2);
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+
+.compare-table thead th {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.compare-table thead th + th,
+.compare-cell {
+  width: 20%;
+  text-align: right;
+}
+
+.compare-shop-head {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.compare-table tbody th {
+  font-weight: 600;
+}
+
+.compare-table tbody th a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.compare-table tbody th a:hover {
+  text-decoration: underline;
+}
+
+.compare-cell small {
+  display: block;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 400;
+}
+
+.compare-price {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.compare-cell.is-cheapest .compare-price {
+  color: var(--success);
+}
+
+.compare-cell.is-stale .compare-price,
+.compare-cell.is-missing {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.compare-cell.is-stale .compare-price {
+  font-weight: 600;
+}
+
+.compare-left-out th[scope='rowgroup'] {
+  padding-top: var(--space-4);
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 760px) {
+  .compare-tiles {
+    gap: var(--space-1);
+  }
+
+  .compare-tiles li {
+    padding: var(--space-2);
+  }
+
+  .compare-tiles b {
+    font-size: var(--fs-lg);
+  }
+
+  .compare-tile-label {
+    font-size: var(--fs-xs);
+  }
+
+  .compare-shop-head .retailer-logo {
+    display: none;
+  }
+}

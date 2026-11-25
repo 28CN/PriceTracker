@@ -9,13 +9,13 @@ describe('navItemsFor', () => {
 
   it('shows signed-in people their pages, at most four for the phone bar', () => {
     const items = navItemsFor(true);
-    expect(items.map((item) => item.label)).toEqual(['Dashboard', 'Add', 'About']);
+    expect(items.map((item) => item.label)).toEqual(['Dashboard', 'Add', 'Compare', 'About']);
     expect(items.length).toBeLessThanOrEqual(4);
   });
 });
 
 describe('isNavItemActive', () => {
-  const [dashboard, add, about] = navItemsFor(true);
+  const [dashboard, add, compare, about] = navItemsFor(true);
 
   it('marks Dashboard only on the home page', () => {
     expect(isNavItemActive(dashboard, '/')).toBe(true);
@@ -27,5 +27,6 @@ describe('isNavItemActive', () => {
     expect(isNavItemActive(add, '/manage')).toBe(true);
     expect(isNavItemActive(add, '/address')).toBe(false);
     expect(isNavItemActive(about, '/about')).toBe(true);
+    expect(isNavItemActive(compare, '/compare')).toBe(true);
   });
 });
