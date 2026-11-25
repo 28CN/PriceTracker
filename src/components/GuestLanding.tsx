@@ -88,6 +88,9 @@ export default function GuestLanding() {
 
       <footer className="site-footer">
         <p>
+          <Link href="/about">How PriceTracker is built</Link>
+        </p>
+        <p>
           Kangaroo animation by{' '}
           <a href="https://github.com/googlefonts/noto-emoji" target="_blank" rel="noreferrer">
             Google Noto Emoji
