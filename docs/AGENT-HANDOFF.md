@@ -40,6 +40,8 @@ All work lands on `main` through squash-merged pull requests.
 | #47 | Compare: your list at Coles vs Woolworths, with unit prices. |
 | #48, #49 | Deals page from OzBargain shop feeds (GitHub Action every 6 hours), thumbnails and was/now saving. |
 | #50 | Home shortcut cards, CHANGELOG and the Antigravity working guide. |
+| #51 | Kangaroo hops in on first load, shop links on Deals. |
+| #52 | Guide (`/about`), case study at `/about/built`, `/install` page (PWA install button, never auto-prompts). |
 
 PR #1 (beta shop search page) is still open and not part of `main`.
 
