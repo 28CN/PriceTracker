@@ -12,6 +12,7 @@ describe('retailerKey', () => {
     expect(retailerKey('https://rejectshop.com.au/p/1')).toBe('therejectshop');
     expect(retailerKey('Best & Less')).toBe('bestandless');
     expect(retailerKey('Auto Barn')).toBe('autobarn');
+    expect(retailerKey('Autobarn')).toBe('autobarn');
   });
 
   it('returns null for unknown or empty shops so CSS falls back to theme accent', () => {

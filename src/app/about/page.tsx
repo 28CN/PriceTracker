@@ -138,12 +138,16 @@ export default async function GuidePage() {
         </section>
 
         <section id="compare" className="about-section glass-surface guide-section" aria-labelledby="guide-compare">
-          <h2 id="guide-compare">Compare Coles and Woolworths</h2>
+          <h2 id="guide-compare">Compare rival shops</h2>
           <div className="guide-copy">
             <p>
-              <strong>Compare</strong> puts everything on your list that both shops sell side by side.
+              <strong>Compare</strong> puts rival shops side by side: supermarkets, Kmart / Target / Big W, toy shops,
+              auto shops and pharmacies.
             </p>
-            <p>It shows prices per kg, litre or item where the size is known, and the total for each shop.</p>
+            <p>
+              It shows which shop is usually cheapest for your list, which items to buy elsewhere, and prices per kg,
+              litre or item where the size is known.
+            </p>
           </div>
         </section>
 
