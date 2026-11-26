@@ -31,7 +31,7 @@ const RETAILERS: RetailerEntry[] = [
   { match: /(^|\.)terrywhitechemmart\.com\.au$/, name: 'Terry White', key: 'terrywhite', domain: 'terrywhitechemmart.com.au' },
   { match: /(^|\.)repco\.com\.au$/, name: 'Repco', key: 'repco', domain: 'repco.com.au' },
   { match: /(^|\.)supercheapauto\.com\.au$/, name: 'Supercheap Auto', key: 'supercheapauto', domain: 'supercheapauto.com.au' },
-  { match: /(^|\.)autobarn\.com\.au$/, name: 'Auto Barn', key: 'autobarn', domain: 'autobarn.com.au' }
+  { match: /(^|\.)autobarn\.com\.au$/, name: 'Autobarn', key: 'autobarn', domain: 'autobarn.com.au' }
 ];
 
 const DEDICATED_RETAILER_DOMAINS = new Set([

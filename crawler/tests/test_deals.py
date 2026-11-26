@@ -134,3 +134,61 @@ def test_missing_images_use_stored_then_a_few_page_lookups(monkeypatch):
     fetched = deals.fill_missing_images(Session(), rows, {1: "https://files.ozbargain.com.au/n/1/1l.jpg"})
     assert fetched == 1 and calls == ["https://www.ozbargain.com.au/node/2"]
     assert rows[0]["image_url"].endswith("/1l.jpg") and rows[1]["image_url"].endswith("/2l.jpg")
+
+
+def _ago(minutes):
+    from datetime import timedelta
+
+    return (NOW - timedelta(minutes=minutes)).isoformat()
+
+
+def test_schedule_runs_every_three_hours_when_nobody_looks():
+    assert deals.should_run("schedule", {"last_run_at": _ago(60)}, NOW)[0] is False
+    assert deals.should_run("schedule", {"last_run_at": _ago(171)}, NOW)[0] is True
+    assert deals.should_run("schedule", {}, NOW)[0] is True
+
+
+def test_schedule_runs_hourly_while_someone_looks():
+    state = {"last_run_at": _ago(56), "last_visit_at": _ago(20)}
+    assert deals.should_run("schedule", state, NOW)[0] is True
+    state = {"last_run_at": _ago(30), "last_visit_at": _ago(5)}
+    assert deals.should_run("schedule", state, NOW)[0] is False
+    state = {"last_run_at": _ago(80), "last_visit_at": _ago(120)}
+    assert deals.should_run("schedule", state, NOW)[0] is False
+
+
+def test_visit_runs_unless_just_fetched_and_manual_always_runs():
+    assert deals.should_run("visit", {"last_run_at": _ago(10)}, NOW)[0] is False
+    assert deals.should_run("visit", {"last_run_at": _ago(51)}, NOW)[0] is True
+    assert deals.should_run("manual", {"last_run_at": _ago(1)}, NOW)[0] is True
+
+
+class _Response:
+    def __init__(self, status, text="", headers=None):
+        self.status_code = status
+        self.text = text
+        self.headers = headers or {}
+
+
+class _Session:
+    def __init__(self, response):
+        self.response = response
+        self.sent = None
+
+    def get(self, url, timeout, headers):
+        self.sent = headers
+        return self.response
+
+
+def test_conditional_get_sends_validators_and_handles_304():
+    session = _Session(_Response(304))
+    result = deals.fetch_feed(session, FEED, {"etag": '"abc"', "last_modified": "Wed, 25 Nov 2026 03:00:00 GMT"})
+    assert session.sent == {"If-None-Match": '"abc"', "If-Modified-Since": "Wed, 25 Nov 2026 03:00:00 GMT"}
+    assert result.not_modified and result.text is None and result.etag == '"abc"'
+
+
+def test_feed_200_keeps_new_validators():
+    session = _Session(_Response(200, SAMPLE, {"ETag": '"new"', "Last-Modified": "x"}))
+    result = deals.fetch_feed(session, FEED, None)
+    assert session.sent == {}
+    assert result.text and not result.not_modified and result.etag == '"new"' and result.last_modified == "x"

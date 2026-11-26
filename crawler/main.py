@@ -807,7 +807,7 @@ def infer_retailer_from_hostname(hostname: str) -> str:
         "terrywhitechemmart": "Terry White",
         "repco": "Repco",
         "supercheapauto": "Supercheap Auto",
-        "autobarn": "Auto Barn",
+        "autobarn": "Autobarn",
     }
     for needle, label in known.items():
         if needle in h:

@@ -22,7 +22,8 @@ export type DealView = {
   timeLeft: string | null;
   endsSoon: boolean;
   isNew: boolean;
-  match: string | null;
+  /** An item on your list (exact), or a brand or show you track. */
+  match: { kind: 'item' | 'brand'; label: string } | null;
   /** The same item at another shop on your list, when sizes agree. */
   elsewhere: { shop: string; price: string } | null;
 };
@@ -80,7 +81,7 @@ function syncUrl(tab: DealTab, shop: string | null) {
 export default function DealsBoard({
   deals,
   staleShops,
-  updatedLabel,
+  updated,
   loadFailed,
   signedIn,
   initialTab,
@@ -88,7 +89,8 @@ export default function DealsBoard({
 }: {
   deals: DealView[];
   staleShops: string[];
-  updatedLabel: string | null;
+  /** When the feeds were last read; the label is worked out on the server. */
+  updated: { at: string; label: string; exact: string } | null;
   loadFailed: boolean;
   signedIn: boolean;
   initialTab: DealTab;
@@ -118,7 +120,11 @@ export default function DealsBoard({
       (deal) => deal.tab === tab && (!shop || deal.shop === shop) && (!onlyMatches || deal.match)
     );
     // The server sends newest first.
-    return sort === 'votes' ? list.toSorted((a, b) => b.votes - a.votes) : list;
+    const sorted = sort === 'votes' ? list.toSorted((a, b) => b.votes - a.votes) : list;
+    // On my list: exact items before brand matches.
+    return onlyMatches
+      ? sorted.toSorted((a, b) => Number(b.match?.kind === 'item') - Number(a.match?.kind === 'item'))
+      : sorted;
   }, [deals, tab, shop, sort, onlyMatches]);
 
   const shops = DEAL_SHOPS.filter((item) => item.tab === tab);
@@ -159,7 +165,17 @@ export default function DealsBoard({
           <a href="https://www.ozbargain.com.au" target="_blank" rel="noopener noreferrer">
             OzBargain
           </a>
-          {updatedLabel ? <> · Updated {updatedLabel}</> : null}
+          {updated ? (
+            <>
+              {' · '}
+              <time
+                dateTime={updated.at}
+                title={updated.exact}
+              >
+                Updated {updated.label}
+              </time>
+            </>
+          ) : null}
         </p>
       </header>
 
@@ -253,7 +269,10 @@ export default function DealsBoard({
             {visible.map((deal) => {
               const info = dealShop(deal.shop);
               return (
-                <li key={deal.id} className={`deal-card${deal.match ? ' is-match' : ''}`}>
+                <li
+                  key={deal.id}
+                  className={`deal-card${deal.match?.kind === 'item' ? ' is-match' : deal.match ? ' is-brand-match' : ''}`}
+                >
                   <div className="deal-body">
                   <div className="deal-top">
                     {info ? (
@@ -302,11 +321,17 @@ export default function DealsBoard({
                       </span>
                     ) : null}
                   </div>
-                  {deal.match ? (
+                  {deal.match?.kind === 'brand' ? (
+                    <p className="deal-match is-brand">
+                      <Tag size={13} aria-hidden="true" />
+                      <span className="visually-hidden">Brand on your list: </span>
+                      <span className="deal-brand-chip">{deal.match.label}</span>
+                    </p>
+                  ) : deal.match ? (
                     <p className="deal-match">
                       <CircleCheck size={14} aria-hidden="true" />
                       <span>
-                        On your list: <b>{deal.match}</b>
+                        On your list: <b>{deal.match.label}</b>
                         {deal.elsewhere ? (
                           <>
                             {' '}

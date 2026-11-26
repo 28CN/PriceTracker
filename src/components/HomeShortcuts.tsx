@@ -22,7 +22,7 @@ const SHORTCUTS: ShortcutItem[] = [
     key: 'compare',
     href: '/compare',
     title: 'Compare',
-    description: 'Coles or Woolworths?',
+    description: 'Which shop is cheaper?',
     icon: Scale,
     requiresAccount: true
   },

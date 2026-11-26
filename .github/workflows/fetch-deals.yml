@@ -1,11 +1,21 @@
 name: Fetch OzBargain deals
 
 # Shop feeds from OzBargain (/deals/<domain>/feed) for the /deals page.
-# Four runs a day, about 14 small requests each, two seconds apart.
+# About 14 small requests per fetch, two seconds apart, conditional GET.
+# The hourly schedule only fetches when someone looked at Deals in the last
+# hour, or every ~3 hours otherwise (crawler/deals.py should_run). Opening
+# /deals also starts a run (mode "visit") when the last fetch is 55+ min old.
+# GitHub can delay or skip scheduled runs, so visits matter more than cron.
 on:
   schedule:
-    - cron: "23 */6 * * *"
+    - cron: "41 * * * *"
   workflow_dispatch:
+    inputs:
+      mode:
+        description: "manual always fetches; visit fetches unless the last run is under 50 min old"
+        type: choice
+        options: [manual, visit]
+        default: manual
 
 concurrency:
   group: fetch-deals
@@ -31,5 +41,7 @@ jobs:
           cache-dependency-path: crawler/requirements.txt
       # Only what the feed job needs; no browser.
       - run: pip install supabase==2.31.0 requests==2.34.2
-      - run: python deals.py
+      - run: python deals.py --mode "$MODE"
         working-directory: crawler
+        env:
+          MODE: ${{ github.event_name == 'schedule' && 'schedule' || inputs.mode || 'manual' }}
