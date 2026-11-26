@@ -8143,3 +8143,225 @@ a.deal-shop:focus-visible,
   font-size: var(--fs-xs);
   font-weight: 600;
 }
+
+/* Compare: shop groups, shop tiles, cheaper elsewhere */
+.compare-groups {
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+
+.compare-group {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-1);
+  color: var(--text);
+  font-size: var(--fs-sm);
+  text-decoration: none;
+}
+
+.compare-group.is-active {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+  color: var(--brand);
+  font-weight: 600;
+}
+
+.compare-group:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+.compare-group-logos {
+  display: inline-flex;
+}
+
+.compare-group-logos .retailer-logo {
+  width: 16px;
+  height: 16px;
+}
+
+.compare-group-logos .retailer-logo + .retailer-logo {
+  margin-left: -5px;
+}
+
+.compare-group-count {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.compare-tiles.is-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.compare-tile-label {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.compare-tile-of {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+}
+
+.compare-tiles small {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+
+.compare-tile-extra {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.compare-verdict-shop {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  vertical-align: bottom;
+}
+
+.compare-verdict-shop b {
+  color: var(--text);
+}
+
+.compare-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.compare-item:hover span:last-child {
+  text-decoration: underline;
+}
+
+.compare-item .product-thumb {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+}
+
+.compare-item .product-thumb-placeholder svg {
+  width: 18px;
+  height: 18px;
+}
+
+.compare-table tbody th {
+  vertical-align: middle;
+}
+
+.compare-table td.compare-cell {
+  vertical-align: middle;
+}
+
+.compare-table.has-3 thead th + th,
+.compare-table.has-3 .compare-cell {
+  width: 16%;
+}
+
+.compare-elsewhere {
+  border-radius: var(--radius-lg);
+  padding: clamp(var(--space-4), 3vw, var(--space-5));
+}
+
+.compare-elsewhere h2 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--fs-md);
+}
+
+.compare-elsewhere ul {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.compare-elsewhere li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--fs-sm);
+}
+
+.compare-elsewhere-shop {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+.compare-save {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--success-soft);
+  color: var(--success);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.compare-save.is-only {
+  background: var(--surface-2);
+  color: var(--muted);
+  font-weight: 600;
+}
+
+@media (min-width: 900px) {
+  .compare-elsewhere ul {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: var(--space-5);
+  }
+}
+
+/* Phones: logos stand in for shop names in the table. */
+@media (max-width: 560px) {
+  .compare-shop-name,
+  .compare-elsewhere-name {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .compare-shop-head {
+    justify-content: flex-end;
+  }
+
+  .compare-shop-head .retailer-logo {
+    width: 22px;
+    height: 22px;
+  }
+
+  .compare-item .product-thumb {
+    width: 30px;
+    height: 30px;
+  }
+
+  .compare-table th,
+  .compare-table td {
+    padding: var(--space-2) 6px;
+  }
+}
