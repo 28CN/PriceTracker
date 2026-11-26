@@ -4,10 +4,12 @@ import Link from "next/link";
 import InfoTip from "@/components/InfoTip";
 import ProductVisual from "@/components/ProductVisual";
 import RetailerLogo from "@/components/RetailerLogo";
+import TripPlan from "@/components/TripPlan";
 import { requireViewer } from "@/lib/auth";
 import {
   groupsWithItems,
   pickGroup,
+  planTrip,
   summariseGroup,
   type GroupRow,
   type GroupShop,
@@ -29,7 +31,16 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-type SearchParams = Promise<{ group?: string | string[] }>;
+type SearchParams = Promise<{
+  group?: string | string[];
+  view?: string | string[];
+}>;
+
+type CompareView = "prices" | "trip";
+
+function compareHref(groupKey: string, view: CompareView): string {
+  return view === "trip" ? `/compare?group=${groupKey}&view=trip` : `/compare?group=${groupKey}`;
+}
 
 function ShopLogo({ shop }: { shop: GroupShop }) {
   return <RetailerLogo retailer={shop.name} url={shop.url} />;
@@ -152,11 +163,14 @@ export default async function ComparePage({ searchParams }: { searchParams: Sear
 
   const available = groupsWithItems(products);
   const requested = Array.isArray(params.group) ? params.group[0] : params.group;
+  const rawView = Array.isArray(params.view) ? params.view[0] : params.view;
+  const view: CompareView = rawView === "trip" ? "trip" : "prices";
   const group = pickGroup(available, requested);
   const summary = summariseGroup(products, group);
   const compared = summary.rows.filter((row) => row.compared);
   const leftOut = summary.rows.filter((row) => !row.compared);
   const shopByKey = new Map(group.shops.map((entry) => [entry.key, entry]));
+  const trip = view === "trip" ? planTrip(summary) : null;
 
   return (
     <main className="compare-page">
@@ -183,7 +197,7 @@ export default async function ComparePage({ searchParams }: { searchParams: Sear
             {available.map(({ group: entry, count }) => (
               <Link
                 key={entry.key}
-                href={`/compare?group=${entry.key}`}
+                href={compareHref(entry.key, view)}
                 className={`compare-group${entry.key === group.key ? " is-active" : ""}`}
                 aria-current={entry.key === group.key ? "page" : undefined}
               >
@@ -231,69 +245,92 @@ export default async function ComparePage({ searchParams }: { searchParams: Sear
             ) : null}
           </section>
 
-          {summary.elsewhere.length > 0 ? (
-            <section className="compare-elsewhere glass-surface" aria-labelledby="compare-elsewhere-title">
-              <h2 id="compare-elsewhere-title">Cheaper elsewhere</h2>
-              <ul>
-                {summary.elsewhere.map((entry) => {
-                  const shop = shopByKey.get(entry.shop);
-                  return (
-                    <li key={entry.row.product.id}>
-                      <ItemName product={entry.row.product} />
-                      <span className="compare-elsewhere-shop">
-                        {shop ? <ShopLogo shop={shop} /> : null}
-                        <span className="compare-elsewhere-name">{shop?.name}</span>
-                        <b>{formatMoney(entry.price)}</b>
-                      </span>
-                      {entry.saving ? (
-                        <span className="compare-save">Save {formatMoney(entry.saving)}</span>
-                      ) : (
-                        <span className="compare-save is-only">
-                          Not at {shopByKey.get(summary.best ?? "")?.name}
-                        </span>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
-          ) : null}
+          <nav className="compare-views" aria-label="Compare view">
+            <Link
+              href={compareHref(group.key, "prices")}
+              className={`compare-view${view === "prices" ? " is-active" : ""}`}
+              aria-current={view === "prices" ? "page" : undefined}
+            >
+              Prices
+            </Link>
+            <Link
+              href={compareHref(group.key, "trip")}
+              className={`compare-view${view === "trip" ? " is-active" : ""}`}
+              aria-current={view === "trip" ? "page" : undefined}
+            >
+              Plan my trip
+            </Link>
+          </nav>
 
-          <section className="compare-table-wrap glass-surface" aria-label="Prices by item">
-            <table className={`compare-table has-${summary.shops.length}`}>
-              <thead>
-                <tr>
-                  <th scope="col">Item</th>
-                  {summary.shops.map((shop) => (
-                    <th scope="col" key={shop.key}>
-                      <span className="compare-shop-head">
-                        <ShopLogo shop={shop} />
-                        <span className="compare-shop-name">{shop.name}</span>
-                      </span>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                <Rows rows={compared} shops={summary.shops} />
-              </tbody>
-              {leftOut.length > 0 ? (
-                <tbody className="compare-left-out">
-                  <tr>
-                    <th scope="rowgroup" colSpan={summary.shops.length + 1}>
-                      <span className="compare-left-out-note">
-                        Not compared
-                        <InfoTip label="Why items are not compared">
-                          Needs a fresh, in-stock price at two of these shops.
-                        </InfoTip>
-                      </span>
-                    </th>
-                  </tr>
-                  <Rows rows={leftOut} shops={summary.shops} />
-                </tbody>
+          {trip ? (
+            <TripPlan summary={summary} plan={trip} />
+          ) : (
+            <>
+              {summary.elsewhere.length > 0 ? (
+                <section className="compare-elsewhere glass-surface" aria-labelledby="compare-elsewhere-title">
+                  <h2 id="compare-elsewhere-title">Cheaper elsewhere</h2>
+                  <ul>
+                    {summary.elsewhere.map((entry) => {
+                      const shop = shopByKey.get(entry.shop);
+                      return (
+                        <li key={entry.row.product.id}>
+                          <ItemName product={entry.row.product} />
+                          <span className="compare-elsewhere-shop">
+                            {shop ? <ShopLogo shop={shop} /> : null}
+                            <span className="compare-elsewhere-name">{shop?.name}</span>
+                            <b>{formatMoney(entry.price)}</b>
+                          </span>
+                          {entry.saving ? (
+                            <span className="compare-save">Save {formatMoney(entry.saving)}</span>
+                          ) : (
+                            <span className="compare-save is-only">
+                              Not at {shopByKey.get(summary.best ?? "")?.name}
+                            </span>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </section>
               ) : null}
-            </table>
-          </section>
+
+              <section className="compare-table-wrap glass-surface" aria-label="Prices by item">
+                <table className={`compare-table has-${summary.shops.length}`}>
+                  <thead>
+                    <tr>
+                      <th scope="col">Item</th>
+                      {summary.shops.map((shop) => (
+                        <th scope="col" key={shop.key}>
+                          <span className="compare-shop-head">
+                            <ShopLogo shop={shop} />
+                            <span className="compare-shop-name">{shop.name}</span>
+                          </span>
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <Rows rows={compared} shops={summary.shops} />
+                  </tbody>
+                  {leftOut.length > 0 ? (
+                    <tbody className="compare-left-out">
+                      <tr>
+                        <th scope="rowgroup" colSpan={summary.shops.length + 1}>
+                          <span className="compare-left-out-note">
+                            Not compared
+                            <InfoTip label="Why items are not compared">
+                              Needs a fresh, in-stock price at two of these shops.
+                            </InfoTip>
+                          </span>
+                        </th>
+                      </tr>
+                      <Rows rows={leftOut} shops={summary.shops} />
+                    </tbody>
+                  ) : null}
+                </table>
+              </section>
+            </>
+          )}
         </>
       )}
     </main>
