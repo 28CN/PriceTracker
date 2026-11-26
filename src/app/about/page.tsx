@@ -153,7 +153,7 @@ export default async function GuidePage() {
             <p>Bargains posted on OzBargain for the shops we check and big online shops.</p>
             <p>
               Filter by shop, sort by newest or most votes. <strong>On my list</strong> marks deals that match
-              something you track.
+              something you track, then deals for its brand or show (a tag like <em>Hot Wheels</em>).
             </p>
             <p>A deal opens on OzBargain; the shop name opens the shop&rsquo;s website.</p>
           </div>
