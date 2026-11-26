@@ -1,9 +1,11 @@
 'use client';
 
-import { CircleCheck, Clock, ExternalLink, Tag, ThumbsUp } from 'lucide-react';
+import { BellOff, CircleCheck, Clock, ExternalLink, Heart, Tag, ThumbsUp, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 
 import InfoTip from '@/components/InfoTip';
+import { brandKey } from '@/lib/dealMatch';
+import { sparkPoints, type Spark } from '@/lib/sparkline';
 import RetailerLogo from '@/components/RetailerLogo';
 import { DEAL_SHOPS, dealShop, type DealSaving, type DealTab } from '@/lib/deals';
 
@@ -22,13 +24,18 @@ export type DealView = {
   timeLeft: string | null;
   endsSoon: boolean;
   isNew: boolean;
-  /** An item on your list (exact), or a brand or show you track. */
-  match: { kind: 'item' | 'brand'; label: string } | null;
+  /** An item on your list (exact), or a brand or show you track or follow. */
+  match: { kind: 'item' | 'brand'; label: string; followed: boolean } | null;
+  /** Matches you and arrived since your last visit. */
+  forYou: boolean;
+  /** Your item's price over the last 90 days (exact matches only). */
+  spark: Spark | null;
   /** The same item at another shop on your list, when sizes agree. */
   elsewhere: { shop: string; price: string } | null;
 };
 
-type Sort = 'new' | 'votes';
+type Sort = 'new' | 'votes' | 'saved';
+type BrandChoice = 'follow' | 'mute' | null;
 
 const TABS: { key: DealTab; label: string }[] = [
   { key: 'shops', label: 'Shops we check' },
@@ -36,6 +43,58 @@ const TABS: { key: DealTab; label: string }[] = [
 ];
 
 const HOT_VOTES = 50;
+
+function Sparkline({ spark, price }: { spark: Spark; price: string | null }) {
+  const label = `Your price, last 90 days: low $${spark.low.toFixed(2)}, high $${spark.high.toFixed(2)}`;
+  return (
+    <span className="deal-spark" title={label}>
+      <svg width="56" height="18" viewBox="0 0 56 18" aria-hidden="true" focusable="false">
+        <polyline points={sparkPoints(spark.points, 56, 18)} />
+      </svg>
+      <span className="sr-only">{label}{price ? `; deal ${price}` : ''}</span>
+    </span>
+  );
+}
+
+/** Brand tag: tap to follow or mute the brand (signed-in, not the sample list). */
+function BrandTag({
+  label,
+  followed,
+  canSave,
+  onChoose
+}: {
+  label: string;
+  followed: boolean;
+  canSave: boolean;
+  onChoose: (label: string, choice: BrandChoice) => void;
+}) {
+  const chip = (
+    <span className={`deal-brand-chip${followed ? ' is-followed' : ''}`}>
+      {followed ? <Heart size={11} aria-hidden="true" /> : null}
+      {label}
+    </span>
+  );
+  if (!canSave) return chip;
+  const pick = (button: HTMLElement, choice: BrandChoice) => {
+    button.closest('details')?.removeAttribute('open');
+    onChoose(label, choice);
+  };
+  return (
+    <details className="deal-brand-menu">
+      <summary aria-label={`${label}: follow or mute`}>{chip}</summary>
+      <div className="deal-brand-options">
+        <button type="button" onClick={(event) => pick(event.currentTarget, followed ? null : 'follow')}>
+          <Heart size={14} aria-hidden="true" />
+          {followed ? 'Unfollow' : 'Follow'}
+        </button>
+        <button type="button" onClick={(event) => pick(event.currentTarget, 'mute')}>
+          <BellOff size={14} aria-hidden="true" />
+          Mute
+        </button>
+      </div>
+    </details>
+  );
+}
 
 /** Fixed-size thumbnail; a plain tag icon when there is no image or it fails. */
 function DealThumb({ src, href }: { src: string | null; href: string }) {
@@ -84,6 +143,9 @@ export default function DealsBoard({
   updated,
   loadFailed,
   signedIn,
+  canSavePrefs = false,
+  muted: initialMuted = [],
+  initialMine = false,
   initialTab,
   initialShop
 }: {
@@ -93,13 +155,62 @@ export default function DealsBoard({
   updated: { at: string; label: string; exact: string } | null;
   loadFailed: boolean;
   signedIn: boolean;
+  /** Signed in and not the sample list: brand tags can be followed or muted. */
+  canSavePrefs?: boolean;
+  /** Brands this person muted (labels). */
+  muted?: string[];
+  /** Open with On my list on (from the dashboard card). */
+  initialMine?: boolean;
   initialTab: DealTab;
   initialShop: string | null;
 }) {
   const [tab, setTab] = useState<DealTab>(initialTab);
   const [shop, setShop] = useState<string | null>(initialShop);
   const [sort, setSort] = useState<Sort>('new');
-  const [onlyMatches, setOnlyMatches] = useState(false);
+  const [onlyMatches, setOnlyMatches] = useState(initialMine);
+  const [endingSoon, setEndingSoon] = useState(false);
+  // Brand choices made on this page, by brand key; applied on top of what the server sent.
+  const [choices, setChoices] = useState<Map<string, { label: string; choice: BrandChoice }>>(new Map());
+  const [prefError, setPrefError] = useState<string | null>(null);
+
+  const mutedNow = useMemo(() => {
+    const list = new Map(initialMuted.map((label) => [brandKey(label) ?? label, label]));
+    for (const [key, { label, choice }] of choices) {
+      if (choice === 'mute') list.set(key, label);
+      else list.delete(key);
+    }
+    return list;
+  }, [initialMuted, choices]);
+
+  // Server matches with this page's choices: muted brands drop out, followed ones show a heart.
+  const shown = useMemo(
+    () =>
+      deals.flatMap((deal): DealView[] => {
+        if (deal.match?.kind !== 'brand') return [deal];
+        const key = brandKey(deal.match.label) ?? '';
+        if (mutedNow.has(key)) return [{ ...deal, match: null, forYou: false }];
+        const local = choices.get(key);
+        return local ? [{ ...deal, match: { ...deal.match, followed: local.choice === 'follow' } }] : [deal];
+      }),
+    [deals, mutedNow, choices]
+  );
+
+  const chooseBrand = async (label: string, choice: BrandChoice) => {
+    const key = brandKey(label);
+    if (!key) return;
+    const before = choices;
+    setChoices((current) => new Map(current).set(key, { label, choice }));
+    setPrefError(null);
+    const res = await fetch('/api/deals/brands', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ label, state: choice })
+    }).catch(() => null);
+    if (!res?.ok) {
+      setChoices(before);
+      setPrefError('Could not save that. Try again.');
+    }
+  };
 
   const tabCounts = useMemo(() => {
     const counts: Record<DealTab, number> = { shops: 0, online: 0 };
@@ -113,19 +224,29 @@ export default function DealsBoard({
     return counts;
   }, [deals]);
 
-  const matchCount = useMemo(() => deals.filter((deal) => deal.tab === tab && deal.match).length, [deals, tab]);
+  const matchCount = useMemo(() => shown.filter((deal) => deal.tab === tab && deal.match).length, [shown, tab]);
+  const soonCount = useMemo(() => shown.filter((deal) => deal.tab === tab && deal.endsSoon).length, [shown, tab]);
 
   const visible = useMemo(() => {
-    const list = deals.filter(
-      (deal) => deal.tab === tab && (!shop || deal.shop === shop) && (!onlyMatches || deal.match)
+    const list = shown.filter(
+      (deal) =>
+        deal.tab === tab &&
+        (!shop || deal.shop === shop) &&
+        (!onlyMatches || deal.match) &&
+        (!endingSoon || deal.endsSoon)
     );
     // The server sends newest first.
-    const sorted = sort === 'votes' ? list.toSorted((a, b) => b.votes - a.votes) : list;
+    const sorted =
+      sort === 'votes'
+        ? list.toSorted((a, b) => b.votes - a.votes)
+        : sort === 'saved'
+          ? list.toSorted((a, b) => (b.saving?.percent ?? -1) - (a.saving?.percent ?? -1))
+          : list;
     // On my list: exact items before brand matches.
     return onlyMatches
       ? sorted.toSorted((a, b) => Number(b.match?.kind === 'item') - Number(a.match?.kind === 'item'))
       : sorted;
-  }, [deals, tab, shop, sort, onlyMatches]);
+  }, [shown, tab, shop, sort, onlyMatches, endingSoon]);
 
   const shops = DEAL_SHOPS.filter((item) => item.tab === tab);
   const selectedShop = shop ? dealShop(shop) : null;
@@ -135,6 +256,7 @@ export default function DealsBoard({
     setTab(next);
     setShop(null);
     setOnlyMatches(false);
+    setEndingSoon(false);
     syncUrl(next, null);
   };
 
@@ -236,7 +358,21 @@ export default function DealsBoard({
               <button type="button" aria-pressed={sort === 'votes'} onClick={() => setSort('votes')}>
                 Most votes
               </button>
+              <button type="button" aria-pressed={sort === 'saved'} onClick={() => setSort('saved')}>
+                Most saved
+              </button>
             </div>
+            {soonCount > 0 ? (
+              <button
+                type="button"
+                className="deals-match-toggle"
+                aria-pressed={endingSoon}
+                onClick={() => setEndingSoon((value) => !value)}
+              >
+                <Clock size={15} aria-hidden="true" />
+                Ends soon ({soonCount})
+              </button>
+            ) : null}
             {signedIn && matchCount > 0 ? (
               <button
                 type="button"
@@ -250,6 +386,12 @@ export default function DealsBoard({
             ) : null}
           </div>
         </div>
+
+        {prefError ? (
+          <p className="deals-note" role="status">
+            {prefError}
+          </p>
+        ) : null}
 
         {staleHere.length > 0 ? (
           <p className="deals-note">
@@ -293,7 +435,11 @@ export default function DealsBoard({
                       </span>
                     )}
                     <time dateTime={deal.postedAt}>{deal.posted}</time>
-                    {deal.isNew ? <span className="deal-badge is-new">New</span> : null}
+                    {deal.forYou ? (
+                      <span className="deal-badge is-new">New for you</span>
+                    ) : deal.isNew ? (
+                      <span className="deal-badge is-new">New</span>
+                    ) : null}
                   </div>
                   <a className="deal-title" href={deal.url} target="_blank" rel="noopener noreferrer">
                     {deal.title}
@@ -322,11 +468,18 @@ export default function DealsBoard({
                     ) : null}
                   </div>
                   {deal.match?.kind === 'brand' ? (
-                    <p className="deal-match is-brand">
+                    <div className="deal-match is-brand">
                       <Tag size={13} aria-hidden="true" />
-                      <span className="visually-hidden">Brand on your list: </span>
-                      <span className="deal-brand-chip">{deal.match.label}</span>
-                    </p>
+                      <span className="visually-hidden">
+                        {deal.match.followed ? 'Brand you follow: ' : 'Brand on your list: '}
+                      </span>
+                      <BrandTag
+                        label={deal.match.label}
+                        followed={deal.match.followed}
+                        canSave={canSavePrefs}
+                        onChoose={chooseBrand}
+                      />
+                    </div>
                   ) : deal.match ? (
                     <p className="deal-match">
                       <CircleCheck size={14} aria-hidden="true" />
@@ -339,6 +492,7 @@ export default function DealsBoard({
                           </>
                         ) : null}
                       </span>
+                      {deal.spark ? <Sparkline spark={deal.spark} price={deal.price} /> : null}
                     </p>
                   ) : null}
                   </div>
@@ -349,6 +503,19 @@ export default function DealsBoard({
           </ul>
         )}
       </section>
+
+      {mutedNow.size > 0 ? (
+        <div className="deals-muted" aria-label="Muted brands">
+          <BellOff size={14} aria-hidden="true" />
+          <span className="visually-hidden">Muted brands:</span>
+          {[...mutedNow.values()].map((label) => (
+            <button key={label} type="button" onClick={() => chooseBrand(label, null)} aria-label={`Unmute ${label}`}>
+              {label}
+              <X size={12} aria-hidden="true" />
+            </button>
+          ))}
+        </div>
+      ) : null}
 
       <footer className="site-footer deals-footer">
         <p>
