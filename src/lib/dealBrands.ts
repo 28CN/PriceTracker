@@ -83,7 +83,7 @@ const GENERIC_LEADS = new Set(
 export type DealBrand = { label: string; pattern: RegExp };
 
 /** "Hot Wheels" matches "hot wheels" and "hotwheels" as whole words; "Arnott's" also matches "arnotts". */
-function phrasePattern(phrase: string, loose = true): RegExp | null {
+export function phrasePattern(phrase: string, loose = true): RegExp | null {
   const words = normalizeSearchText(phrase).split(' ').filter(Boolean);
   if (!words.length) return null;
   return new RegExp(`(?:^| )${words.join(loose ? ' ?' : ' ')}(?: |$)`);

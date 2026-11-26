@@ -6,6 +6,7 @@ import { flushSync } from 'react-dom';
 
 import CategoryList from '@/components/CategoryList';
 import DashboardHero from '@/components/DashboardHero';
+import ForYouDigest from '@/components/ForYouDigest';
 import HomeShortcuts from '@/components/HomeShortcuts';
 import ProductDetailPanel from '@/components/ProductDetailPanel';
 import ProductSearch from '@/components/ProductSearch';
@@ -230,6 +231,8 @@ export default function DashboardWorkspace({
         overview={overview}
         overviewStatus={overviewStatus}
       />
+
+      <ForYouDigest />
 
       <HomeShortcuts signedIn />
 

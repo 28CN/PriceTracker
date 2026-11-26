@@ -58,3 +58,7 @@ user_roles | users read own roles | SELECT | PERMISSIVE | authenticated | (user_
 user_security | users read own security state | SELECT | PERMISSIVE | authenticated | (user_id = ( SELECT auth.uid() AS uid)) | -
 ozb_deals | deals are public | SELECT | PERMISSIVE | anon,authenticated | true | -
 ozb_feed_status | feed status is public | SELECT | PERMISSIVE | anon,authenticated | true | -
+deal_brand_prefs | users manage own brand prefs | ALL | PERMISSIVE | authenticated | (user_id = ( SELECT auth.uid() AS uid)) | (user_id = ( SELECT auth.uid() AS uid))
+deal_brand_prefs | demo users cannot insert | INSERT | RESTRICTIVE | authenticated | - | (NOT ( SELECT is_demo_user() AS is_demo_user))
+deal_brand_prefs | demo users cannot update | UPDATE | RESTRICTIVE | authenticated | (NOT ( SELECT is_demo_user() AS is_demo_user)) | -
+deal_brand_prefs | demo users cannot delete | DELETE | RESTRICTIVE | authenticated | (NOT ( SELECT is_demo_user() AS is_demo_user)) | -
