@@ -164,19 +164,75 @@ def parse_feed(xml_text: str, feed: Feed, now: datetime | None = None) -> list[d
     return rows
 
 
-def fetch_feed(session: requests.Session, feed: Feed) -> str | None:
+# Adaptive refresh (see should_run). OzBargain caches its feeds and asks bots
+# not to poll hard; hourly while someone is looking, ~3-hourly otherwise.
+VISIT_WINDOW = timedelta(minutes=65)
+BUSY_INTERVAL = timedelta(minutes=55)
+QUIET_INTERVAL = timedelta(minutes=170)
+VISIT_MIN_GAP = timedelta(minutes=50)
+
+
+def _ts(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def should_run(mode: str, state: dict, now: datetime) -> tuple[bool, str]:
+    """Whether this run should fetch, and why. `mode` is manual, visit or schedule."""
+    last_run = _ts(state.get("last_run_at"))
+    last_visit = _ts(state.get("last_visit_at"))
+    since_run = now - last_run if last_run else None
+    if mode == "manual":
+        return True, "started by hand"
+    if mode == "visit":
+        if since_run is not None and since_run < VISIT_MIN_GAP:
+            return False, "fetched recently"
+        return True, "someone opened Deals"
+    if since_run is None or since_run >= QUIET_INTERVAL:
+        return True, "regular refresh"
+    if last_visit and now - last_visit <= VISIT_WINDOW and since_run >= BUSY_INTERVAL:
+        return True, "someone looked in the last hour"
+    return False, "nobody looked lately and the last fetch is recent"
+
+
+@dataclass
+class FeedResult:
+    text: str | None  # feed body on 200
+    not_modified: bool  # 304: nothing new since last time
+    etag: str | None
+    last_modified: str | None
+    status: int | None
+
+
+def fetch_feed(session: requests.Session, feed: Feed, validators: dict | None = None) -> FeedResult:
+    """GET one shop feed, conditionally when we have its ETag / Last-Modified."""
     url = FEED_URL.format(domain=feed.domain)
+    headers = {}
+    if validators and validators.get("etag"):
+        headers["If-None-Match"] = validators["etag"]
+    if validators and validators.get("last_modified"):
+        headers["If-Modified-Since"] = validators["last_modified"]
+    status = None
     for attempt in range(2):
         try:
-            response = session.get(url, timeout=20)
-            if response.status_code == 200 and "<rss" in response.text[:500]:
-                return response.text
-            print(f"[deals] {feed.shop}: HTTP {response.status_code}", file=sys.stderr)
+            response = session.get(url, timeout=20, headers=headers)
+            status = response.status_code
+            etag = response.headers.get("ETag")
+            modified = response.headers.get("Last-Modified")
+            if status == 304:
+                return FeedResult(None, True, etag or (validators or {}).get("etag"), modified or (validators or {}).get("last_modified"), status)
+            if status == 200 and "<rss" in response.text[:500]:
+                return FeedResult(response.text, False, etag, modified, status)
+            print(f"[deals] {feed.shop}: HTTP {status}", file=sys.stderr)
         except requests.RequestException as error:
             print(f"[deals] {feed.shop}: {type(error).__name__}", file=sys.stderr)
         if attempt == 0:
             time.sleep(5)
-    return None
+    return FeedResult(None, False, None, None, status)
 
 
 def fill_missing_images(session: requests.Session, rows: list[dict], known: dict[int, str]) -> int:
@@ -212,18 +268,35 @@ def merge_rows(rows: list[dict]) -> list[dict]:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--mode", choices=["manual", "visit", "schedule"], default="manual")
     args = parser.parse_args()
+
+    now = datetime.now(timezone.utc)
+    client = None
+    validators: dict[str, dict] = {}
+    if not args.dry_run:
+        from supabase import create_client  # only needed when writing
+
+        client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+        state_rows = client.table("ozb_refresh_state").select("*").limit(1).execute().data or []
+        run, why = should_run(args.mode, state_rows[0] if state_rows else {}, now)
+        print(f"[deals] mode={args.mode}: {'fetching' if run else 'skipping'} ({why})")
+        if not run:
+            return 0
+        stored = client.table("ozb_feed_status").select("shop, etag, last_modified").execute().data or []
+        validators = {row["shop"]: row for row in stored}
 
     session = requests.Session()
     session.headers.update({"User-Agent": USER_AGENT, "Accept": "application/rss+xml"})
-    now = datetime.now(timezone.utc)
 
     all_rows: list[dict] = []
     statuses: list[dict] = []
+    unchanged = 0
     for index, feed in enumerate(FEEDS):
         if index:
             time.sleep(PAUSE_SECONDS)
-        text = fetch_feed(session, feed)
+        result = fetch_feed(session, feed, validators.get(feed.shop))
+        text = result.text
         rows: list[dict] = []
         if text is not None:
             try:
@@ -231,24 +304,31 @@ def main() -> int:
             except ET.ParseError:
                 print(f"[deals] {feed.shop}: feed did not parse", file=sys.stderr)
                 text = None
-        ok = text is not None
-        print(f"[deals] {feed.shop}: {'ok' if ok else 'failed'}, {len(rows)} deals")
+        ok = text is not None or result.not_modified
+        label = "not changed" if result.not_modified else ("ok" if ok else "failed")
+        print(f"[deals] {feed.shop}: {label}, {len(rows)} deals")
         all_rows.extend(rows)
-        status = {"shop": feed.shop, "last_attempt_at": now.isoformat(), "item_count": len(rows)}
+        status: dict = {"shop": feed.shop, "last_attempt_at": now.isoformat(), "last_status": result.status}
+        if result.not_modified:
+            unchanged += 1  # keep the stored item_count
+        else:
+            status["item_count"] = len(rows)
         if ok:
             status["last_ok_at"] = now.isoformat()
+            status["etag"] = result.etag
+            status["last_modified"] = result.last_modified
         statuses.append(status)
+    with_etag = sum(1 for s in statuses if s.get("etag"))
+    with_modified = sum(1 for s in statuses if s.get("last_modified"))
+    print(f"[deals] conditional GET: ETag on {with_etag}, Last-Modified on {with_modified}, 304 on {unchanged} of {len(FEEDS)} feeds")
 
     rows = merge_rows(all_rows)
-    if args.dry_run:
+    if client is None:
         for row in rows[:20]:
             print(row["shop"], row["votes_pos"], row["title"][:80])
         print(f"[deals] dry run: {len(rows)} deals, nothing written")
         return 0
 
-    from supabase import create_client  # only needed when writing
-
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
     missing = [row["node_id"] for row in rows if not row["image_url"]]
     known: dict[int, str] = {}
     if missing:
@@ -265,6 +345,7 @@ def main() -> int:
         client.table("ozb_feed_status").upsert(status, on_conflict="shop").execute()
     cutoff = (now - timedelta(days=KEEP_DAYS)).isoformat()
     client.table("ozb_deals").delete().lt("posted_at", cutoff).execute()
+    client.table("ozb_refresh_state").update({"last_run_at": now.isoformat()}).eq("id", True).execute()
     failed = [s["shop"] for s in statuses if "last_ok_at" not in s]
     print(f"[deals] wrote {len(rows)} deals; failed feeds: {', '.join(failed) or 'none'}")
     # Partial failure is fine; fail the run only if every feed failed.

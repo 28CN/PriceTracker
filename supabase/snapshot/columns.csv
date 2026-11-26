@@ -164,3 +164,10 @@ ozb_feed_status,shop,text,NO
 ozb_feed_status,last_attempt_at,timestamp with time zone,NO
 ozb_feed_status,last_ok_at,timestamp with time zone,YES
 ozb_feed_status,item_count,integer,NO
+ozb_feed_status,etag,text,YES
+ozb_feed_status,last_modified,text,YES
+ozb_feed_status,last_status,integer,YES
+ozb_refresh_state,id,boolean,NO
+ozb_refresh_state,last_visit_at,timestamp with time zone,YES
+ozb_refresh_state,last_dispatch_at,timestamp with time zone,YES
+ozb_refresh_state,last_run_at,timestamp with time zone,YES

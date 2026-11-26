@@ -23,3 +23,4 @@ is_demo_user() | definer | anon=true | authenticated=true | service_role=true
 latest_link_prices(uuid[]) | invoker | anon=true | authenticated=true | service_role=true
 protect_profile_demo_flag() | invoker | anon=true | authenticated=true | service_role=true
 consume_search_quota(uuid,integer,integer,integer) | definer | anon=false | authenticated=false | service_role=true
+note_deals_visit() | definer | anon=true | authenticated=true | service_role=true
