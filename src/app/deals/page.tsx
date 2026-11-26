@@ -17,7 +17,7 @@ import {
   type DealTab,
   type FeedStatusRow
 } from '@/lib/deals';
-import { matchDeals, newSince } from '@/lib/dealMatch';
+import { isNewFor, matchDeals, newSince } from '@/lib/dealMatch';
 import { loadBrandPrefs, loadDealsSeenAt, markDealsSeen } from '@/lib/dealsForYou';
 import { noteDealsVisit } from '@/lib/dealsRefresh';
 import { formatMoney } from '@/lib/format';
@@ -126,7 +126,7 @@ export default async function DealsPage({ searchParams }: { searchParams: Promis
           : match
             ? { kind: 'item', label: match.label, followed: false }
             : null,
-      forYou: Boolean(match) && Date.parse(deal.first_seen_at) > since,
+      forYou: Boolean(match) && isNewFor(deal, since),
       spark: item ? sparkFor(dailyRows, item.id, shopLinkIds) : null,
       elsewhere
     };
