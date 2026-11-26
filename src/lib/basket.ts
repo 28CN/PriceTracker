@@ -296,3 +296,200 @@ export function pickGroup(
   const most = available.toSorted((a, b) => b.count - a.count)[0];
   return most?.group ?? SHOP_GROUPS[0];
 }
+
+export const SMALL_STOP_LIMIT_CENTS = 200;
+
+export type TripItem = {
+  row: GroupRow;
+  price: number;
+};
+
+export type TripStop = {
+  shop: GroupShop;
+  items: TripItem[];
+  subtotal: number;
+};
+
+export type TripSmallStop = TripStop & {
+  /** Saving against buying these items at summary.best. */
+  saving: number;
+};
+
+export type TripSingleShop = {
+  shop: GroupShop;
+  /** Cost of buying every assigned item that this shop sells fresh, here. */
+  cost: number;
+  /** Extra cost on those items compared with the split plan. */
+  extra: number;
+  /** Assigned items this shop does not sell fresh. */
+  missing: number;
+};
+
+export type TripPlan = {
+  stops: TripStop[];
+  total: number;
+  unpriced: GroupRow[];
+  singleShop: TripSingleShop | null;
+  smallStops: TripSmallStop[];
+};
+
+export type StaleOffer = {
+  shop: GroupShop;
+  price: number;
+  at: string | null;
+};
+
+/** Newest stale price across the group for a row with no fresh price, if any. */
+export function newestStaleOffer(
+  row: GroupRow,
+  shops: readonly GroupShop[],
+): StaleOffer | null {
+  let newest: StaleOffer | null = null;
+  for (const shop of shops) {
+    const cell = row.cells[shop.key];
+    if (cell?.kind !== "stale") continue;
+    if (!newest || timestamp(cell.at) > timestamp(newest.at)) {
+      newest = { shop, price: cell.price, at: cell.at };
+    }
+  }
+  return newest;
+}
+
+/**
+ * Split a group's items across shops for the lowest total.
+ * Ties go to summary.best, then the shop already holding more items, then group order.
+ */
+export function planTrip(summary: GroupSummary): TripPlan {
+  const groupShops = summary.group.shops;
+  const shopByKey = new Map(groupShops.map((entry) => [entry.key, entry]));
+  const assigned = new Map<number, { shop: string; price: number }>();
+  const counts = new Map<string, number>();
+  const unpriced: GroupRow[] = [];
+  const ties: { index: number; offers: { shop: string; price: number }[] }[] =
+    [];
+
+  const record = (index: number, shop: string, price: number) => {
+    assigned.set(index, { shop, price });
+    counts.set(shop, (counts.get(shop) ?? 0) + 1);
+  };
+
+  summary.rows.forEach((row, index) => {
+    const fresh = groupShops.flatMap(({ key }) => {
+      const cell = row.cells[key];
+      return cell?.kind === "fresh" ? [{ shop: key, price: cell.price }] : [];
+    });
+    if (fresh.length === 0) {
+      unpriced.push(row);
+      return;
+    }
+
+    const low = Math.min(...fresh.map((offer) => cents(offer.price)));
+    const atLow = fresh.filter((offer) => cents(offer.price) === low);
+    if (atLow.length === 1) {
+      record(index, atLow[0].shop, atLow[0].price);
+      return;
+    }
+
+    const atBest = summary.best
+      ? atLow.find((offer) => offer.shop === summary.best)
+      : undefined;
+    if (atBest) {
+      record(index, atBest.shop, atBest.price);
+      return;
+    }
+
+    ties.push({ index, offers: atLow });
+  });
+
+  for (const { index, offers } of ties) {
+    let winner = offers[0];
+    let winnerCount = counts.get(winner.shop) ?? 0;
+    for (let i = 1; i < offers.length; i += 1) {
+      const candidate = offers[i];
+      const candidateCount = counts.get(candidate.shop) ?? 0;
+      if (candidateCount > winnerCount) {
+        winner = candidate;
+        winnerCount = candidateCount;
+      }
+    }
+    record(index, winner.shop, winner.price);
+  }
+
+  const itemsByShop = new Map<string, TripItem[]>();
+  const centsByShop = new Map<string, number>();
+  summary.rows.forEach((row, index) => {
+    const pick = assigned.get(index);
+    if (!pick) return;
+    const list = itemsByShop.get(pick.shop) ?? [];
+    list.push({ row, price: pick.price });
+    itemsByShop.set(pick.shop, list);
+    centsByShop.set(
+      pick.shop,
+      (centsByShop.get(pick.shop) ?? 0) + cents(pick.price),
+    );
+  });
+
+  const stops: TripStop[] = groupShops
+    .filter(({ key }) => itemsByShop.has(key))
+    .map((entry) => ({
+      shop: entry,
+      items: itemsByShop.get(entry.key) ?? [],
+      subtotal: (centsByShop.get(entry.key) ?? 0) / 100,
+    }))
+    .sort((a, b) => cents(b.subtotal) - cents(a.subtotal));
+
+  const totalCents = stops.reduce((sum, stop) => sum + cents(stop.subtotal), 0);
+
+  let singleShop: TripSingleShop | null = null;
+  const bestShop = summary.best ? shopByKey.get(summary.best) ?? null : null;
+  if (bestShop && stops.length > 0) {
+    let costCents = 0;
+    let extraCents = 0;
+    let missing = 0;
+    for (const stop of stops) {
+      for (const item of stop.items) {
+        const atBest = item.row.cells[bestShop.key];
+        if (atBest?.kind === "fresh") {
+          costCents += cents(atBest.price);
+          extraCents += cents(atBest.price) - cents(item.price);
+        } else {
+          missing += 1;
+        }
+      }
+    }
+    singleShop = {
+      shop: bestShop,
+      cost: costCents / 100,
+      extra: extraCents / 100,
+      missing,
+    };
+  }
+
+  const smallStops: TripSmallStop[] = [];
+  if (bestShop) {
+    for (const stop of stops) {
+      if (stop.shop.key === bestShop.key) continue;
+      let savingCents = 0;
+      let allAtBest = true;
+      for (const item of stop.items) {
+        const atBest = item.row.cells[bestShop.key];
+        if (atBest?.kind !== "fresh") {
+          allAtBest = false;
+          break;
+        }
+        savingCents += cents(atBest.price) - cents(item.price);
+      }
+      if (allAtBest && savingCents < SMALL_STOP_LIMIT_CENTS) {
+        smallStops.push({ ...stop, saving: savingCents / 100 });
+      }
+    }
+  }
+
+  return {
+    stops,
+    total: totalCents / 100,
+    unpriced,
+    singleShop,
+    smallStops,
+  };
+}

@@ -4,7 +4,9 @@ import {
   SHOP_GROUPS,
   groupRowFor,
   groupsWithItems,
+  newestStaleOffer,
   pickGroup,
+  planTrip,
   shopCellFor,
   summariseGroup,
 } from "./basket";
@@ -190,5 +192,196 @@ describe("groups", () => {
     expect(pickGroup(available, "auto").key).toBe("variety");
     expect(pickGroup(available, null).key).toBe("variety");
     expect(pickGroup([], null).key).toBe("supermarkets");
+  });
+});
+
+describe("planTrip", () => {
+  it("assigns each fresh item to the cheapest shop, sorts stops by subtotal, and compares with best", () => {
+    const summary = summariseGroup(
+      [
+        product("Milk", [link("Coles", 4), link("Woolworths", 3)]),
+        product("Cheese", [link("Coles", 9), link("Woolworths", 7)]),
+        product("Coffee", [link("Coles", 14), link("Woolworths", 18)]),
+        product("Olive Oil", [link("Coles", 12)]),
+      ],
+      supermarkets,
+    );
+    expect(summary.best).toBe("woolworths");
+
+    const plan = planTrip(summary);
+    expect(plan.stops.map((stop) => [stop.shop.key, stop.subtotal])).toEqual([
+      ["coles", 26],
+      ["woolworths", 10],
+    ]);
+    expect(plan.stops[0].items.map((item) => [item.row.product.name, item.price])).toEqual([
+      ["Coffee", 14],
+      ["Olive Oil", 12],
+    ]);
+    expect(plan.total).toBe(36);
+    expect(plan.unpriced).toEqual([]);
+    expect(plan.singleShop).toMatchObject({
+      shop: { key: "woolworths", name: "Woolworths" },
+      cost: 28,
+      extra: 4,
+      missing: 1,
+    });
+    // Coles includes Olive Oil which Woolworths does not sell fresh, so it is not small.
+    expect(plan.smallStops).toEqual([]);
+  });
+
+  it("breaks ties by summary.best, then shop already holding more items, then group order", () => {
+    // summary.best is woolworths (wins 2 vs 0); tied item should go to woolworths despite coles being first in group order.
+    const bestTieSummary = summariseGroup(
+      [
+        product("A", [link("Coles", 5), link("Woolworths", 4)]),
+        product("B", [link("Coles", 6), link("Woolworths", 5)]),
+        product("Tied", [link("Coles", 3), link("Woolworths", 3)]),
+      ],
+      supermarkets,
+    );
+    expect(bestTieSummary.best).toBe("woolworths");
+    const bestTiePlan = planTrip(bestTieSummary);
+    expect(bestTiePlan.stops.map((stop) => stop.shop.key)).toEqual(["woolworths"]);
+    expect(bestTiePlan.stops[0].items.map((item) => item.row.product.name)).toEqual([
+      "A",
+      "B",
+      "Tied",
+    ]);
+
+    // Tie between two non-best shops prefers the one already holding more items.
+    const countTieSummary = summariseGroup(
+      [
+        product("K1", [link("Kmart", 2), link("Target", 5), link("Big W", 5)]),
+        product("K2", [link("Kmart", 2), link("Target", 5), link("Big W", 5)]),
+        product("B1", [link("Kmart", 9), link("Target", 8), link("Big W", 4)]),
+        product("TieTB", [link("Kmart", 9), link("Target", 6), link("Big W", 6)]),
+      ],
+      variety,
+    );
+    expect(countTieSummary.best).toBe("kmart");
+    const countTiePlan = planTrip(countTieSummary);
+    const bigwStop = countTiePlan.stops.find((stop) => stop.shop.key === "bigw")!;
+    expect(bigwStop.items.map((item) => item.row.product.name)).toEqual(["B1", "TieTB"]);
+    expect(countTiePlan.stops.find((stop) => stop.shop.key === "target")).toBeUndefined();
+
+    // Tie with no best shop and equal counts falls back to group order (kmart before target).
+    const groupOrderSummary = summariseGroup(
+      [product("Same", [link("Kmart", 5), link("Target", 5)])],
+      variety,
+    );
+    expect(groupOrderSummary.best).toBeNull();
+    const groupOrderPlan = planTrip(groupOrderSummary);
+    expect(groupOrderPlan.stops.map((stop) => stop.shop.key)).toEqual(["kmart"]);
+  });
+
+  it("adds cents exactly for subtotals, total, singleShop and smallStops", () => {
+    const summary = summariseGroup(
+      [
+        product("A", [link("Coles", 0.1), link("Woolworths", 0.4)]),
+        product("B", [link("Coles", 0.2), link("Woolworths", 0.5)]),
+        product("C", [link("Coles", 0.5), link("Woolworths", 0.1)]),
+      ],
+      supermarkets,
+    );
+    expect(summary.best).toBe("coles");
+    const plan = planTrip(summary);
+    const coles = plan.stops.find((stop) => stop.shop.key === "coles")!;
+    const woolies = plan.stops.find((stop) => stop.shop.key === "woolworths")!;
+    expect(coles.subtotal).toBe(0.3);
+    expect(woolies.subtotal).toBe(0.1);
+    expect(plan.total).toBe(0.4);
+    expect(plan.singleShop).toMatchObject({ cost: 0.8, extra: 0.4, missing: 0 });
+    expect(plan.smallStops.map((stop) => [stop.shop.key, stop.saving])).toEqual([
+      ["woolworths", 0.4],
+    ]);
+  });
+
+  it("flags smallStops only when saving vs best is under $2.00 and best sells all items fresh", () => {
+    // Saving $1.99 at Target -> small stop. Saving $2.00 at Big W -> not small.
+    const summary = summariseGroup(
+      [
+        product("K1", [link("Kmart", 10), link("Target", 15), link("Big W", 15)]),
+        product("K2", [link("Kmart", 10), link("Target", 15), link("Big W", 15)]),
+        product("T1", [link("Kmart", 5), link("Target", 3.01)]),
+        product("B1", [link("Kmart", 5), link("Big W", 3)]),
+      ],
+      variety,
+    );
+    expect(summary.best).toBe("kmart");
+    const plan = planTrip(summary);
+    expect(plan.smallStops.map((stop) => [stop.shop.key, stop.saving])).toEqual([
+      ["target", 1.99],
+    ]);
+
+    // If best lacks even one item in the stop fresh (stale or untracked), the stop is not small.
+    const missingAtBestSummary = summariseGroup(
+      [
+        product("K1", [link("Kmart", 10), link("Target", 15)]),
+        product("K2", [link("Kmart", 10), link("Target", 15)]),
+        product("T1", [link("Kmart", 5), link("Target", 4)]),
+        product("T2", [link("Kmart", 5, { priceStale: true }), link("Target", 4)]),
+      ],
+      variety,
+    );
+    expect(planTrip(missingAtBestSummary).smallStops).toEqual([]);
+  });
+
+  it("puts rows with no fresh price into unpriced and finds the newest stale offer", () => {
+    const summary = summariseGroup(
+      [
+        product("Fresh", [link("Coles", 5)]),
+        product("Stale", [
+          link("Coles", 3, { priceStale: true, latestAt: "2026-10-01T00:00:00Z" }),
+          link("Woolworths", 4, { priceStale: true, latestAt: "2026-11-05T00:00:00Z" }),
+        ]),
+        product("Out", [link("Coles", 6, { stockStatus: "unavailable" })]),
+        product("Pending", [link("Woolworths", null)]),
+      ],
+      supermarkets,
+    );
+    const plan = planTrip(summary);
+    expect(plan.stops.map((stop) => stop.shop.key)).toEqual(["coles"]);
+    expect(plan.unpriced.map((row) => row.product.name)).toEqual([
+      "Stale",
+      "Out",
+      "Pending",
+    ]);
+
+    const staleRow = plan.unpriced[0];
+    expect(newestStaleOffer(staleRow, supermarkets.shops)).toMatchObject({
+      shop: { key: "woolworths" },
+      price: 4,
+      at: "2026-11-05T00:00:00Z",
+    });
+    expect(newestStaleOffer(plan.unpriced[1], supermarkets.shops)).toBeNull();
+  });
+
+  it("handles a group with one shop", () => {
+    const summary = summariseGroup(
+      [
+        product("Car", [link("Kmart", 2)]),
+        product("Track", [link("Kmart", 12)]),
+      ],
+      variety,
+    );
+    const plan = planTrip(summary);
+    expect(plan.stops).toHaveLength(1);
+    expect(plan.stops[0].shop.key).toBe("kmart");
+    expect(plan.stops[0].subtotal).toBe(14);
+    expect(plan.total).toBe(14);
+    expect(plan.singleShop).toBeNull();
+    expect(plan.smallStops).toEqual([]);
+    expect(plan.unpriced).toEqual([]);
+  });
+
+  it("handles an empty summary", () => {
+    const plan = planTrip(summariseGroup([], supermarkets));
+    expect(plan).toEqual({
+      stops: [],
+      total: 0,
+      unpriced: [],
+      singleShop: null,
+      smallStops: [],
+    });
   });
 });
