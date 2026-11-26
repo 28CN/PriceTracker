@@ -118,7 +118,7 @@ export function brandsForProducts(
   for (const brand of BRANDS) {
     const pattern = phrasePattern(brand.label);
     if (!pattern) continue;
-    const detect = [pattern, ...(brand.also ?? []).map(phrasePattern).filter((p): p is RegExp => p !== null)];
+    const detect = [pattern, ...(brand.also ?? []).map((name) => phrasePattern(name)).filter((p): p is RegExp => p !== null)];
     if (texts.some((text) => text.split(' | ').some((part) => detect.some((p) => p.test(part))))) {
       found.set(brand.label.toLowerCase(), { label: brand.label, pattern });
     }
