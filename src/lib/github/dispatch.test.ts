@@ -61,3 +61,15 @@ test('times out', async () => {
   const r = await dispatchCrawl({}, { env, fetchImpl, timeoutMs: 20 });
   assert.equal((r as { reason: string }).reason, 'TIMEOUT');
 });
+
+test('dispatchCrawl can target another workflow file with the same token and repo', async () => {
+  const calls: string[] = [];
+  const fetchImpl = (async (url: string) => {
+      calls.push(url);
+      return new Response(null, { status: 204 });
+    }) as unknown as typeof fetch;
+    const env = { GITHUB_TOKEN: 't', GITHUB_OWNER: 'o', GITHUB_REPO: 'r', GITHUB_WORKFLOW_ID: 'crawl.yml' };
+    const result = await dispatchCrawl({ mode: 'visit' }, { env, fetchImpl, workflowId: 'fetch-deals.yml' });
+    assert.deepEqual(result, { ok: true });
+    assert.equal(calls[0], 'https://api.github.com/repos/o/r/actions/workflows/fetch-deals.yml/dispatches');
+});

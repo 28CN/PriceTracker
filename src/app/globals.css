@@ -8120,3 +8120,26 @@ a.deal-shop:focus-visible,
     grid-row: 1 / span 2;
   }
 }
+
+/* Deals: brand matches (a brand or show on your list) */
+.deal-card.is-brand-match {
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--line));
+}
+
+.deal-match.is-brand {
+  align-items: center;
+  color: var(--muted);
+}
+
+.deal-match.is-brand svg {
+  margin-top: 0;
+}
+
+.deal-brand-chip {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--text);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}

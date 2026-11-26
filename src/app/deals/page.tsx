@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { after } from 'next/server';
 
 import DealsBoard, { type DealView } from '@/components/DealsBoard';
 import { getViewer } from '@/lib/auth';
@@ -7,6 +8,7 @@ import {
   isDealLive,
   isNewDeal,
   matchDealsToProducts,
+  updatedAgoLabel,
   postedAgoLabel,
   priceFromTitle,
   sameSize,
@@ -16,7 +18,9 @@ import {
   type DealTab,
   type FeedStatusRow
 } from '@/lib/deals';
-import { formatMoney, formatWhen } from '@/lib/format';
+import { brandInTitle, brandsForProducts } from '@/lib/dealBrands';
+import { noteDealsVisit } from '@/lib/dealsRefresh';
+import { formatMoney } from '@/lib/format';
 import { fetchProducts } from '@/lib/queries';
 import { retailerKey } from '@/lib/retailer';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
@@ -51,6 +55,8 @@ function elsewhereOnList(product: ProductView | undefined, dealShop: string) {
 }
 
 export default async function DealsPage({ searchParams }: { searchParams: Promise<DealsSearchParams> }) {
+  // After the page is sent: note the visit, and fetch fresh deals if due.
+  after(() => noteDealsVisit());
   const params = await searchParams;
   const [viewer, supabase] = await Promise.all([getViewer(), createServerSupabaseClient()]);
   const now = Date.now();
@@ -71,10 +77,13 @@ export default async function DealsPage({ searchParams }: { searchParams: Promis
   const statuses = (statusResult.data ?? []) as FeedStatusRow[];
   const products = productsResult;
   const matches = products.length ? matchDealsToProducts(rows, products) : new Map<number, { id: string; name: string }>();
+  // Wider net: deals for a brand or show you track (Hot Wheels, Bluey), shown after exact items.
+  const brands = products.length ? brandsForProducts(products) : [];
 
   const deals: DealView[] = rows.map((deal): DealView => {
     const price = priceFromTitle(deal.title);
     const match = matches.get(deal.node_id) ?? null;
+    const brand = match ? null : brandInTitle(deal.title, brands);
     // Another shop's price only when the deal is clearly the same item and size.
     const elsewhere =
       match && sameSize(match.name, deal.title)
@@ -95,7 +104,7 @@ export default async function DealsPage({ searchParams }: { searchParams: Promis
       timeLeft: timeLeftLabel(deal.expires_at, now),
       endsSoon: deal.expires_at ? Date.parse(deal.expires_at) - now < 2 * 86_400_000 : false,
       isNew: isNewDeal(deal, now),
-      match: match?.name ?? null,
+      match: match ? { kind: 'item', label: match.name } : brand ? { kind: 'brand', label: brand } : null,
       elsewhere
     };
   });
@@ -122,7 +131,19 @@ export default async function DealsPage({ searchParams }: { searchParams: Promis
     <DealsBoard
       deals={deals}
       staleShops={staleShops}
-      updatedLabel={lastOk ? formatWhen(lastOk) : null}
+      updated={
+        lastOk
+          ? {
+              at: lastOk,
+              label: updatedAgoLabel(lastOk, now),
+              exact: new Date(lastOk).toLocaleString('en-AU', {
+                timeZone: 'Australia/Perth',
+                dateStyle: 'medium',
+                timeStyle: 'short'
+              })
+            }
+          : null
+      }
       loadFailed={Boolean(dealsResult.error)}
       signedIn={Boolean(viewer)}
       initialTab={initialTab}

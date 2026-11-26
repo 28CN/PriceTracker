@@ -52,9 +52,11 @@ function redact(text: string, token: string): string {
 
 export async function dispatchCrawl(
   inputs: Record<string, string>,
-  opts: { env?: DispatchEnv; fetchImpl?: typeof fetch; timeoutMs?: number } = {}
+  opts: { env?: DispatchEnv; fetchImpl?: typeof fetch; timeoutMs?: number; workflowId?: string } = {}
 ): Promise<DispatchResult> {
-  const read = readDispatchConfig(opts.env ?? process.env);
+  const env = opts.env ?? process.env;
+  // Same token and repo, another workflow file (e.g. the deals feed job).
+  const read = readDispatchConfig(opts.workflowId ? { ...env, GITHUB_WORKFLOW_ID: opts.workflowId } : env);
   if (!read.config) return { ok: false, reason: read.reason, message: read.message };
   const { token, owner, repo, workflowId, ref } = read.config;
   const doFetch = opts.fetchImpl ?? fetch;
