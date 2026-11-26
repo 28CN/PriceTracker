@@ -4,6 +4,7 @@ import {
   headlineFor,
   headlineText,
   resolveCardPrice,
+  shopGapDetail,
   shopGapLabel,
   type CardOffer
 } from './cardState';
@@ -285,5 +286,56 @@ describe('shopGapLabel', () => {
 
   it('says nothing when there is only one price', () => {
     expect(shopGapLabel([{ retailer: 'Coles', price: 14 }], money)).toBeNull();
+  });
+});
+
+describe('shopGapDetail', () => {
+  it('returns the dearest shop, gap, url and full label for two offers', () => {
+    expect(
+      shopGapDetail(
+        [
+          { retailer: 'Coles', price: 14, url: 'https://www.coles.com.au/p/1' },
+          { retailer: 'Woolworths', price: 14.95, url: 'https://www.woolworths.com.au/p/1' }
+        ],
+        money
+      )
+    ).toEqual({
+      retailer: 'Woolworths',
+      url: 'https://www.woolworths.com.au/p/1',
+      gap: 0.9499999999999993,
+      offerCount: 2,
+      label: 'Woolworths is $0.95 more'
+    });
+  });
+
+  it('uses the multi-shop sentence when three or more offers exist', () => {
+    const result = shopGapDetail(
+      [
+        { retailer: 'Coles', price: 14 },
+        { retailer: 'Kmart', price: 15 },
+        { retailer: 'Big W', price: 14.5 }
+      ],
+      money
+    );
+    expect(result).toEqual({
+      retailer: 'Kmart',
+      url: undefined,
+      gap: 1,
+      offerCount: 3,
+      label: 'The highest shop is $1.00 more'
+    });
+  });
+
+  it('returns null when offers are equal or fewer than two', () => {
+    expect(shopGapDetail([{ retailer: 'Coles', price: 14 }], money)).toBeNull();
+    expect(
+      shopGapDetail(
+        [
+          { retailer: 'Coles', price: 14 },
+          { retailer: 'Woolworths', price: 14 }
+        ],
+        money
+      )
+    ).toBeNull();
   });
 });
