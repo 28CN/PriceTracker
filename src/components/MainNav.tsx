@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 import { navItemsFor, isNavItemActive, type NavItemKey } from '@/lib/navItems';
+import { useForYou } from '@/lib/useForYou';
 
 const ICONS: Record<NavItemKey, LucideIcon> = {
   home: House,
@@ -30,6 +31,8 @@ export default function MainNav({
 }) {
   const pathname = usePathname() || '/';
   const items = navItemsFor(signedIn).filter((item) => placement === 'top' || item.onPhone !== false);
+  const forYou = useForYou(signedIn);
+  const newDeals = forYou?.count ?? 0;
 
   return (
     <nav className={`main-nav main-nav-${placement}`} aria-label="Main">
@@ -44,8 +47,16 @@ export default function MainNav({
                 className={`main-nav-link${active ? ' is-active' : ''}`}
                 aria-current={active ? 'page' : undefined}
               >
-                <Icon size={placement === 'bottom' ? 20 : 16} aria-hidden="true" />
+                <span className="main-nav-icon">
+                  <Icon size={placement === 'bottom' ? 20 : 16} aria-hidden="true" />
+                  {item.key === 'deals' && newDeals > 0 ? (
+                    <span className="main-nav-badge" aria-hidden="true">
+                      {newDeals > 9 ? '9+' : newDeals}
+                    </span>
+                  ) : null}
+                </span>
                 <span>{item.label}</span>
+                {item.key === 'deals' && newDeals > 0 ? <span className="sr-only">, {newDeals} new for you</span> : null}
               </Link>
             </li>
           );

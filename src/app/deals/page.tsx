@@ -7,7 +7,6 @@ import {
   DEAL_SHOPS,
   isDealLive,
   isNewDeal,
-  matchDealsToProducts,
   updatedAgoLabel,
   postedAgoLabel,
   priceFromTitle,
@@ -18,11 +17,13 @@ import {
   type DealTab,
   type FeedStatusRow
 } from '@/lib/deals';
-import { brandInTitle, brandsForProducts } from '@/lib/dealBrands';
+import { matchDeals, newSince } from '@/lib/dealMatch';
+import { loadBrandPrefs, loadDealsSeenAt, markDealsSeen } from '@/lib/dealsForYou';
 import { noteDealsVisit } from '@/lib/dealsRefresh';
 import { formatMoney } from '@/lib/format';
 import { fetchProducts } from '@/lib/queries';
 import { retailerKey } from '@/lib/retailer';
+import { sparkFor, type DailyPriceRow } from '@/lib/sparkline';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import type { ProductView } from '@/lib/types';
 
@@ -38,7 +39,7 @@ const DEAL_COLUMNS =
   'node_id, title, deal_url, shop, tab, votes_pos, votes_neg, posted_at, starts_at, expires_at, first_seen_at, image_url';
 const STALE_FEED_MS = 12 * 3_600_000;
 
-type DealsSearchParams = { tab?: string | string[]; shop?: string | string[] };
+type DealsSearchParams = { tab?: string | string[]; shop?: string | string[]; mine?: string | string[] };
 
 const first = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
 
@@ -61,7 +62,7 @@ export default async function DealsPage({ searchParams }: { searchParams: Promis
   const [viewer, supabase] = await Promise.all([getViewer(), createServerSupabaseClient()]);
   const now = Date.now();
 
-  const [dealsResult, statusResult, productsResult] = await Promise.all([
+  const [dealsResult, statusResult, productsResult, prefs, seenAt] = await Promise.all([
     supabase
       .from('ozb_deals')
       .select(DEAL_COLUMNS)
@@ -69,26 +70,41 @@ export default async function DealsPage({ searchParams }: { searchParams: Promis
       .order('posted_at', { ascending: false })
       .limit(400),
     supabase.from('ozb_feed_status').select('shop, last_ok_at, last_attempt_at'),
-    viewer ? fetchProducts(supabase, viewer.id).catch(() => [] as ProductView[]) : ([] as ProductView[])
+    viewer ? fetchProducts(supabase, viewer.id).catch(() => [] as ProductView[]) : ([] as ProductView[]),
+    viewer ? loadBrandPrefs(supabase, viewer.id) : [],
+    viewer ? loadDealsSeenAt(supabase, viewer.id) : null
   ]);
 
   if (dealsResult.error) console.error('[deals] load failed:', dealsResult.error.message);
   const rows = ((dealsResult.data ?? []) as DealRow[]).filter((deal) => isDealLive(deal, now));
   const statuses = (statusResult.data ?? []) as FeedStatusRow[];
   const products = productsResult;
-  const matches = products.length ? matchDealsToProducts(rows, products) : new Map<number, { id: string; name: string }>();
-  // Wider net: deals for a brand or show you track (Hot Wheels, Bluey), shown after exact items.
-  const brands = products.length ? brandsForProducts(products) : [];
+  // Exact items, then brands or shows you track or follow (Hot Wheels, Bluey); muted brands left out.
+  const matches = matchDeals(rows, products, prefs);
+  const since = newSince(seenAt, now);
+
+  // Price over the last 90 days for deals that are exactly an item you track.
+  const itemIds = [...new Set([...matches.values()].flatMap((match) => (match.kind === 'item' ? [match.id] : [])))];
+  const dailyRows: DailyPriceRow[] = itemIds.length
+    ? (((
+        await supabase
+          .from('price_link_daily')
+          .select('link_id, product_id, day, min_price')
+          .in('product_id', itemIds)
+          .gte('day', new Date(now - 90 * 86_400_000).toISOString().slice(0, 10))
+      ).data ?? []) as DailyPriceRow[])
+    : [];
+  if (viewer && !viewer.isDemo) await markDealsSeen(supabase, viewer.id);
 
   const deals: DealView[] = rows.map((deal): DealView => {
     const price = priceFromTitle(deal.title);
     const match = matches.get(deal.node_id) ?? null;
-    const brand = match ? null : brandInTitle(deal.title, brands);
+    const item = match?.kind === 'item' ? products.find((product) => product.id === match.id) : undefined;
     // Another shop's price only when the deal is clearly the same item and size.
-    const elsewhere =
-      match && sameSize(match.name, deal.title)
-        ? elsewhereOnList(products.find((product) => product.id === match.id), deal.shop)
-        : null;
+    const elsewhere = item && sameSize(item.name, deal.title) ? elsewhereOnList(item, deal.shop) : null;
+    const shopLinkIds = (item?.links ?? [])
+      .filter((link) => (retailerKey(link.retailer) ?? retailerKey(link.url)) === deal.shop)
+      .map((link) => link.id);
     return {
       id: deal.node_id,
       title: deal.title,
@@ -104,7 +120,14 @@ export default async function DealsPage({ searchParams }: { searchParams: Promis
       timeLeft: timeLeftLabel(deal.expires_at, now),
       endsSoon: deal.expires_at ? Date.parse(deal.expires_at) - now < 2 * 86_400_000 : false,
       isNew: isNewDeal(deal, now),
-      match: match ? { kind: 'item', label: match.name } : brand ? { kind: 'brand', label: brand } : null,
+      match:
+        match?.kind === 'brand'
+          ? { kind: 'brand', label: match.label, followed: match.followed }
+          : match
+            ? { kind: 'item', label: match.label, followed: false }
+            : null,
+      forYou: Boolean(match) && Date.parse(deal.first_seen_at) > since,
+      spark: item ? sparkFor(dailyRows, item.id, shopLinkIds) : null,
       elsewhere
     };
   });
@@ -146,6 +169,9 @@ export default async function DealsPage({ searchParams }: { searchParams: Promis
       }
       loadFailed={Boolean(dealsResult.error)}
       signedIn={Boolean(viewer)}
+      canSavePrefs={Boolean(viewer && !viewer.isDemo)}
+      muted={prefs.filter((pref) => pref.state === 'mute').map((pref) => pref.label)}
+      initialMine={first(params.mine) === '1'}
       initialTab={initialTab}
       initialShop={initialShop}
     />
