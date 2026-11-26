@@ -73,8 +73,16 @@ PR #1 (beta shop search page) is still open and not part of `main`.
   previews sit behind Vercel Authentication.
 - **Database and auth**: Supabase project ref `yvvreaqbxzcemvgimbpa`, region Tokyo.
 - **Weekly crawl in the cloud**: GitHub Actions `.github/workflows/crawl-prices.yml`
-  (scheduled, also started by the refresh button through `workflow_dispatch`).
-  Some shops block cloud runners.
+  (started Mon/Thu 03:00 UTC by the database scheduler, also by the refresh
+  button through `workflow_dispatch`). Some shops block cloud runners.
+- **Scheduler**: pg_cron job `pricetracker-hourly` (:00 every hour) calls
+  `public.scheduled_tick()`, which POSTs to `/api/internal/scheduled` with the
+  bearer secret from Vault `pricetracker_cron_secret` (Vercel env
+  `SCHEDULER_SECRET`, same value). The site asks `claim_scheduled_work()` what
+  is due and dispatches `fetch-deals.yml` (mode `schedule`) and/or
+  `crawl-prices.yml`. GitHub's own crons are late fallbacks that skip when the
+  work was already done. Check runs with `cron.job_run_details` and
+  `net._http_response`.
 - **Local crawl**: a Windows scheduled task on the owner's computer runs
   `scripts/crawl-background.ps1` for the shops the cloud run cannot reach.
   After changing the task or its scripts, `scripts/register-tasks.ps1` must be

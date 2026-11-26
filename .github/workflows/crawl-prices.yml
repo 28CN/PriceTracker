@@ -1,10 +1,15 @@
 name: Crawl product prices
+# Full crawls are titled "Crawl product prices"; one-item refreshes are not, so the guard can tell them apart.
+run-name: ${{ (inputs.product_id || inputs.link_id) && 'Refresh one item' || 'Crawl product prices' }}
 
 on:
+  # The full crawl is started Monday and Thursday 03:00 UTC by the database
+  # scheduler (supabase/migrations/202611260003_scheduled_tick.sql). These
+  # crons are a fallback that GitHub often runs hours late; the guard job
+  # skips them when a full crawl already ran in the last 20 hours.
   schedule:
-    # Two runs per week (UTC). Adjust as you like.
-    - cron: "0 3 * * 1"
-    - cron: "0 3 * * 4"
+    - cron: "30 6 * * 1"
+    - cron: "30 6 * * 4"
   workflow_dispatch:
     inputs:
       product_id:
@@ -22,7 +27,33 @@ on:
         type: string
 
 jobs:
+  guard:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+    outputs:
+      run: ${{ steps.check.outputs.run }}
+    steps:
+      - id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT" != "schedule" ]; then echo "run=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          since=$(date -u -d '20 hours ago' +%Y-%m-%dT%H:%M:%SZ)
+          recent=$(gh run list -R "$GITHUB_REPOSITORY" --workflow crawl-prices.yml --limit 30 \
+            --json databaseId,createdAt,displayTitle,status,conclusion \
+            --jq "[.[] | select(.databaseId != $GITHUB_RUN_ID and .createdAt > \"$since\" and .displayTitle == \"Crawl product prices\" and (.status != \"completed\" or .conclusion == \"success\"))] | length")
+          if [ "$recent" -gt 0 ]; then
+            echo "::notice::A full crawl already ran in the last 20 hours; skipping this fallback run."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
   crawl:
+    needs: guard
+    if: needs.guard.outputs.run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:

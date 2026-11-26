@@ -176,3 +176,5 @@ deal_brand_prefs,brand_key,text,NO
 deal_brand_prefs,label,text,NO
 deal_brand_prefs,state,text,NO
 deal_brand_prefs,updated_at,timestamp with time zone,NO
+scheduled_tasks,task,text,NO
+scheduled_tasks,last_dispatch_at,timestamp with time zone,YES

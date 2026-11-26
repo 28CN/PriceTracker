@@ -25,3 +25,6 @@ protect_profile_demo_flag() | invoker | anon=true | authenticated=true | service
 consume_search_quota(uuid,integer,integer,integer) | definer | anon=false | authenticated=false | service_role=true
 note_deals_visit() | definer | anon=true | authenticated=true | service_role=true
 deal_brand_prefs_limit() | definer | anon=false | authenticated=false | service_role=true
+claim_scheduled_work(timestamp with time zone) | definer | anon=false | authenticated=false | service_role=true
+release_scheduled_task(text,timestamp with time zone) | definer | anon=false | authenticated=false | service_role=true
+scheduled_tick() | definer | anon=false | authenticated=false | service_role=false
