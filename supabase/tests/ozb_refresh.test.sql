@@ -3,7 +3,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions;
-select plan(11);
+select plan(12);
 
 select ok((select relrowsecurity from pg_class where oid = 'public.ozb_refresh_state'::regclass), 'RLS on ozb_refresh_state');
 select ok(not has_table_privilege('anon', 'public.ozb_refresh_state', 'select'), 'anon cannot read refresh state');
@@ -25,6 +25,11 @@ set local role authenticated;
 select is(public.note_deals_visit(), false, 'no fetch when the last run is recent');
 reset role;
 select ok((select last_visit_at > now() - interval '1 minute' from public.ozb_refresh_state), 'the visit time is recorded');
+
+update public.ozb_refresh_state set last_run_at = now() - interval '35 minutes', last_dispatch_at = null;
+set local role anon;
+select is(public.note_deals_visit(), true, 'a visit asks again once the last run is 30+ minutes old');
+reset role;
 
 select * from finish();
 rollback;
