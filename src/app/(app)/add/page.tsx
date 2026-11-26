@@ -1,3 +1,4 @@
+import { PackagePlus } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 
@@ -47,11 +48,12 @@ export default async function AddPage({ searchParams }: { searchParams: Promise<
 
   return (
     <main>
-      <section className="manage-hero">
-        <div>
-          <h1>Add a product</h1>
-        </div>
-      </section>
+      <header className="add-page-head">
+        <span className="page-head-icon" aria-hidden="true">
+          <PackagePlus size={20} strokeWidth={1.9} />
+        </span>
+        <h1>Add a product</h1>
+      </header>
 
       {loadError ? <div className="alert add-notice">{loadError}</div> : null}
 

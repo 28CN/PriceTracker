@@ -1,6 +1,21 @@
 'use client';
 
-import { Camera, CheckCircle2, Eye, EyeOff, LoaderCircle, MoreHorizontal, ShieldCheck, Trash2 } from 'lucide-react';
+import {
+  AlertTriangle,
+  Bell,
+  Camera,
+  CheckCircle2,
+  Eye,
+  EyeOff,
+  KeyRound,
+  LoaderCircle,
+  Lock,
+  Mail,
+  MoreHorizontal,
+  ShieldCheck,
+  Trash2,
+  User
+} from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { FormEvent, useId, useMemo, useRef, useState } from 'react';
 
@@ -320,7 +335,10 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
           <div className="settings-section-heading">
             <div>
               <span className="eyebrow">Profile</span>
-              <h2>How you appear</h2>
+              <h2 className="section-heading-icon">
+                <User size={18} aria-hidden="true" />
+                How you appear
+              </h2>
             </div>
             <label className="avatar-editor">
               <input
@@ -345,7 +363,7 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
             <label className="field">
               <span>Username</span>
               <input value={initial.username} disabled readOnly />
-              <small>Used to sign in. It is not shown on your public page.</small>
+              <small>Used to sign in. Kept private.</small>
             </label>
             <label className="field" ref={setFieldRef('displayName')}>
               <span>Display name</span>
@@ -354,7 +372,7 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
                 type="text"
                 defaultValue={initial.displayName}
                 maxLength={60}
-                placeholder="Name shown on your public profile"
+                placeholder="Public display name"
                 aria-invalid={Boolean(fieldErrors.displayName)}
               />
               {fieldErrors.displayName ? (
@@ -369,7 +387,7 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
               defaultValue={initial.bio}
               maxLength={280}
               rows={3}
-              placeholder="A short optional introduction"
+              placeholder="Short bio (optional)"
               aria-invalid={Boolean(fieldErrors.bio)}
             />
             {fieldErrors.bio ? <small className="field-error">{fieldErrors.bio}</small> : null}
@@ -380,7 +398,10 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
           <div className="settings-section-heading">
             <div>
               <span className="eyebrow">Contact</span>
-              <h2>Recovery and alerts</h2>
+              <h2 className="section-heading-icon">
+                <Mail size={18} aria-hidden="true" />
+                Recovery and alerts
+              </h2>
             </div>
             {initial.contactEmailVerified ? (
               <span className="verified-badge"><CheckCircle2 size={14} aria-hidden="true" /> Verified</span>
@@ -404,8 +425,8 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
               ) : (
                 <small>
                   {initial.contactEmailVerified
-                    ? 'Verified for recovery and alerts.'
-                    : 'Verification is required before email can be sent.'}
+                    ? 'Verified.'
+                    : 'Verify before alerts can be sent.'}
                 </small>
               )}
             </label>
@@ -431,7 +452,7 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
               {fieldErrors.phone ? (
                 <small className="field-error">{fieldErrors.phone}</small>
               ) : (
-                <small>SMS alerts are not enabled yet.</small>
+                <small>SMS alerts are off for now.</small>
               )}
             </div>
           </div>
@@ -439,11 +460,14 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
 
         <section className="settings-section">
           <span className="eyebrow">Privacy</span>
-          <h2>Watchlist and data use</h2>
+          <h2 className="section-heading-icon">
+            <Lock size={18} aria-hidden="true" />
+            Watchlist and data use
+          </h2>
           <label className="choice-row">
             <span>
               <strong>Watchlist visibility</strong>
-              <small>Public lists are read-only for visitors.</small>
+              <small>Visitors can view, not edit.</small>
             </span>
             <select name="watchlistVisibility" defaultValue={initial.watchlistVisibility}>
               <option value="private">Private</option>
@@ -468,15 +492,15 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
             ) : (
               <small>
                 {initial.watchlistVisibility === 'public' && initial.publicSlug
-                  ? `Visitors open /${initial.publicSlug}. Your login name stays private.`
-                  : 'Required before the watchlist can be public. Visitors open /this-name, which is separate from your login name.'}
+                  ? `Link: /${initial.publicSlug} (login stays private).`
+                  : 'Needed for a public list. Shown as /this-name; separate from your login.'}
               </small>
             )}
           </label>
           <label className="choice-row">
             <span>
               <strong>Help improve PriceTracker</strong>
-              <small>Allow anonymised watchlist data to be used for recommendations and debugging.</small>
+              <small>Share anonymous list data to improve recommendations.</small>
             </span>
             <input
               name="allowProductImprovement"
@@ -488,12 +512,15 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
 
         <section className="settings-section">
           <span className="eyebrow">Email preferences</span>
-          <h2>Choose what reaches your inbox</h2>
+          <h2 className="section-heading-icon">
+            <Bell size={18} aria-hidden="true" />
+            Inbox alerts
+          </h2>
           {!EMAIL_UI_ENABLED ? <p className="email-disabled-note" role="note">{EMAIL_DISABLED_MESSAGE}</p> : null}
           <label className="choice-row">
             <span>
               <strong>Goal price alerts</strong>
-              <small>Send when a tracked price reaches your target or less.</small>
+              <small>Email when a price hits your goal.</small>
             </span>
             <input
               name="targetPriceEmail"
@@ -505,7 +532,7 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
           <label className="choice-row">
             <span>
               <strong>Popular deals</strong>
-              <small>Occasional noteworthy deals across public watchlists.</small>
+              <small>Notable deals from public lists.</small>
             </span>
             <input
               name="popularDealsEmail"
@@ -517,7 +544,7 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
           <label className="choice-row">
             <span>
               <strong>Personalised recommendations</strong>
-              <small>Suggestions based on products you already track.</small>
+              <small>Ideas based on your list.</small>
             </span>
             <input
               name="personalisedRecommendationsEmail"
@@ -529,7 +556,7 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
           <div className="choice-row">
             <span>
               <strong>Weekly alert</strong>
-              <small>Sent once after the first price check completed on or after Wednesday.</small>
+              <small>Sent weekly after Wednesday&rsquo;s check.</small>
             </span>
             <span className="preference-value">Wednesday</span>
           </div>
@@ -545,7 +572,10 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
         <summary><MoreHorizontal size={18} aria-hidden="true" /> Other options</summary>
       <section className="settings-section" id="security">
         <span className="eyebrow"><ShieldCheck size={14} aria-hidden="true" /> Security</span>
-        <h2>Change password</h2>
+        <h2 className="section-heading-icon">
+          <KeyRound size={18} aria-hidden="true" />
+          Change password
+        </h2>
         <form className="security-form" onSubmit={changePassword}>
           <div className="field security-current-password">
             <span className="field-label-row">
@@ -659,7 +689,10 @@ export default function AccountSettings({ initial }: { initial: AccountSettingsD
 
       <section className="settings-section danger-zone">
         <span className="eyebrow"><Trash2 size={14} aria-hidden="true" /> Danger zone</span>
-        <h2>Data and account</h2>
+        <h2 className="section-heading-icon">
+          <AlertTriangle size={18} aria-hidden="true" />
+          Data and account
+        </h2>
         <p>These actions are permanent.</p>
         <div className="data-action-list">
           <button

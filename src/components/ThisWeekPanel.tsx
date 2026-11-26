@@ -54,7 +54,13 @@ function EntryList({
                 onClick={() => onNavigate?.(entry.productId)}
               >
                 <span className="tw-thumb">
-                  <ProductVisual source={thumb} name={entry.name} category={prod?.categoryName} />
+                  <ProductVisual
+                    source={thumb}
+                    name={entry.name}
+                    category={prod?.categoryName}
+                    shop={entry.retailer}
+                    shopUrl={link?.url}
+                  />
                 </span>
                 <span className="tw-copy">
                   <span className="tw-name">{entry.name}</span>
