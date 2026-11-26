@@ -3,7 +3,9 @@
 import { Package } from 'lucide-react';
 import { useState } from 'react';
 
+import RetailerLogo from '@/components/RetailerLogo';
 import { browserCanLoadImage, type ThumbSource } from '@/lib/productImage';
+import { retailerKey } from '@/lib/retailer';
 
 type Resolved = { src: string } | 'gone';
 
@@ -11,7 +13,15 @@ type Resolved = { src: string } | 'gone';
 // its photo never goes back to the hidden loading state.
 const resolved = new Map<string, Resolved>();
 
-export default function ProductThumb({ source }: { source: ThumbSource }) {
+export default function ProductThumb({
+  source,
+  shop,
+  shopUrl
+}: {
+  source: ThumbSource;
+  shop?: string | null;
+  shopUrl?: string | null;
+}) {
   const known = resolved.get(source.proxied);
   const [src, setSrc] = useState(known && known !== 'gone' ? known.src : source.proxied);
   const [status, setStatus] = useState<'pending' | 'ready' | 'gone'>(
@@ -19,7 +29,7 @@ export default function ProductThumb({ source }: { source: ThumbSource }) {
   );
 
   if (!browserCanLoadImage(source.raw) || status === 'gone') {
-    return <ProductPlaceholder />;
+    return <ProductPlaceholder shop={shop} shopUrl={shopUrl} />;
   }
 
   return (
@@ -50,10 +60,27 @@ export default function ProductThumb({ source }: { source: ThumbSource }) {
 }
 
 /** Same box as a loaded thumbnail, for products with no (or a broken) photo. */
-export function ProductPlaceholder() {
+export function ProductPlaceholder({
+  shop,
+  shopUrl
+}: {
+  shop?: string | null;
+  shopUrl?: string | null;
+} = {}) {
+  const trimmedShop = shop?.trim() || '';
+  const hasShop = Boolean(trimmedShop);
+  const slug = hasShop ? retailerKey(shopUrl || trimmedShop) : null;
   return (
-    <span className="product-thumb product-thumb-placeholder is-ready" aria-hidden="true">
-      <Package size={26} strokeWidth={1.6} />
+    <span
+      className={`product-thumb product-thumb-placeholder is-ready${hasShop ? ' has-shop-logo' : ''}`}
+      data-shop={slug ?? undefined}
+      aria-hidden="true"
+    >
+      {hasShop ? (
+        <RetailerLogo retailer={trimmedShop} url={shopUrl} />
+      ) : (
+        <Package size={26} strokeWidth={1.6} />
+      )}
     </span>
   );
 }

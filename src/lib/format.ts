@@ -58,6 +58,21 @@ const sydneyDayMonthYearFormatter = new Intl.DateTimeFormat('en-AU', {
   timeZone: 'Australia/Sydney'
 });
 
+const sydneyDatePartsFormatter = new Intl.DateTimeFormat('en-AU', {
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  timeZone: 'Australia/Sydney'
+});
+
+function sydneyDayNumber(date: Date): number {
+  const parts = sydneyDatePartsFormatter.formatToParts(date);
+  const year = Number(parts.find((part) => part.type === 'year')?.value);
+  const month = Number(parts.find((part) => part.type === 'month')?.value);
+  const day = Number(parts.find((part) => part.type === 'day')?.value);
+  return Math.floor(Date.UTC(year, month - 1, day) / 86_400_000);
+}
+
 // Price checks are weekly. Show the calendar date in Sydney, with the year,
 // so an old check is not mistaken for this week. No date is not a promise
 // that a check is queued — callers decide that from crawl job status.
@@ -78,6 +93,36 @@ export function formatCheckedAt(iso: string | null | undefined): string {
     year: 'numeric',
     timeZone: 'Australia/Sydney'
   }).format(date);
+}
+
+/**
+ * Compact Sydney-day label for recent price checks: "Today", "Yesterday",
+ * "3 days ago" (2–6 days), otherwise short date ("25 Nov", or with year if older).
+ */
+export function formatCheckedShort(
+  iso: string | null | undefined,
+  now: Date | number = Date.now()
+): string {
+  if (!iso) {
+    return '';
+  }
+
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+
+  const ref = now instanceof Date ? now : new Date(now);
+  if (Number.isNaN(ref.getTime())) {
+    return '';
+  }
+
+  const diffDays = sydneyDayNumber(ref) - sydneyDayNumber(date);
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays >= 2 && diffDays <= 6) return `${diffDays} days ago`;
+
+  return formatLastSeen(iso, ref);
 }
 
 /**

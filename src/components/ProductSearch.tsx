@@ -770,7 +770,7 @@ export default function ProductSearch({
                       onClick={() => jumpToTracked(item.id)}
                     >
                       <span className="product-search-own-thumb">
-                        <ProductVisual source={item.thumb} name={item.name} />
+                        <ProductVisual source={item.thumb} name={item.name} shop={item.shop} />
                       </span>
                       <span className="product-search-text">
                         <strong>{item.name}</strong>

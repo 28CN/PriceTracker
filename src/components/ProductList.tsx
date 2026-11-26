@@ -1,14 +1,20 @@
 'use client';
 
-import { ChevronDown, Pencil } from 'lucide-react';
+import { Check, ChevronDown, Clock, Pencil, Target } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 
 import ProductOfferRows from '@/components/ProductOfferRows';
 import ProductVisual from '@/components/ProductVisual';
 import RetailerLogo from '@/components/RetailerLogo';
-import { resolveCardPrice, shopGapLabel } from '@/lib/cardState';
-import { formatCheckedAt, formatLastSeen, formatMoney, latestTimestamp } from '@/lib/format';
+import { resolveCardPrice, shopGapDetail } from '@/lib/cardState';
+import {
+  formatCheckedAt,
+  formatCheckedShort,
+  formatLastSeen,
+  formatMoney,
+  latestTimestamp
+} from '@/lib/format';
 import { goalCelebrationKey, prefersReducedMotion } from '@/lib/motion';
 import { productThumb } from '@/lib/productImage';
 import { hasCrawlerSupport, retailerKey } from '@/lib/retailer';
@@ -52,11 +58,16 @@ const PriceChart = dynamic(() => import('@/components/PriceChart'), {
 });
 
 function CheckedOn({ iso }: { iso: string }) {
-  const label = formatCheckedAt(iso);
-  if (!label) return null;
+  const full = formatCheckedAt(iso);
+  const short = formatCheckedShort(iso);
+  if (!full || !short) return null;
   return (
-    <span className="rail-when">
-      Checked <time dateTime={iso}>{label}</time>
+    <span className="rail-when rail-checked" title={`Checked ${full}`}>
+      <Clock size={12} aria-hidden="true" />
+      <span className="sr-only">Checked </span>
+      <time dateTime={iso} suppressHydrationWarning>
+        {short}
+      </time>
     </span>
   );
 }
@@ -75,12 +86,14 @@ function LastSeen({ iso }: { iso: string | null | undefined }) {
 const ProductCard = memo(function ProductCard({
   product,
   readOnly,
+  hideCategoryChip,
   sidePanelActive,
   isSelected,
   onToggleSelect
 }: {
   product: ProductView;
   readOnly: boolean;
+  hideCategoryChip: boolean;
   sidePanelActive: boolean;
   isSelected: boolean;
   onToggleSelect?: (productId: string, triggerEl: HTMLElement | null) => void;
@@ -138,7 +151,7 @@ const ProductCard = memo(function ProductCard({
     observer.observe(el);
     return () => observer.disconnect();
   }, [hitsTarget, lowestFreshPrice, product.id]);
-  const shopGap = shopGapLabel(freshOffers, formatMoney);
+  const shopGap = shopGapDetail(freshOffers, formatMoney);
   const headlineLink = allUnavailable
     ? activeLinks.length === 1
       ? activeLinks[0]
@@ -196,17 +209,32 @@ const ProductCard = memo(function ProductCard({
                 source={thumb}
                 name={product.name}
                 category={product.categoryName}
+                shop={shopRetailer}
+                shopUrl={shopUrl}
               />
             </span>
             <span className="product-title-copy">
               <span className="product-name">{product.name}</span>
-              {product.categoryName ? <span className="chip">{product.categoryName}</span> : null}
-              {product.targetPrice !== null ? (
-                <span className={`goal-line${hitsTarget ? ' is-at-goal' : ''}`}>
-                  <span ref={goalRef} className="goal-line-text">
-                    {hitsTarget ? 'Below goal' : 'Goal'} {formatMoney(product.targetPrice)}
-                    {showGoalBurst ? <GoalBurst onDone={handleGoalBurstDone} /> : null}
-                  </span>
+              {(!hideCategoryChip && product.categoryName) || product.targetPrice !== null ? (
+                <span className="product-card-meta">
+                  {!hideCategoryChip && product.categoryName ? (
+                    <span className="chip">{product.categoryName}</span>
+                  ) : null}
+                  {product.targetPrice !== null ? (
+                    <span className={`goal-line${hitsTarget ? ' is-at-goal' : ''}`}>
+                      <span ref={goalRef} className="goal-line-text">
+                        {hitsTarget ? (
+                          <Check size={13} strokeWidth={2.4} aria-hidden="true" />
+                        ) : (
+                          <Target size={13} strokeWidth={2} aria-hidden="true" />
+                        )}
+                        <span>
+                          {hitsTarget ? 'Below goal' : 'Goal'} {formatMoney(product.targetPrice)}
+                        </span>
+                        {showGoalBurst ? <GoalBurst onDone={handleGoalBurstDone} /> : null}
+                      </span>
+                    </span>
+                  ) : null}
                 </span>
               ) : null}
             </span>
@@ -249,9 +277,19 @@ const ProductCard = memo(function ProductCard({
             </span>
           ) : null}
           {shopUnsupported ? <span className="shop-gap">Not checked here</span> : null}
-          {shopGap ? <span className="rail-when">{shopGap}</span> : null}
-          {headline.kind === 'stale' ? <LastSeen iso={headline.lastSeenAt} /> : null}
-          {showChecked && checkedAt ? <CheckedOn iso={checkedAt} /> : null}
+          {shopGap || headline.kind === 'stale' || (showChecked && checkedAt) ? (
+            <div className="rail-meta">
+              {shopGap ? (
+                <span className="shop-gap-chip" title={shopGap.label}>
+                  <RetailerLogo retailer={shopGap.retailer} url={shopGap.url} />
+                  <span aria-hidden="true">+{formatMoney(shopGap.gap)}</span>
+                  <span className="sr-only">{shopGap.label}</span>
+                </span>
+              ) : null}
+              {headline.kind === 'stale' ? <LastSeen iso={headline.lastSeenAt} /> : null}
+              {showChecked && checkedAt ? <CheckedOn iso={checkedAt} /> : null}
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -270,12 +308,14 @@ const ProductCard = memo(function ProductCard({
 const ProductList = memo(function ProductList({
   products,
   readOnly = false,
+  hideCategoryChip = false,
   sidePanelActive = false,
   selectedProductId = null,
   onToggleSelect
 }: {
   products: ProductView[];
   readOnly?: boolean;
+  hideCategoryChip?: boolean;
   sidePanelActive?: boolean;
   selectedProductId?: string | null;
   onToggleSelect?: (productId: string, triggerEl: HTMLElement | null) => void;
@@ -296,6 +336,7 @@ const ProductList = memo(function ProductList({
             key={product.id}
             product={product}
             readOnly={readOnly}
+            hideCategoryChip={hideCategoryChip}
             sidePanelActive={sidePanelActive}
             isSelected={selectedProductId === product.id}
             onToggleSelect={onToggleSelect}

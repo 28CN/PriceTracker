@@ -1,11 +1,44 @@
 'use client';
 
-import { ChevronDown, Pin, Sparkles } from 'lucide-react';
+import {
+  Baby,
+  BookOpen,
+  Car,
+  ChevronDown,
+  HeartPulse,
+  Home,
+  Laptop,
+  PawPrint,
+  Pin,
+  Puzzle,
+  Shirt,
+  ShoppingBasket,
+  Sparkles,
+  Tag,
+  Wrench,
+  type LucideIcon
+} from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type HTMLAttributes } from 'react';
 
 import ProductList from '@/components/ProductList';
+import { categoryIconKey, type CategoryIconKey } from '@/lib/categoryIcon';
 import { categoryTone, hitsTarget } from '@/lib/productSort';
 import type { ProductView } from '@/lib/types';
+
+const CATEGORY_ICONS: Record<CategoryIconKey, LucideIcon> = {
+  household: Home,
+  pantry: ShoppingBasket,
+  toys: Puzzle,
+  cars: Car,
+  baby: Baby,
+  pets: PawPrint,
+  health: HeartPulse,
+  tech: Laptop,
+  hardware: Wrench,
+  clothing: Shirt,
+  books: BookOpen,
+  tag: Tag
+};
 
 export default function CategorySection({
   category,
@@ -37,6 +70,7 @@ export default function CategorySection({
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const wasPinned = useRef(isPinned);
   const tone = categoryTone(category);
+  const CategoryIcon = CATEGORY_ICONS[categoryIconKey(category)];
   const dealCount = useMemo(() => products.filter(hitsTarget).length, [products]);
   const sortedProducts = useMemo(
     () => [...products].sort((a, b) => Number(hitsTarget(b)) - Number(hitsTarget(a))),
@@ -126,6 +160,9 @@ export default function CategorySection({
               size={16}
               aria-hidden="true"
             />
+            <span className="category-icon-badge" aria-hidden="true">
+              <CategoryIcon size={15} strokeWidth={1.9} />
+            </span>
             <span className="category-name">{category}</span>
             <span className="category-count">
               {products.length} product{products.length === 1 ? '' : 's'}
@@ -159,6 +196,7 @@ export default function CategorySection({
             <ProductList
               products={sortedProducts}
               readOnly={readOnly}
+              hideCategoryChip
               sidePanelActive={sidePanelActive}
               selectedProductId={selectedProductId}
               onToggleSelect={onToggleSelect}

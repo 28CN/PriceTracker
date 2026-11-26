@@ -1,6 +1,6 @@
 'use client';
 
-import { X } from 'lucide-react';
+import { Check, Target, X } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useEffect, useRef } from 'react';
 
@@ -73,6 +73,8 @@ export default function ProductDetailPanel({
               source={thumb}
               name={product.name}
               category={product.categoryName}
+              shop={leadLink?.retailer}
+              shopUrl={leadLink?.url}
             />
           </span>
           <div className="detail-panel-title-copy">
@@ -83,7 +85,14 @@ export default function ProductDetailPanel({
               {product.categoryName ? <span className="chip">{product.categoryName}</span> : null}
               {product.targetPrice !== null ? (
                 <span className={`goal-line${hitsTarget ? ' is-at-goal' : ''}`}>
-                  {hitsTarget ? 'Below goal' : 'Goal'} {formatMoney(product.targetPrice)}
+                  {hitsTarget ? (
+                    <Check size={13} strokeWidth={2.4} aria-hidden="true" />
+                  ) : (
+                    <Target size={13} strokeWidth={2} aria-hidden="true" />
+                  )}
+                  <span>
+                    {hitsTarget ? 'Below goal' : 'Goal'} {formatMoney(product.targetPrice)}
+                  </span>
                 </span>
               ) : null}
             </div>

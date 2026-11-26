@@ -87,7 +87,10 @@ export default function AdminMfaPanel() {
   return (
     <section className="settings-section admin-mfa">
       <span className="eyebrow"><ShieldCheck size={14} aria-hidden="true" /> Administrator security</span>
-      <h2>Authenticator app</h2>
+      <h2 className="section-heading-icon">
+        <ShieldCheck size={18} aria-hidden="true" />
+        Authenticator app
+      </h2>
       {factorId && aal === 'aal2' ? (
         <div className="form-success">MFA verified. Administrator actions are unlocked.</div>
       ) : null}

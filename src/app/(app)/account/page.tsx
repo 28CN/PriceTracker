@@ -1,3 +1,4 @@
+import { Bell, CheckCircle2, Clock, Eye, Mail, Settings } from 'lucide-react';
 import AccountSettings, { type AccountSettingsData } from '@/components/AccountSettings';
 import AdminMfaPanel from '@/components/AdminMfaPanel';
 import CategoryPrivacyControls from '@/components/CategoryPrivacyControls';
@@ -17,15 +18,15 @@ function describeLatestAlert(
     const when = Number.isNaN(sent.getTime())
       ? alert.sent_at
       : sent.toLocaleString('en-AU', { timeZone: 'Australia/Sydney' });
-    return `Latest target-price email sent ${when}.`;
+    return `Last goal email sent ${when}.`;
   }
   if (alert.status === 'pending' || alert.status === 'retry') {
-    return 'Latest target-price email is queued for the next send.';
+    return 'Next goal email is queued.';
   }
-  if (alert.status === 'processing') return 'Latest target-price email is sending now.';
-  if (alert.status === 'failed') return 'Latest target-price email failed to send.';
-  if (alert.status === 'cancelled') return 'Latest target-price email was cancelled.';
-  return `Latest target-price email is ${alert.status}.`;
+  if (alert.status === 'processing') return 'Goal email is sending now.';
+  if (alert.status === 'failed') return 'Last goal email failed to send.';
+  if (alert.status === 'cancelled') return 'Last goal email was cancelled.';
+  return `Last goal email: ${alert.status}.`;
 }
 
 export const dynamic = 'force-dynamic';
@@ -112,7 +113,12 @@ export default async function AccountPage() {
   return (
     <main>
       <header className="account-page-heading">
-        <h1>Account</h1>
+        <div className="account-heading-row">
+          <span className="page-head-icon" aria-hidden="true">
+            <Settings size={20} strokeWidth={1.9} />
+          </span>
+          <h1>Account</h1>
+        </div>
         {viewer.isAdmin ? (
           <Link className="button secondary" href="/manage">
             Manage featured products
@@ -121,16 +127,31 @@ export default async function AccountPage() {
       </header>
       <div className="account-settings">
         <section className="settings-section alert-status">
-          <h2>Goal price email</h2>
-          <ul>
+          <h2 className="section-heading-icon">
+            <Bell size={18} aria-hidden="true" />
+            Goal price email
+          </h2>
+          <ul className="alert-status-list">
             <li>
-              Contact email:{' '}
-              {privateAccount.contact_email_verified_at ? 'verified' : 'not verified yet'}
+              {privateAccount.contact_email_verified_at ? (
+                <CheckCircle2 size={15} className="alert-status-ok" aria-hidden="true" />
+              ) : (
+                <Mail size={15} aria-hidden="true" />
+              )}
+              <span>
+                Email: <strong>{privateAccount.contact_email_verified_at ? 'Verified' : 'Not verified'}</strong>
+              </span>
             </li>
             <li>
-              Weekly target alerts: {preferences.target_price_email ? 'on' : 'off'}
+              <Bell size={15} aria-hidden="true" />
+              <span>
+                Weekly goal alerts: <strong>{preferences.target_price_email ? 'On' : 'Off'}</strong>
+              </span>
             </li>
-            <li>{describeLatestAlert(latestAlert)}</li>
+            <li>
+              <Clock size={15} aria-hidden="true" />
+              <span>{describeLatestAlert(latestAlert)}</span>
+            </li>
           </ul>
         </section>
       </div>
@@ -139,7 +160,10 @@ export default async function AccountPage() {
         <div className="account-settings">
           <section className="settings-section">
             <span className="eyebrow">Public profile</span>
-            <h2>Category visibility</h2>
+            <h2 className="section-heading-icon">
+              <Eye size={18} aria-hidden="true" />
+              Category visibility
+            </h2>
             <CategoryPrivacyControls categories={categories} />
           </section>
         </div>

@@ -10,6 +10,7 @@ export type CardOffer = {
   latestPrice: number | null;
   priceStale: boolean;
   latestAt: string | null;
+  url?: string | null;
 };
 
 export type Headline =
@@ -27,7 +28,7 @@ export type CardPriceDecision<T extends CardOffer = CardOffer> = {
   /** Cheapest active fresh offer; null when no fresh prices exist. A stale price never wins Cheapest. */
   cheapestFreshLink: T | null;
   /** Active fresh offers with valid prices, used for shop-gap comparisons. */
-  freshOffers: { retailer: string; price: number }[];
+  freshOffers: { retailer: string; price: number; url?: string | null }[];
   allUnavailable: boolean;
   isStale: boolean;
 };
@@ -87,14 +88,16 @@ export function resolveCardPrice<T extends CardOffer>(input: {
 
   let cheapestFreshLink: T | null = null;
   let newestStaleLink: T | null = null;
-  const freshOffers: { retailer: string; price: number }[] = [];
+  const freshOffers: { retailer: string; price: number; url?: string | null }[] = [];
 
   for (const link of activeLinks) {
     if (link.stockStatus === 'unavailable') continue;
     if (link.latestPrice === null || !Number.isFinite(link.latestPrice)) continue;
 
     if (!link.priceStale) {
-      freshOffers.push({ retailer: link.retailer, price: link.latestPrice });
+      freshOffers.push(
+        link.url ? { retailer: link.retailer, price: link.latestPrice, url: link.url } : { retailer: link.retailer, price: link.latestPrice }
+      );
       if (
         !cheapestFreshLink ||
         link.latestPrice < (cheapestFreshLink.latestPrice as number) ||
@@ -137,6 +140,48 @@ export function resolveCardPrice<T extends CardOffer>(input: {
     freshOffers,
     allUnavailable: false,
     isStale: headline.kind === 'stale'
+  };
+}
+
+export type ShopGapDetail = {
+  /** Dearest fresh shop name. */
+  retailer: string;
+  /** Optional shop URL when supplied on the offer. */
+  url?: string | null;
+  /** Price difference above the cheapest fresh offer. */
+  gap: number;
+  /** Number of priced fresh offers compared. */
+  offerCount: number;
+  /** Full accessible sentence, matching shopGapLabel. */
+  label: string;
+};
+
+/** Structured details for the gap between cheapest and dearest current shops. */
+export function shopGapDetail(
+  offers: { retailer: string; price: number; url?: string | null }[],
+  money: (value: number) => string
+): ShopGapDetail | null {
+  const priced = offers.filter((offer) => Number.isFinite(offer.price));
+  if (priced.length < 2) return null;
+  let low = priced[0];
+  let high = priced[0];
+  for (const offer of priced) {
+    if (offer.price < low.price) low = offer;
+    if (offer.price > high.price) high = offer;
+  }
+  const gap = high.price - low.price;
+  if (gap < 0.01) return null;
+  const amount = money(gap);
+  const label =
+    priced.length === 2
+      ? `${high.retailer} is ${amount} more`
+      : `The highest shop is ${amount} more`;
+  return {
+    retailer: high.retailer,
+    url: high.url,
+    gap,
+    offerCount: priced.length,
+    label
   };
 }
 

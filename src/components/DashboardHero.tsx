@@ -282,7 +282,13 @@ export default function DashboardHero({
             const thumb = productThumb(product, bestLink.id);
             return (
               <article className="deal-row" key={product.id}>
-                <ProductVisual source={thumb} name={product.name} category={product.categoryName} />
+                <ProductVisual
+                  source={thumb}
+                  name={product.name}
+                  category={product.categoryName}
+                  shop={bestLink.retailer}
+                  shopUrl={bestLink.url}
+                />
                 <div className="deal-row-main">
                   <strong>{product.name}</strong>
                   <span>

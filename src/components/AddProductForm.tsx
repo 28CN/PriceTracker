@@ -1,16 +1,30 @@
 'use client';
 
-import { LoaderCircle, Plus, Save, Trash2 } from 'lucide-react';
+import { Link2, LoaderCircle, Plus, Save, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, type ClipboardEvent, type DragEvent } from 'react';
 
 import InfoTip from '@/components/InfoTip';
+import RetailerLogo from '@/components/RetailerLogo';
 import { cleanHttpUrl, firstUrlIn } from '@/lib/productUrl';
-import { detectRetailer } from '@/lib/retailer';
+import { detectRetailer, retailerKey, SUPPORTED_RETAILERS } from '@/lib/retailer';
 import type { CategoryView } from '@/lib/types';
 
 const MAX_LINKS = 20;
+
+const SUPPORTED_BY_KEY = new Map(
+  SUPPORTED_RETAILERS.map((shop) => [retailerKey(shop.name), shop] as const).filter(
+    (entry): entry is readonly [string, (typeof SUPPORTED_RETAILERS)[number]] => entry[0] !== null
+  )
+);
+
+function supportedShopForUrl(rawUrl: string): { name: string; domain: string } | null {
+  const trimmed = rawUrl.trim();
+  if (!/^https?:\/\//i.test(trimmed)) return null;
+  const key = retailerKey(trimmed);
+  return key ? (SUPPORTED_BY_KEY.get(key) ?? null) : null;
+}
 
 type LinkDraft = { url: string; retailer: string };
 
@@ -261,7 +275,8 @@ export default function AddProductForm({
       </div>
 
       <div className="link-section-head">
-        <p className="section-title" style={{ margin: 0 }}>
+        <p className="section-title link-section-title" style={{ margin: 0 }}>
+          <Link2 size={15} aria-hidden="true" />
           Shop links
           <InfoTip label="Adding a link">Paste or drop a shop link anywhere on this form.</InfoTip>
         </p>
@@ -270,35 +285,49 @@ export default function AddProductForm({
         </span>
       </div>
 
-      {links.map((link, index) => (
-        <div className="link-row" key={index}>
-          <input
-            type="url"
-            inputMode="url"
-            aria-label={`Shop link ${index + 1}`}
-            placeholder="https://www.toymate.com.au/..."
-            value={link.url}
-            onChange={(event) => updateLink(index, { url: event.target.value })}
-          />
-          <input
-            type="text"
-            aria-label={`Shop name ${index + 1}`}
-            placeholder="Shop"
-            value={link.retailer}
-            onChange={(event) => updateLink(index, { retailer: event.target.value })}
-          />
-          {links.length > 1 ? (
-            <button
-              type="button"
-              className="button danger link-remove"
-              onClick={() => removeLinkRow(index)}
-              aria-label={`Remove link row ${index + 1}`}
-            >
-              <Trash2 size={15} aria-hidden="true" />
-            </button>
-          ) : null}
-        </div>
-      ))}
+      {links.map((link, index) => {
+        const detectedShop = supportedShopForUrl(link.url);
+        return (
+          <div className="link-row" key={index}>
+            <div className={`link-url-field${detectedShop ? ' has-shop-logo' : ''}`}>
+              {detectedShop ? (
+                <span className="link-url-logo" aria-hidden="true" title={detectedShop.name}>
+                  <RetailerLogo
+                    key={detectedShop.domain}
+                    retailer={detectedShop.name}
+                    url={link.url}
+                  />
+                </span>
+              ) : null}
+              <input
+                type="url"
+                inputMode="url"
+                aria-label={`Shop link ${index + 1}`}
+                placeholder="https://www.toymate.com.au/..."
+                value={link.url}
+                onChange={(event) => updateLink(index, { url: event.target.value })}
+              />
+            </div>
+            <input
+              type="text"
+              aria-label={`Shop name ${index + 1}`}
+              placeholder="Shop"
+              value={link.retailer}
+              onChange={(event) => updateLink(index, { retailer: event.target.value })}
+            />
+            {links.length > 1 ? (
+              <button
+                type="button"
+                className="button danger link-remove"
+                onClick={() => removeLinkRow(index)}
+                aria-label={`Remove link row ${index + 1}`}
+              >
+                <Trash2 size={15} aria-hidden="true" />
+              </button>
+            ) : null}
+          </div>
+        );
+      })}
 
       <div className="form-actions">
         <button

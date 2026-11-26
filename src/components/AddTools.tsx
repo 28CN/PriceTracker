@@ -1,6 +1,6 @@
 'use client';
 
-import { BookmarkPlus, ExternalLink } from 'lucide-react';
+import { BookmarkPlus, ExternalLink, Tag } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import InfoTip from '@/components/InfoTip';
@@ -20,7 +20,10 @@ export default function AddTools() {
   return (
     <section className="add-tools" aria-label="Find products to add">
       <div className="add-tools-row">
-        <h2 className="add-tools-title">This week&rsquo;s specials</h2>
+        <h2 className="add-tools-title">
+          <Tag size={14} aria-hidden="true" />
+          This week&rsquo;s specials
+        </h2>
         <ul className="specials-links">
           {SPECIALS_LINKS.map((link) => (
             <li key={link.href}>
