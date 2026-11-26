@@ -8715,6 +8715,16 @@ a.deal-shop:focus-visible,
   right: 6px;
 }
 
+/* Top bar: the count sits after the label, so it never covers text. */
+.main-nav-top .main-nav-icon {
+  display: contents;
+}
+
+.main-nav-top .main-nav-badge {
+  position: static;
+  order: 1;
+}
+
 .for-you {
   display: grid;
   gap: var(--space-2);

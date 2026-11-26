@@ -225,7 +225,13 @@ export default function DealsBoard({
   }, [deals]);
 
   const matchCount = useMemo(() => shown.filter((deal) => deal.tab === tab && deal.match).length, [shown, tab]);
-  const soonCount = useMemo(() => shown.filter((deal) => deal.tab === tab && deal.endsSoon).length, [shown, tab]);
+  const soonCount = useMemo(
+    () =>
+      shown.filter(
+        (deal) => deal.tab === tab && (!shop || deal.shop === shop) && (!onlyMatches || deal.match) && deal.endsSoon
+      ).length,
+    [shown, tab, shop, onlyMatches]
+  );
 
   const visible = useMemo(() => {
     const list = shown.filter(
