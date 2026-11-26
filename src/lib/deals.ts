@@ -209,3 +209,13 @@ export function matchDealsToProducts(
   }
   return matches;
 }
+
+/** "just now", "12 min ago", "2 hr ago", "3 days ago": when the feeds were last read. */
+export function updatedAgoLabel(iso: string, now: number): string {
+  const minutes = Math.max(0, Math.round((now - Date.parse(iso)) / 60_000));
+  if (minutes < 2) return 'just now';
+  if (minutes < 90) return `${minutes} min ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 36) return `${hours} hr ago`;
+  return `${Math.round(hours / 24)} days ago`;
+}

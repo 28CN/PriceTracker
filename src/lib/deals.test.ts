@@ -9,7 +9,8 @@ import {
   priceFromTitle,
   sameSize,
   savingFromTitle,
-  timeLeftLabel
+  timeLeftLabel,
+  updatedAgoLabel
 } from './deals';
 
 const NOW = Date.parse('2026-11-25T03:00:00Z');
@@ -127,5 +128,16 @@ describe('sameSize', () => {
     expect(sameSize('Milo Malt Powder 1kg', 'Milo Malt Powder 460g $6 @ Coles')).toBe(false);
     expect(sameSize('Hot Wheels Basic Car', 'Hot Wheels 10 Pack Basic Cars $9 @ Target')).toBe(false);
     expect(sameSize('Hot Wheels Super Rigs', 'Hot Wheels Super Rigs $9.60 @ Target')).toBe(true);
+  });
+});
+
+describe('updatedAgoLabel', () => {
+  const now = Date.parse('2026-11-26T04:00:00Z');
+  it('says minutes for the first hour and a half, then hours, then days', () => {
+    expect(updatedAgoLabel('2026-11-26T03:59:30Z', now)).toBe('just now');
+    expect(updatedAgoLabel('2026-11-26T03:48:00Z', now)).toBe('12 min ago');
+    expect(updatedAgoLabel('2026-11-26T02:35:00Z', now)).toBe('85 min ago');
+    expect(updatedAgoLabel('2026-11-26T01:50:00Z', now)).toBe('2 hr ago');
+    expect(updatedAgoLabel('2026-11-23T04:00:00Z', now)).toBe('3 days ago');
   });
 });
