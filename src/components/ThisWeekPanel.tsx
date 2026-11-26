@@ -1,7 +1,8 @@
 'use client';
 
-import { BadgeDollarSign, ChevronDown, TrendingDown, TrendingUp } from 'lucide-react';
+import { ArrowRight, BadgeDollarSign, ChevronDown, TrendingDown, TrendingUp } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import Link from 'next/link';
 
 import InfoTip from '@/components/InfoTip';
 import ProductVisual from '@/components/ProductVisual';
@@ -179,7 +180,15 @@ export default function ThisWeekPanel({
             ) : null}
           </span>
         </button>
-        {open ? body : null}
+        {open ? (
+          <>
+            {body}
+            <Link className="tw-more" href="/watch">
+              Price watch
+              <ArrowRight size={14} aria-hidden="true" />
+            </Link>
+          </>
+        ) : null}
       </section>
     );
   }
@@ -195,6 +204,10 @@ export default function ThisWeekPanel({
         </InfoTip>
       </header>
       {body}
+      <Link className="tw-more" href="/watch">
+        Price watch
+        <ArrowRight size={14} aria-hidden="true" />
+      </Link>
     </aside>
   );
 }
