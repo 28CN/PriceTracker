@@ -6879,10 +6879,6 @@ button.product-search-onlist-mark:hover {
   .compare-tile-label {
     font-size: var(--fs-xs);
   }
-
-  .compare-shop-head .retailer-logo {
-    display: none;
-  }
 }
 
 /* The account menu's About link is for phones, where the tab bar has no room. */
@@ -8344,6 +8340,10 @@ a.deal-shop:focus-visible,
     overflow: hidden;
     clip: rect(0 0 0 0);
     white-space: nowrap;
+  }
+
+  .compare-groups {
+    flex-wrap: wrap;
   }
 
   .compare-shop-head {
