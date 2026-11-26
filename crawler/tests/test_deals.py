@@ -159,7 +159,8 @@ def test_schedule_runs_hourly_while_someone_looks():
 
 def test_visit_runs_unless_just_fetched_and_manual_always_runs():
     assert deals.should_run("visit", {"last_run_at": _ago(10)}, NOW)[0] is False
-    assert deals.should_run("visit", {"last_run_at": _ago(51)}, NOW)[0] is True
+    assert deals.should_run("visit", {"last_run_at": _ago(20)}, NOW)[0] is False
+    assert deals.should_run("visit", {"last_run_at": _ago(26)}, NOW)[0] is True
     assert deals.should_run("manual", {"last_run_at": _ago(1)}, NOW)[0] is True
 
 
