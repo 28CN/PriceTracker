@@ -291,7 +291,7 @@ GitHub Actions cannot reach them.
 ## Splitting the work between machines
 
 GitHub Actions runs under `xvfb-run` and automatically skips bot-walled shops
-(unless `CRAWL_PROXY` is set). Coles, Woolworths, Repco, Supercheap Auto, Auto Barn
+(unless `CRAWL_PROXY` is set). Coles, Woolworths, Repco, Supercheap Auto, Autobarn
 and other open shops stay on the cloud schedule.
 
 This PC is the full backup: `scripts/crawl-background.ps1` (Task Scheduler
