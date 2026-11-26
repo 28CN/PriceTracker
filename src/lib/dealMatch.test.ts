@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { brandKey, matchDeals, newSince, type BrandPref } from './dealMatch';
+import { brandKey, isNewFor, matchDeals, newSince, type BrandPref } from './dealMatch';
 import type { ProductView } from './types';
 
 const product = (id: string, name: string): ProductView => ({
@@ -67,5 +67,18 @@ describe('newSince', () => {
     const now = Date.parse('2026-11-26T04:00:00Z');
     expect(newSince('2026-11-26T01:00:00Z', now)).toBe(Date.parse('2026-11-26T01:00:00Z'));
     expect(newSince(null, now)).toBe(now - 86_400_000);
+  });
+});
+
+describe('isNewFor', () => {
+  const since = Date.parse('2026-11-26T00:00:00Z');
+  it('needs a first fetch after the last visit', () => {
+    expect(isNewFor({ first_seen_at: '2026-11-25T23:00:00Z', posted_at: '2026-11-25T23:00:00Z' }, since)).toBe(false);
+    expect(isNewFor({ first_seen_at: '2026-11-26T01:00:00Z', posted_at: '2026-11-26T00:30:00Z' }, since)).toBe(true);
+  });
+  it('allows a few hours of fetch lag but not old deals fetched late', () => {
+    expect(isNewFor({ first_seen_at: '2026-11-26T01:00:00Z', posted_at: '2026-11-25T20:00:00Z' }, since)).toBe(true);
+    expect(isNewFor({ first_seen_at: '2026-11-26T01:00:00Z', posted_at: '2026-11-23T08:00:00Z' }, since)).toBe(false);
+    expect(isNewFor({ first_seen_at: '2026-11-26T01:00:00Z', posted_at: null }, since)).toBe(true);
   });
 });

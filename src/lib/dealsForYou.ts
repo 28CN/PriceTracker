@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import { matchDeals, newSince, type BrandPref, type BrandState } from '@/lib/dealMatch';
+import { isNewFor, matchDeals, newSince, type BrandPref, type BrandState } from '@/lib/dealMatch';
 import { isDealLive, priceFromTitle, type DealRow } from '@/lib/deals';
 import { fetchProducts } from '@/lib/queries';
 
@@ -58,7 +58,8 @@ export async function loadForYou(
   now = Date.now()
 ): Promise<{ count: number; items: ForYouItem[] }> {
   const seenAt = await loadDealsSeenAt(supabase, userId);
-  const since = new Date(newSince(seenAt, now)).toISOString();
+  const sinceMs = newSince(seenAt, now);
+  const since = new Date(sinceMs).toISOString();
   const [dealsResult, products, prefs] = await Promise.all([
     supabase
       .from('ozb_deals')
@@ -70,7 +71,9 @@ export async function loadForYou(
     fetchProducts(supabase, userId).catch(() => []),
     loadBrandPrefs(supabase, userId)
   ]);
-  const rows = ((dealsResult.data ?? []) as DealRow[]).filter((deal) => isDealLive(deal, now));
+  const rows = ((dealsResult.data ?? []) as DealRow[]).filter(
+    (deal) => isDealLive(deal, now) && isNewFor(deal, sinceMs)
+  );
   const matches = matchDeals(rows, products, prefs);
   const items = rows.flatMap((deal): ForYouItem[] => {
     const match = matches.get(deal.node_id);

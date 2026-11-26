@@ -3,6 +3,7 @@
 One line per change, newest first: date, who, what (PR or commit).
 Who is `owner`, `agy` (Antigravity), or `agent`. Details live in the commit/PR.
 
+- 2026-11-26 · agent · New for you skips old deals that were only just fetched (#58).
 - 2026-11-26 · agy · Compare: Plan my trip view, what to buy at each shop in the group, with stop subtotals and an all-at-one-shop comparison (#57).
 - 2026-11-26 · agent · Deals for you: new-for-you count on the Deals tab and a dashboard card; tap a brand tag to follow or mute it; Ends soon and Most saved; price sparkline on deals for items you track (#56).
 - 2026-11-26 · agy · Fewer words, more pictures on logged-in pages: Goal and checked icons, shop-logo gap chips and placeholders, category and section icons (#55).

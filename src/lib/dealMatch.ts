@@ -68,3 +68,13 @@ export function newSince(seenAt: string | null, now: number): number {
   const at = seenAt ? Date.parse(seenAt) : NaN;
   return Number.isNaN(at) ? now - 86_400_000 : at;
 }
+
+/** How long a deal can sit on OzBargain before a fetch picks it up and still count as new. */
+export const FETCH_LAG_MS = 6 * 3_600_000;
+
+/** New to you: first fetched since your last visit and posted recently (not an old deal fetched late). */
+export function isNewFor(deal: { first_seen_at: string; posted_at: string | null }, since: number): boolean {
+  if (!(Date.parse(deal.first_seen_at) > since)) return false;
+  const posted = deal.posted_at ? Date.parse(deal.posted_at) : NaN;
+  return Number.isNaN(posted) || posted > since - FETCH_LAG_MS;
+}
