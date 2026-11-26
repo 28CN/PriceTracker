@@ -14,7 +14,7 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "manual always fetches; visit unless the last run is under 50 min old; schedule uses the adaptive rule"
+        description: "manual always fetches; visit unless the last run is under 25 min old; schedule uses the adaptive rule"
         type: choice
         options: [manual, visit, schedule]
         default: manual

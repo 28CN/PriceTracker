@@ -169,7 +169,7 @@ def parse_feed(xml_text: str, feed: Feed, now: datetime | None = None) -> list[d
 VISIT_WINDOW = timedelta(minutes=65)
 BUSY_INTERVAL = timedelta(minutes=55)
 QUIET_INTERVAL = timedelta(minutes=170)
-VISIT_MIN_GAP = timedelta(minutes=50)
+VISIT_MIN_GAP = timedelta(minutes=25)
 
 
 def _ts(value: str | None) -> datetime | None:

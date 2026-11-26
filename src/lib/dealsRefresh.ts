@@ -26,7 +26,7 @@ const defaultDeps: Deps = {
 
 /**
  * Called after a /deals page is sent. The database records the visit and says
- * whether a fetch is due (last run 55+ min ago, at most one ask per 20 min);
+ * whether a fetch is due (last run 30+ min ago, at most one ask per 20 min);
  * if so, the deals workflow is started. Never throws.
  */
 export async function noteDealsVisit(deps: Deps = defaultDeps): Promise<'started' | 'not_due' | 'failed'> {
