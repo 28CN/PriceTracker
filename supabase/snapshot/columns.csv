@@ -171,3 +171,8 @@ ozb_refresh_state,id,boolean,NO
 ozb_refresh_state,last_visit_at,timestamp with time zone,YES
 ozb_refresh_state,last_dispatch_at,timestamp with time zone,YES
 ozb_refresh_state,last_run_at,timestamp with time zone,YES
+deal_brand_prefs,user_id,uuid,NO
+deal_brand_prefs,brand_key,text,NO
+deal_brand_prefs,label,text,NO
+deal_brand_prefs,state,text,NO
+deal_brand_prefs,updated_at,timestamp with time zone,NO
