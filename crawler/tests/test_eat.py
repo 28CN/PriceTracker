@@ -16,6 +16,8 @@ SAMPLE = """<?xml version="1.0" encoding="utf-8"?>
  <description><![CDATA[<p>Long description</p>]]></description>
  <ozb:meta votes-pos="12" votes-neg="0" expiry="2026-11-28T23:59:00+08:00" url="https://www.chickentreat.com.au/menu" />
  <media:thumbnail url="https://files.ozbargain.com.au/n/01/2001l.jpg" />
+ <category domain="https://www.ozbargain.com.au/cat/dining-takeaway">Dining &amp; Takeaway</category>
+ <category domain="https://www.ozbargain.com.au/tag/fast-food">fast food</category>
  <pubDate>Thu, 26 Nov 2026 18:33:00 +0800</pubDate>
 </item>
 <item>
@@ -48,11 +50,12 @@ def test_tag_feed_keeps_only_chains_we_list():
     assert first["image_url"] == "https://files.ozbargain.com.au/n/01/2001l.jpg"
     assert first["expires_at"] == "2026-11-28T15:59:00+00:00"
     assert not first["is_expired"]
+    assert first["category"] == "Dining & Takeaway" and rows[1]["category"] is None
     assert rows[2]["is_expired"]
     for row in rows:
         assert set(row) == {
             "node_id", "title", "deal_url", "chain", "votes_pos", "votes_neg", "posted_at",
-            "starts_at", "expires_at", "is_expired", "image_url", "fetched_at",
+            "starts_at", "expires_at", "is_expired", "image_url", "category", "fetched_at",
         }
 
 

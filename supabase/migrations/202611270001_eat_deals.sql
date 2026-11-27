@@ -1,7 +1,7 @@
 -- Fast-food deals for /eat, from OzBargain chain and tag feeds, fetched by the
 -- same "Fetch OzBargain deals" job as /deals but on a slower clock
 -- (crawler/eat.py). Only the title, the OzBargain deal link, the chain, votes,
--- dates and the feed's own image URL are kept. Old rows are pruned by the job;
+-- dates, category and the feed's own image URL are kept. Old rows are pruned by the job;
 -- this is not price history.
 create table if not exists public.eat_deals (
   node_id bigint primary key check (node_id > 0),
@@ -21,6 +21,11 @@ create table if not exists public.eat_deals (
   first_seen_at timestamptz not null default now(),
   fetched_at timestamptz not null default now()
 );
+
+-- OzBargain's category ("Dining & Takeaway"), to leave out points/travel offers.
+alter table public.eat_deals add column if not exists category text;
+alter table public.eat_deals drop constraint if exists eat_deals_category_length;
+alter table public.eat_deals add constraint eat_deals_category_length check (category is null or length(category) <= 60);
 
 create index if not exists eat_deals_posted on public.eat_deals (posted_at desc);
 

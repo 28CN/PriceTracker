@@ -191,6 +191,14 @@ def _image(url: str | None) -> str | None:
     return url if len(url) <= 400 and _IMAGE_URL.match(url) else None
 
 
+def _category(item: ET.Element) -> str | None:
+    """OzBargain's category (e.g. "Dining & Takeaway"), so the page can leave out points and travel offers."""
+    cats = item.findall("category")
+    chosen = next((c for c in cats if "/cat/" in (c.get("domain") or "")), cats[0] if cats else None)
+    text = " ".join(unescape((chosen.text or "") if chosen is not None else "").split())
+    return text[:60] or None
+
+
 def parse_food_feed(xml_text: str, feed: FoodFeed, now: datetime | None = None) -> list[dict]:
     """Rows for public.eat_deals. A tag-feed deal that names no chain we list is dropped."""
     now = now or datetime.now(timezone.utc)
@@ -230,6 +238,7 @@ def parse_food_feed(xml_text: str, feed: FoodFeed, now: datetime | None = None) 
                 "expires_at": expires_at,
                 "is_expired": flagged or (expires_at is not None and datetime.fromisoformat(expires_at) <= now),
                 "image_url": _image(attrs.get("image")) or _image(thumb.get("url") if thumb is not None else None),
+                "category": _category(item),
                 "fetched_at": now.isoformat(),
             }
         )

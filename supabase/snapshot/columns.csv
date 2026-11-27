@@ -201,3 +201,4 @@ eat_feed_status,item_count,integer,NO
 eat_feed_status,etag,text,YES
 eat_feed_status,last_modified,text,YES
 eat_feed_status,last_status,integer,YES
+eat_deals,category,text,YES
