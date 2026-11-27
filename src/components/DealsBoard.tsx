@@ -40,10 +40,10 @@ export type BoardTab = DealTab | 'eat';
 type Sort = 'new' | 'votes' | 'saved';
 type BrandChoice = 'follow' | 'mute' | null;
 
-const TABS: { key: BoardTab; label: string }[] = [
-  { key: 'shops', label: 'Shops we check' },
-  { key: 'online', label: 'Online shopping' },
-  { key: 'eat', label: 'Eat' }
+const TABS: { key: BoardTab; label: string; short: string }[] = [
+  { key: 'shops', label: 'Shops we check', short: 'Shops' },
+  { key: 'online', label: 'Online shopping', short: 'Online' },
+  { key: 'eat', label: 'Eat', short: 'Eat' }
 ];
 
 const HOT_VOTES = 50;
@@ -336,7 +336,10 @@ export default function DealsBoard({
             onClick={() => chooseTab(item.key)}
             onKeyDown={onTabKey}
           >
-            {item.label}
+            <span className="deals-tab-label-full">{item.label}</span>
+            <span className="deals-tab-label-short" aria-hidden="true">
+              {item.short}
+            </span>
             <span className="deals-count">{tabCounts[item.key]}</span>
           </button>
         ))}
