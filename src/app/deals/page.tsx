@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import { after } from 'next/server';
 
-import DealsBoard, { type DealView } from '@/components/DealsBoard';
+import DealsBoard, { type BoardTab, type DealView } from '@/components/DealsBoard';
+import EatBoard from '@/components/EatBoard';
 import { getViewer } from '@/lib/auth';
 import {
   DEAL_SHOPS,
@@ -14,12 +15,15 @@ import {
   savingFromTitle,
   timeLeftLabel,
   type DealRow,
-  type DealTab,
   type FeedStatusRow
 } from '@/lib/deals';
 import { isNewFor, matchDeals, newSince } from '@/lib/dealMatch';
 import { loadBrandPrefs, loadDealsSeenAt, markDealsSeen } from '@/lib/dealsForYou';
 import { noteDealsVisit } from '@/lib/dealsRefresh';
+import { EAT_CHAINS } from '@/lib/eat/chains';
+import { loadEatDeals } from '@/lib/eat/eatDeals';
+import { WEEKLY_CHECKED, weekFor } from '@/lib/eat/weekly';
+import { noteEatVisit } from '@/lib/eatRefresh';
 import { formatMoney } from '@/lib/format';
 import { fetchProducts } from '@/lib/queries';
 import { retailerKey } from '@/lib/retailer';
@@ -59,10 +63,13 @@ export default async function DealsPage({ searchParams }: { searchParams: Promis
   // After the page is sent: note the visit, and fetch fresh deals if due.
   after(() => noteDealsVisit());
   const params = await searchParams;
+  const tabParam = first(params.tab);
+  const initialTab: BoardTab = tabParam === 'online' ? 'online' : tabParam === 'eat' ? 'eat' : 'shops';
+  if (initialTab === 'eat') after(() => noteEatVisit());
   const [viewer, supabase] = await Promise.all([getViewer(), createServerSupabaseClient()]);
   const now = Date.now();
 
-  const [dealsResult, statusResult, productsResult, prefs, seenAt] = await Promise.all([
+  const [dealsResult, statusResult, productsResult, prefs, seenAt, eatData] = await Promise.all([
     supabase
       .from('ozb_deals')
       .select(DEAL_COLUMNS)
@@ -72,7 +79,8 @@ export default async function DealsPage({ searchParams }: { searchParams: Promis
     supabase.from('ozb_feed_status').select('shop, last_ok_at, last_attempt_at'),
     viewer ? fetchProducts(supabase, viewer.id).catch(() => [] as ProductView[]) : ([] as ProductView[]),
     viewer ? loadBrandPrefs(supabase, viewer.id) : [],
-    viewer ? loadDealsSeenAt(supabase, viewer.id) : null
+    viewer ? loadDealsSeenAt(supabase, viewer.id) : null,
+    loadEatDeals(supabase, now)
   ]);
 
   if (dealsResult.error) console.error('[deals] load failed:', dealsResult.error.message);
@@ -145,10 +153,12 @@ export default async function DealsPage({ searchParams }: { searchParams: Promis
     null
   );
 
-  const tabParam = first(params.tab);
-  const initialTab: DealTab = tabParam === 'online' ? 'online' : 'shops';
   const shopParam = first(params.shop) ?? null;
-  const initialShop = DEAL_SHOPS.some((shop) => shop.key === shopParam && shop.tab === initialTab) ? shopParam : null;
+  const initialShop =
+    initialTab !== 'eat' && DEAL_SHOPS.some((shop) => shop.key === shopParam && shop.tab === initialTab)
+      ? shopParam
+      : null;
+  const eatCount = eatData.groups.everyone.length + eatData.groups.wa.length + eatData.groups.app.length;
 
   return (
     <DealsBoard
@@ -174,6 +184,17 @@ export default async function DealsPage({ searchParams }: { searchParams: Promis
       initialMine={first(params.mine) === '1'}
       initialTab={initialTab}
       initialShop={initialShop}
+      eat={
+        <EatBoard
+          groups={eatData.groups}
+          updated={eatData.updated}
+          loadFailed={eatData.failed}
+          week={weekFor(now)}
+          weeklyChecked={WEEKLY_CHECKED}
+          chains={EAT_CHAINS}
+        />
+      }
+      eatCount={eatCount}
     />
   );
 }

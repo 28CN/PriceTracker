@@ -1,8 +1,9 @@
 'use client';
 
 import { BellOff, CircleCheck, Clock, ExternalLink, Heart, Tag, ThumbsUp, X } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 
+import { noteEatVisitAction } from '@/app/deals/actions';
 import InfoTip from '@/components/InfoTip';
 import { brandKey } from '@/lib/dealMatch';
 import { sparkPoints, type Spark } from '@/lib/sparkline';
@@ -34,12 +35,15 @@ export type DealView = {
   elsewhere: { shop: string; price: string } | null;
 };
 
+export type BoardTab = DealTab | 'eat';
+
 type Sort = 'new' | 'votes' | 'saved';
 type BrandChoice = 'follow' | 'mute' | null;
 
-const TABS: { key: DealTab; label: string }[] = [
+const TABS: { key: BoardTab; label: string }[] = [
   { key: 'shops', label: 'Shops we check' },
-  { key: 'online', label: 'Online shopping' }
+  { key: 'online', label: 'Online shopping' },
+  { key: 'eat', label: 'Eat' }
 ];
 
 const HOT_VOTES = 50;
@@ -129,10 +133,10 @@ function DealThumb({ src, href }: { src: string | null; href: string }) {
 
 const shopSite = (domain: string) => `https://www.${domain}/`;
 
-function syncUrl(tab: DealTab, shop: string | null) {
+function syncUrl(tab: BoardTab, shop: string | null) {
   const params = new URLSearchParams();
   if (tab !== 'shops') params.set('tab', tab);
-  if (shop) params.set('shop', shop);
+  if (tab !== 'eat' && shop) params.set('shop', shop);
   const query = params.toString();
   window.history.replaceState(null, '', query ? `/deals?${query}` : '/deals');
 }
@@ -147,7 +151,9 @@ export default function DealsBoard({
   muted: initialMuted = [],
   initialMine = false,
   initialTab,
-  initialShop
+  initialShop,
+  eat,
+  eatCount
 }: {
   deals: DealView[];
   staleShops: string[];
@@ -161,14 +167,17 @@ export default function DealsBoard({
   muted?: string[];
   /** Open with On my list on (from the dashboard card). */
   initialMine?: boolean;
-  initialTab: DealTab;
+  initialTab: BoardTab;
   initialShop: string | null;
+  eat: ReactNode;
+  eatCount: number;
 }) {
-  const [tab, setTab] = useState<DealTab>(initialTab);
+  const [tab, setTab] = useState<BoardTab>(initialTab);
   const [shop, setShop] = useState<string | null>(initialShop);
   const [sort, setSort] = useState<Sort>('new');
   const [onlyMatches, setOnlyMatches] = useState(initialMine);
   const [endingSoon, setEndingSoon] = useState(false);
+  const eatVisitNoted = useRef(initialTab === 'eat');
   // Brand choices made on this page, by brand key; applied on top of what the server sent.
   const [choices, setChoices] = useState<Map<string, { label: string; choice: BrandChoice }>>(new Map());
   const [prefError, setPrefError] = useState<string | null>(null);
@@ -213,10 +222,10 @@ export default function DealsBoard({
   };
 
   const tabCounts = useMemo(() => {
-    const counts: Record<DealTab, number> = { shops: 0, online: 0 };
+    const counts: Record<BoardTab, number> = { shops: 0, online: 0, eat: eatCount };
     for (const deal of deals) counts[deal.tab] += 1;
     return counts;
-  }, [deals]);
+  }, [deals, eatCount]);
 
   const shopCounts = useMemo(() => {
     const counts = new Map<string, number>();
@@ -258,12 +267,16 @@ export default function DealsBoard({
   const selectedShop = shop ? dealShop(shop) : null;
   const staleHere = staleShops.filter((key) => shops.some((item) => item.key === key));
 
-  const chooseTab = (next: DealTab) => {
+  const chooseTab = (next: BoardTab) => {
     setTab(next);
     setShop(null);
     setOnlyMatches(false);
     setEndingSoon(false);
     syncUrl(next, null);
+    if (next === 'eat' && !eatVisitNoted.current) {
+      eatVisitNoted.current = true;
+      void noteEatVisitAction();
+    }
   };
 
   const chooseShop = (next: string | null) => {
@@ -274,7 +287,9 @@ export default function DealsBoard({
   const onTabKey = (event: KeyboardEvent<HTMLButtonElement>) => {
     if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
     event.preventDefault();
-    const next = tab === 'shops' ? 'online' : 'shops';
+    const index = TABS.findIndex((item) => item.key === tab);
+    const delta = event.key === 'ArrowRight' ? 1 : -1;
+    const next = TABS[(index + delta + TABS.length) % TABS.length].key;
     chooseTab(next);
     document.getElementById(`deals-tab-${next}`)?.focus();
   };
@@ -328,7 +343,11 @@ export default function DealsBoard({
       </div>
 
       <section id="deals-panel" role="tabpanel" aria-labelledby={`deals-tab-${tab}`} className="deals-panel">
-        <div className="deals-toolbar">
+        {tab === 'eat' ? (
+          <div className="eat-page eat-in-deals">{eat}</div>
+        ) : (
+          <>
+            <div className="deals-toolbar">
           <div className="deals-chips" role="group" aria-label="Shop">
             <button type="button" aria-pressed={shop === null} onClick={() => chooseShop(null)}>
               All
@@ -508,9 +527,11 @@ export default function DealsBoard({
             })}
           </ul>
         )}
+          </>
+        )}
       </section>
 
-      {mutedNow.size > 0 ? (
+      {tab !== 'eat' && mutedNow.size > 0 ? (
         <div className="deals-muted" aria-label="Muted brands">
           <BellOff size={14} aria-hidden="true" />
           <span className="visually-hidden">Muted brands:</span>
