@@ -28,3 +28,4 @@ deal_brand_prefs_limit() | definer | anon=false | authenticated=false | service_
 claim_scheduled_work(timestamp with time zone) | definer | anon=false | authenticated=false | service_role=true
 release_scheduled_task(text,timestamp with time zone) | definer | anon=false | authenticated=false | service_role=true
 scheduled_tick() | definer | anon=false | authenticated=false | service_role=false
+note_eat_visit() | definer | anon=true | authenticated=true | service_role=true

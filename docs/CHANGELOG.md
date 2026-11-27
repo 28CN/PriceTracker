@@ -3,6 +3,7 @@
 One line per change, newest first: date, who, what (PR or commit).
 Who is `owner`, `agy` (Antigravity), or `agent`. Details live in the commit/PR.
 
+- 2026-11-27 · agent · Fast-food deal feeds for the coming Eat page: 13 chain feeds and the fast-food tag from OzBargain on their own slower clock, same 2-second gaps and conditional GET (#62).
 - 2026-11-26 · agent+agy · Price watch page (/watch): buy now (real sales, lowest ever), wait for a sale (sale rhythm and next date), up/down this week, back in stock, not a real sale, all items with lowest ever; linked from This week (#61).
 - 2026-11-26 · agent · Opening Deals refreshes OzBargain once the last fetch is 30+ min old (was 55) (#60).
 - 2026-11-26 · agent · Hourly scheduler in the database (pg_cron) starts the deals fetch and the Monday/Thursday price crawl; GitHub crons are now late fallbacks that skip when already done (#59).
