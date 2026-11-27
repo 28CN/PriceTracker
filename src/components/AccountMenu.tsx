@@ -1,6 +1,6 @@
 'use client';
 
-import { BookOpen, Download, LogOut, Settings, UserRound } from 'lucide-react';
+import { BookOpen, Download, LogOut, Settings, UserRound, Utensils } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 
@@ -77,6 +77,10 @@ export default function AccountMenu({
               Public profile
             </Link>
           ) : null}
+          <Link href="/eat" className="account-menu-about" onClick={() => setOpen(false)}>
+            <Utensils size={15} aria-hidden="true" />
+            Eat
+          </Link>
           <Link href="/about" className="account-menu-about" onClick={() => setOpen(false)}>
             <BookOpen size={15} aria-hidden="true" />
             Guide

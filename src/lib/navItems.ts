@@ -1,4 +1,4 @@
-export type NavItemKey = 'home' | 'dashboard' | 'add' | 'compare' | 'deals' | 'about' | 'install';
+export type NavItemKey = 'home' | 'dashboard' | 'add' | 'compare' | 'deals' | 'eat' | 'about' | 'install';
 
 export type NavItem = {
   key: NavItemKey;
@@ -16,6 +16,8 @@ export function navItemsFor(signedIn: boolean): NavItem[] {
     return [
       { key: 'home', href: '/', label: 'Home' },
       { key: 'deals', href: '/deals', label: 'Deals' },
+      // Top bar only; the phone bar keeps four tabs.
+      { key: 'eat', href: '/eat', label: 'Eat', onPhone: false },
       { key: 'about', href: '/about', label: 'Guide' },
       { key: 'install', href: '/install', label: 'Install' }
     ];
@@ -25,7 +27,8 @@ export function navItemsFor(signedIn: boolean): NavItem[] {
     { key: 'add', href: '/add', label: 'Add', alsoActiveOn: ['/manage'] },
     { key: 'compare', href: '/compare', label: 'Compare' },
     { key: 'deals', href: '/deals', label: 'Deals' },
-    // More than four do not fit the phone bar; Guide and Install are in the account menu there.
+    // More than four do not fit the phone bar; Eat, Guide and Install are in the account menu there.
+    { key: 'eat', href: '/eat', label: 'Eat', onPhone: false },
     { key: 'about', href: '/about', label: 'Guide', onPhone: false },
     { key: 'install', href: '/install', label: 'Install', onPhone: false }
   ];
