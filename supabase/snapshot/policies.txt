@@ -62,3 +62,5 @@ deal_brand_prefs | users manage own brand prefs | ALL | PERMISSIVE | authenticat
 deal_brand_prefs | demo users cannot insert | INSERT | RESTRICTIVE | authenticated | - | (NOT ( SELECT is_demo_user() AS is_demo_user))
 deal_brand_prefs | demo users cannot update | UPDATE | RESTRICTIVE | authenticated | (NOT ( SELECT is_demo_user() AS is_demo_user)) | -
 deal_brand_prefs | demo users cannot delete | DELETE | RESTRICTIVE | authenticated | (NOT ( SELECT is_demo_user() AS is_demo_user)) | -
+eat_deals | eat deals are public | SELECT | PERMISSIVE | anon,authenticated | true | -
+eat_feed_status | eat feed status is public | SELECT | PERMISSIVE | anon,authenticated | true | -

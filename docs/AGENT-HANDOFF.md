@@ -83,6 +83,12 @@ PR #1 (beta shop search page) is still open and not part of `main`.
   `crawl-prices.yml`. GitHub's own crons are late fallbacks that skip when the
   work was already done. Check runs with `cron.job_run_details` and
   `net._http_response`.
+- **Eat feeds** (`/eat`): `crawler/eat.py`, run inside the same
+  `fetch-deals.yml` job. 13 chain feeds plus `/tag/fast-food/feed` into
+  `public.eat_deals`, 2 s apart with conditional GET, on their own clock
+  (`ozb_refresh_state.food_*`): every ~5.5 h, hourly while someone has `/eat`
+  open, and `note_eat_visit()` asks for a fetch (`scope=food`) when the last is
+  30+ min old. A feed that answered 404 is skipped for a week.
 - **Local crawl**: a Windows scheduled task on the owner's computer runs
   `scripts/crawl-background.ps1` for the shops the cloud run cannot reach.
   After changing the task or its scripts, `scripts/register-tasks.ps1` must be

@@ -1,6 +1,7 @@
 name: Fetch OzBargain deals
 
-# Shop feeds from OzBargain (/deals/<domain>/feed) for the /deals page.
+# Shop feeds from OzBargain (/deals/<domain>/feed) for the /deals page, and
+# fast-food feeds for /eat on a slower clock (crawler/eat.py).
 # About 14 small requests per fetch, two seconds apart, conditional GET.
 # Started by the site: hourly by the database scheduler (mode "schedule",
 # see supabase/migrations/202611260003_scheduled_tick.sql) and when someone
@@ -18,6 +19,11 @@ on:
         type: choice
         options: [manual, visit, schedule]
         default: manual
+      scope:
+        description: "all = shop feeds (and food feeds when due); food = only the fast-food feeds (a visit to /eat)"
+        type: choice
+        options: [all, food]
+        default: all
 
 concurrency:
   group: fetch-deals
@@ -43,7 +49,8 @@ jobs:
           cache-dependency-path: crawler/requirements.txt
       # Only what the feed job needs; no browser.
       - run: pip install supabase==2.31.0 requests==2.34.2
-      - run: python deals.py --mode "$MODE"
+      - run: python deals.py --mode "$MODE" --scope "$SCOPE"
         working-directory: crawler
         env:
           MODE: ${{ github.event_name == 'schedule' && 'schedule' || inputs.mode || 'manual' }}
+          SCOPE: ${{ inputs.scope || 'all' }}

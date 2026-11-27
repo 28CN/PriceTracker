@@ -178,3 +178,27 @@ deal_brand_prefs,state,text,NO
 deal_brand_prefs,updated_at,timestamp with time zone,NO
 scheduled_tasks,task,text,NO
 scheduled_tasks,last_dispatch_at,timestamp with time zone,YES
+ozb_refresh_state,food_last_run_at,timestamp with time zone,YES
+ozb_refresh_state,food_last_visit_at,timestamp with time zone,YES
+ozb_refresh_state,food_last_dispatch_at,timestamp with time zone,YES
+eat_deals,node_id,bigint,NO
+eat_deals,title,text,NO
+eat_deals,deal_url,text,NO
+eat_deals,chain,text,NO
+eat_deals,votes_pos,integer,NO
+eat_deals,votes_neg,integer,NO
+eat_deals,posted_at,timestamp with time zone,NO
+eat_deals,starts_at,timestamp with time zone,YES
+eat_deals,expires_at,timestamp with time zone,YES
+eat_deals,is_expired,boolean,NO
+eat_deals,image_url,text,YES
+eat_deals,first_seen_at,timestamp with time zone,NO
+eat_deals,fetched_at,timestamp with time zone,NO
+eat_feed_status,feed,text,NO
+eat_feed_status,last_attempt_at,timestamp with time zone,NO
+eat_feed_status,last_ok_at,timestamp with time zone,YES
+eat_feed_status,item_count,integer,NO
+eat_feed_status,etag,text,YES
+eat_feed_status,last_modified,text,YES
+eat_feed_status,last_status,integer,YES
+eat_deals,category,text,YES

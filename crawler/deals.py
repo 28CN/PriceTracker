@@ -1,6 +1,7 @@
 """Fetch OzBargain shop feeds into public.ozb_deals.
 
-Run by .github/workflows/fetch-deals.yml a few times a day. Stores only the
+Run by .github/workflows/fetch-deals.yml a few times a day. Also fetches the
+fast-food feeds for /eat on their own clock (see eat.py). Stores only the
 deal title, the OzBargain deal page link, the shop, votes and dates: no
 descriptions or images. A feed that fails or comes back empty leaves that
 shop's existing rows alone and is recorded in public.ozb_feed_status.
@@ -24,6 +25,8 @@ from html import unescape
 from urllib.parse import urlparse
 
 import requests
+
+import eat
 
 USER_AGENT = "PriceTrackerDeals/1.0 (+https://pricetracker-au.vercel.app/about/built)"
 FEED_URL = "https://www.ozbargain.com.au/deals/{domain}/feed"
@@ -208,9 +211,9 @@ class FeedResult:
     status: int | None
 
 
-def fetch_feed(session: requests.Session, feed: Feed, validators: dict | None = None) -> FeedResult:
-    """GET one shop feed, conditionally when we have its ETag / Last-Modified."""
-    url = FEED_URL.format(domain=feed.domain)
+def fetch_feed(session: requests.Session, feed, validators: dict | None = None, url: str | None = None) -> FeedResult:
+    """GET one feed, conditionally when we have its ETag / Last-Modified."""
+    url = url or FEED_URL.format(domain=feed.domain)
     headers = {}
     if validators and validators.get("etag"):
         headers["If-None-Match"] = validators["etag"]
@@ -265,29 +268,12 @@ def merge_rows(rows: list[dict]) -> list[dict]:
     return list(merged.values())
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--dry-run", action="store_true")
-    parser.add_argument("--mode", choices=["manual", "visit", "schedule"], default="manual")
-    args = parser.parse_args()
-
-    now = datetime.now(timezone.utc)
-    client = None
+def run_shops(client, session: requests.Session, now: datetime) -> bool:
+    """Fetch the shop feeds for /deals. Returns True when every feed failed."""
     validators: dict[str, dict] = {}
-    if not args.dry_run:
-        from supabase import create_client  # only needed when writing
-
-        client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
-        state_rows = client.table("ozb_refresh_state").select("*").limit(1).execute().data or []
-        run, why = should_run(args.mode, state_rows[0] if state_rows else {}, now)
-        print(f"[deals] mode={args.mode}: {'fetching' if run else 'skipping'} ({why})")
-        if not run:
-            return 0
+    if client is not None:
         stored = client.table("ozb_feed_status").select("shop, etag, last_modified").execute().data or []
         validators = {row["shop"]: row for row in stored}
-
-    session = requests.Session()
-    session.headers.update({"User-Agent": USER_AGENT, "Accept": "application/rss+xml"})
 
     all_rows: list[dict] = []
     statuses: list[dict] = []
@@ -327,7 +313,7 @@ def main() -> int:
         for row in rows[:20]:
             print(row["shop"], row["votes_pos"], row["title"][:80])
         print(f"[deals] dry run: {len(rows)} deals, nothing written")
-        return 0
+        return False
 
     missing = [row["node_id"] for row in rows if not row["image_url"]]
     known: dict[int, str] = {}
@@ -348,8 +334,99 @@ def main() -> int:
     client.table("ozb_refresh_state").update({"last_run_at": now.isoformat()}).eq("id", True).execute()
     failed = [s["shop"] for s in statuses if "last_ok_at" not in s]
     print(f"[deals] wrote {len(rows)} deals; failed feeds: {', '.join(failed) or 'none'}")
-    # Partial failure is fine; fail the run only if every feed failed.
-    return 1 if len(failed) == len(FEEDS) else 0
+    # Partial failure is fine; fail only if every feed failed.
+    return len(failed) == len(FEEDS)
+
+
+def run_food(client, session: requests.Session, now: datetime, mode: str) -> bool:
+    """Fetch the fast-food feeds for /eat. Returns True when every feed asked failed."""
+    stored_status: dict[str, dict] = {}
+    if client is not None:
+        stored = client.table("eat_feed_status").select("feed, etag, last_modified, last_status, last_attempt_at").execute().data or []
+        stored_status = {row["feed"]: row for row in stored}
+
+    all_rows: list[dict] = []
+    statuses: list[dict] = []
+    asked = 0
+    for feed in eat.FOOD_FEEDS:
+        previous = stored_status.get(feed.shop)
+        if mode != "manual" and eat.feed_paused(previous, now):
+            print(f"[eat] {feed.shop}: skipped (missing last time)")
+            continue
+        if asked:
+            time.sleep(PAUSE_SECONDS)
+        asked += 1
+        result = fetch_feed(session, feed, previous, url=feed.url)
+        text = result.text
+        rows: list[dict] = []
+        if text is not None:
+            try:
+                rows = eat.parse_food_feed(text, feed, now)
+            except ET.ParseError:
+                print(f"[eat] {feed.shop}: feed did not parse", file=sys.stderr)
+                text = None
+        ok = text is not None or result.not_modified
+        print(f"[eat] {feed.shop}: {'not changed' if result.not_modified else ('ok' if ok else 'failed')}, {len(rows)} deals")
+        all_rows.extend(rows)
+        status: dict = {"feed": feed.shop, "last_attempt_at": now.isoformat(), "last_status": result.status}
+        if not result.not_modified:
+            status["item_count"] = len(rows)
+        if ok:
+            status["last_ok_at"] = now.isoformat()
+            status["etag"] = result.etag
+            status["last_modified"] = result.last_modified
+        statuses.append(status)
+
+    rows = eat.merge_food_rows(all_rows)
+    if client is None:
+        for row in rows[:30]:
+            print(row["chain"], row["votes_pos"], row["title"][:80])
+        print(f"[eat] dry run: {len(rows)} deals from {asked} feeds, nothing written")
+        return False
+    if rows:
+        client.table("eat_deals").upsert(rows, on_conflict="node_id").execute()
+    for status in statuses:
+        client.table("eat_feed_status").upsert(status, on_conflict="feed").execute()
+    cutoff = (now - timedelta(days=KEEP_DAYS)).isoformat()
+    client.table("eat_deals").delete().lt("posted_at", cutoff).execute()
+    client.table("ozb_refresh_state").update({"food_last_run_at": now.isoformat()}).eq("id", True).execute()
+    failed = [s["feed"] for s in statuses if "last_ok_at" not in s]
+    print(f"[eat] wrote {len(rows)} deals; failed feeds: {', '.join(failed) or 'none'}")
+    return bool(statuses) and len(failed) == len(statuses)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--mode", choices=["manual", "visit", "schedule"], default="manual")
+    # "food" is a visit to /eat: only the fast-food feeds.
+    parser.add_argument("--scope", choices=["all", "food"], default="all")
+    args = parser.parse_args()
+
+    now = datetime.now(timezone.utc)
+    client = None
+    shops, food = args.scope == "all", True
+    if not args.dry_run:
+        from supabase import create_client  # only needed when writing
+
+        client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+        state_rows = client.table("ozb_refresh_state").select("*").limit(1).execute().data or []
+        state = state_rows[0] if state_rows else {}
+        if shops:
+            shops, why = should_run(args.mode, state, now)
+            print(f"[deals] mode={args.mode}: {'fetching' if shops else 'skipping'} ({why})")
+        food, why = eat.should_fetch_food(args.mode, args.scope, state, now)
+        print(f"[eat] mode={args.mode} scope={args.scope}: {'fetching' if food else 'skipping'} ({why})")
+    if not shops and not food:
+        return 0
+
+    session = requests.Session()
+    session.headers.update({"User-Agent": USER_AGENT, "Accept": "application/rss+xml"})
+    shops_failed = run_shops(client, session, now) if shops else False
+    if shops and food:
+        time.sleep(PAUSE_SECONDS)
+    food_failed = run_food(client, session, now, args.mode) if food else False
+    return 1 if shops_failed or food_failed else 0
 
 
 if __name__ == "__main__":
