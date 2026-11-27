@@ -42,6 +42,9 @@ describe('isFoodDeal', () => {
       false
     );
     expect(isFoodDeal('Giant Snack Pack $6.95 @ KFC', 'Dining & Takeaway')).toBe(true);
+    expect(isFoodDeal('Pizza Hut: 25% Cashback on Online Orders @ TopCashback', 'Dining & Takeaway')).toBe(false);
+    expect(isFoodDeal("Up to 10% Cash Back at Domino's @ ShopBack", null)).toBe(false);
+    expect(isFoodDeal('5% Cashrewards on Oporto Orders', null)).toBe(false);
     expect(isFoodDeal("Free Glass with Any Large Meal @ Hungry Jack's", null)).toBe(true);
     expect(isFoodDeal('Some offer @ KFC', 'Entertainment')).toBe(false);
   });

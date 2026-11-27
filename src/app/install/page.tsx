@@ -54,6 +54,11 @@ const QUESTIONS = [
   {
     question: 'Does it work on any computer?',
     answer: 'Yes, in Chrome or Edge on Windows, Mac and Chromebook. Safari on Mac: File, then Add to Dock.'
+  },
+  {
+    question: 'How do I uninstall it?',
+    answer:
+      'Chrome on a computer: open the app, then ⋮ menu, Uninstall PriceTracker. Or go to chrome://apps, right-click it, Remove from Chrome. Edge: go to edge://apps. Android: long-press the icon, then Uninstall or Remove. iPhone: long-press the home-screen icon, then Delete Bookmark or Remove App. It is a web app, so it is not in your Extensions list and cannot change other websites.'
   }
 ];
 

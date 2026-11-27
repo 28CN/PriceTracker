@@ -3,6 +3,7 @@
 One line per change, newest first: date, who, what (PR or commit).
 Who is `owner`, `agy` (Antigravity), or `agent`. Details live in the commit/PR.
 
+- 2026-11-27 · agent · Install questions: how to uninstall the app; Eat leaves out cashback offers (#66).
 - 2026-11-27 · agent+agy · Eat tab: warmer colours and a brighter map, chain logos on cards and map pins (clustered), type-to-search suburb, clearer Near me when location is blocked, app buttons open the app on phones, short tab labels on phones (#65).
 - 2026-11-27 · agent+agy · Eat moved into Deals as a third tab (also for guests on phones); /eat now opens it; Eat left the top bar and account menu (#64).
 - 2026-11-27 · agent+agy · Eat page (/eat): WA and national fast-food deals from OzBargain grouped for everyone / WA only / in the app, this week's regular deals with tomorrow highlighted, and nearest stores within 5 km with a map (#63).
