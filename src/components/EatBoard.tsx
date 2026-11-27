@@ -1,10 +1,13 @@
 'use client';
 
-import { ExternalLink, LocateFixed, Map as MapIcon, MapPin, Navigation, TriangleAlert, X } from 'lucide-react';
+import { ExternalLink, Loader2, LocateFixed, Map as MapIcon, MapPin, Navigation, TriangleAlert, X } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 
+import EatChainLogo from '@/components/EatChainLogo';
 import type { EatMapPoint } from '@/components/EatMap';
+import EatSuburbBox from '@/components/EatSuburbBox';
+import { appLinkFor, detectPlatform, type Platform } from '@/lib/eat/appLink';
 import type { EatChain } from '@/lib/eat/chains';
 import type { EatDealView, EatGroups } from '@/lib/eat/eatDeals';
 import {
@@ -95,12 +98,22 @@ function EatThumb({ src, href }: { src: string; href: string }) {
   );
 }
 
-function DealCard({ deal, mark, store }: { deal: EatDealView; mark: string; store: NearestStore | null }) {
+type GeoState = 'idle' | 'locating' | 'denied' | 'unavailable';
+
+function DealCard({
+  deal,
+  mark,
+  logo,
+  store
+}: {
+  deal: EatDealView;
+  mark: string;
+  logo?: string;
+  store: NearestStore | null;
+}) {
   return (
     <li className="eat-card glass-surface">
-      <div className="eat-card-badge" aria-hidden="true" title={deal.chainName}>
-        {mark}
-      </div>
+      <EatChainLogo src={logo} mark={mark} size="card" title={deal.chainName} />
 
       <div className="eat-card-body">
         <div className="eat-card-top">
@@ -124,6 +137,7 @@ function DealCard({ deal, mark, store }: { deal: EatDealView; mark: string; stor
 
         {store ? (
           <div className="eat-card-store">
+            <EatChainLogo src={logo} mark={mark} size="store" />
             <span className="eat-card-distance">
               {formatKm(store.km)} · {storePlaceLabel(store)}
             </span>
@@ -152,9 +166,9 @@ export default function EatBoard({ groups, updated, loadFailed, week, weeklyChec
 
   const [place, setPlace] = useState<Place | null>(null);
   const [suburbValue, setSuburbValue] = useState('');
-  const [locating, setLocating] = useState(false);
-  const [geoOff, setGeoOff] = useState(false);
+  const [geoState, setGeoState] = useState<GeoState>('idle');
   const [withinNear, setWithinNear] = useState(false);
+  const [platform, setPlatform] = useState<Platform>('other');
 
   const [storesFile, setStoresFile] = useState<StoresFile | null>(null);
   const [storesLoading, setStoresLoading] = useState(false);
@@ -166,12 +180,16 @@ export default function EatBoard({ groups, updated, loadFailed, week, weeklyChec
   const [desktopMapInView, setDesktopMapInView] = useState(false);
   const [mobileMapOpen, setMobileMapOpen] = useState(false);
 
-  const suburbSelectRef = useRef<HTMLSelectElement>(null);
+  const suburbInputRef = useRef<HTMLInputElement>(null);
   const mapSlotRef = useRef<HTMLDivElement>(null);
+  const geoAttemptRef = useRef(0);
+  const geoWatchdogRef = useRef<number | null>(null);
+  const geoPermRef = useRef<PermissionState | null>(null);
 
   const chainByKey = useMemo(() => new Map(chains.map((chain) => [chain.key, chain])), [chains]);
 
   const markOf = useCallback((key: string) => chainByKey.get(key)?.mark ?? key.slice(0, 2).toUpperCase(), [chainByKey]);
+  const logoOf = useCallback((key: string) => chainByKey.get(key)?.logo, [chainByKey]);
 
   const ensureStores = useCallback(async (): Promise<StoresFile | null> => {
     if (storesFile) return storesFile;
@@ -196,6 +214,44 @@ export default function EatBoard({ groups, updated, loadFailed, week, weeklyChec
     storesPromiseRef.current = pending;
     return pending;
   }, [storesFile]);
+
+  useEffect(() => {
+    setPlatform(detectPlatform(navigator.userAgent, navigator.maxTouchPoints ?? 0));
+  }, []);
+
+  useEffect(() => {
+    let permStatus: PermissionStatus | null = null;
+    let active = true;
+    const onPermChange = () => {
+      if (permStatus) geoPermRef.current = permStatus.state;
+    };
+
+    try {
+      if (typeof navigator !== 'undefined' && navigator.permissions?.query) {
+        void navigator.permissions
+          .query({ name: 'geolocation' as PermissionName })
+          .then((status) => {
+            if (!active) return;
+            permStatus = status;
+            geoPermRef.current = status.state;
+            status.addEventListener('change', onPermChange);
+          })
+          .catch(() => {});
+      }
+    } catch {
+      // Some browser shells throw synchronously on permissions.query.
+    }
+
+    return () => {
+      active = false;
+      permStatus?.removeEventListener('change', onPermChange);
+      geoAttemptRef.current += 1;
+      if (geoWatchdogRef.current !== null) {
+        window.clearTimeout(geoWatchdogRef.current);
+        geoWatchdogRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const media = window.matchMedia('(min-width: 960px)');
@@ -234,47 +290,115 @@ export default function EatBoard({ groups, updated, loadFailed, week, weeklyChec
     if (showMap) void ensureStores();
   }, [showMap, ensureStores]);
 
+  const clearGeoWatchdog = () => {
+    if (geoWatchdogRef.current !== null) {
+      window.clearTimeout(geoWatchdogRef.current);
+      geoWatchdogRef.current = null;
+    }
+  };
+
+  const selectPerthFallback = () => {
+    void ensureStores();
+    setSuburbValue(PERTH_CBD.name);
+    setPlace({
+      kind: 'suburb',
+      label: PERTH_CBD.name,
+      lat: PERTH_CBD.lat,
+      lon: PERTH_CBD.lon
+    });
+  };
+
   const handleNearMe = () => {
     void ensureStores();
-    if (typeof navigator === 'undefined' || !navigator.geolocation) {
-      setGeoOff(true);
-      handleSuburbChange(PERTH_CBD.name);
-      suburbSelectRef.current?.focus();
+
+    const supported =
+      typeof navigator !== 'undefined' &&
+      'geolocation' in navigator &&
+      Boolean(navigator.geolocation) &&
+      typeof window !== 'undefined' &&
+      window.isSecureContext;
+
+    if (!supported) {
+      clearGeoWatchdog();
+      geoAttemptRef.current += 1;
+      setGeoState('unavailable');
+      selectPerthFallback();
+      suburbInputRef.current?.focus();
       return;
     }
 
-    setLocating(true);
-    setGeoOff(false);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setLocating(false);
-        setGeoOff(false);
-        setSuburbValue('');
-        setPlace({
-          kind: 'gps',
-          label: 'Near you',
-          lat: pos.coords.latitude,
-          lon: pos.coords.longitude
-        });
-      },
-      () => {
-        setLocating(false);
-        setGeoOff(true);
-        handleSuburbChange(PERTH_CBD.name);
-        suburbSelectRef.current?.focus();
-      },
-      { enableHighAccuracy: false, timeout: 10_000, maximumAge: 300_000 }
-    );
+    const attempt = geoAttemptRef.current + 1;
+    geoAttemptRef.current = attempt;
+    clearGeoWatchdog();
+    setGeoState('locating');
+
+    try {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          if (geoAttemptRef.current !== attempt) return;
+          clearGeoWatchdog();
+          setGeoState('idle');
+          setSuburbValue('');
+          setPlace({
+            kind: 'gps',
+            label: 'Near you',
+            lat: pos.coords.latitude,
+            lon: pos.coords.longitude
+          });
+        },
+        (err) => {
+          if (geoAttemptRef.current !== attempt) return;
+          clearGeoWatchdog();
+          const isDenied = err.code === err.PERMISSION_DENIED || err.code === 1;
+          setGeoState(isDenied ? 'denied' : 'unavailable');
+          selectPerthFallback();
+          if (!isDenied) suburbInputRef.current?.focus();
+        },
+        { enableHighAccuracy: false, timeout: 10_000, maximumAge: 300_000 }
+      );
+    } catch {
+      if (geoAttemptRef.current !== attempt) return;
+      clearGeoWatchdog();
+      const isDenied = geoPermRef.current === 'denied';
+      setGeoState(isDenied ? 'denied' : 'unavailable');
+      selectPerthFallback();
+      if (!isDenied) suburbInputRef.current?.focus();
+      return;
+    }
+
+    geoWatchdogRef.current = window.setTimeout(() => {
+      if (geoAttemptRef.current !== attempt) return;
+      geoWatchdogRef.current = null;
+      geoAttemptRef.current += 1;
+      setGeoState('unavailable');
+      selectPerthFallback();
+      suburbInputRef.current?.focus();
+    }, 12_000);
+
+    try {
+      if (navigator.permissions?.query) {
+        void navigator.permissions
+          .query({ name: 'geolocation' as PermissionName })
+          .then((status) => {
+            geoPermRef.current = status.state;
+          })
+          .catch(() => {});
+      }
+    } catch {
+      // Ignore shells that throw on permissions.query.
+    }
   };
 
   const handleSuburbChange = (value: string) => {
+    clearGeoWatchdog();
+    geoAttemptRef.current += 1;
     setSuburbValue(value);
+    setGeoState('idle');
     if (!value) {
       setPlace(null);
       setWithinNear(false);
       return;
     }
-    setGeoOff(false);
     if (value === PERTH_CBD.name) {
       void ensureStores();
       setPlace({
@@ -293,8 +417,11 @@ export default function EatBoard({ groups, updated, loadFailed, week, weeklyChec
   };
 
   const clearPlace = () => {
+    clearGeoWatchdog();
+    geoAttemptRef.current += 1;
     setPlace(null);
     setSuburbValue('');
+    setGeoState('idle');
     setWithinNear(false);
   };
 
@@ -372,6 +499,7 @@ export default function EatBoard({ groups, updated, loadFailed, week, weeklyChec
       points.push({
         chain: chainKey,
         mark: markOf(chainKey),
+        logo: chainInfo?.logo,
         name: storePopupName(store, chainName),
         suburb: store.suburb,
         lat: store.lat,
@@ -394,14 +522,17 @@ export default function EatBoard({ groups, updated, loadFailed, week, weeklyChec
     markOf
   ]);
 
-  const suburbOptions = useMemo(
-    () => (storesFile?.suburbs ?? []).filter(([name]) => name !== PERTH_CBD.name),
+  const suburbNames = useMemo(
+    () => (storesFile?.suburbs ?? []).map(([name]) => name).filter((name) => name !== PERTH_CBD.name),
     [storesFile]
   );
 
   const toggleWeekly = (id: string) => {
     setOpenWeeklyId((current) => (current === id ? null : id));
   };
+
+  const isLocating = geoState === 'locating';
+  const isPhone = platform === 'android' || platform === 'ios';
 
   const renderGroup = (
     id: string,
@@ -421,15 +552,22 @@ export default function EatBoard({ groups, updated, loadFailed, week, weeklyChec
 
         {appChips && appChips.length > 0 ? (
           <div className="eat-app-chips" aria-label="Chain apps">
-            {appChips.map((item) => (
-              <a key={item.key} className="eat-app-chip" href={item.url} target="_blank" rel="noopener noreferrer">
-                <span className="eat-chip-mark" aria-hidden="true">
-                  {markOf(item.key)}
-                </span>
-                <span>{item.name} app</span>
-                <ExternalLink size={12} aria-hidden="true" />
-              </a>
-            ))}
+            {appChips.map((item) => {
+              const chain = chainByKey.get(item.key);
+              const href = chain ? appLinkFor(chain, platform) : item.url;
+              return (
+                <a
+                  key={item.key}
+                  className="eat-app-chip"
+                  href={href}
+                  {...(isPhone ? {} : { target: '_blank', rel: 'noopener noreferrer' })}
+                >
+                  <EatChainLogo src={logoOf(item.key)} mark={markOf(item.key)} size="chip" />
+                  <span>{isPhone ? `Open ${item.name} app` : item.name}</span>
+                  {isPhone ? null : <ExternalLink size={12} aria-hidden="true" />}
+                </a>
+              );
+            })}
           </div>
         ) : null}
 
@@ -440,6 +578,7 @@ export default function EatBoard({ groups, updated, loadFailed, week, weeklyChec
                 key={deal.id}
                 deal={deal}
                 mark={markOf(deal.chain)}
+                logo={logoOf(deal.chain)}
                 store={place && nearestMap ? (nearestMap.get(deal.chain) ?? null) : null}
               />
             ))}
@@ -460,34 +599,29 @@ export default function EatBoard({ groups, updated, loadFailed, week, weeklyChec
               type="button"
               className="eat-near-btn"
               onClick={handleNearMe}
-              disabled={locating}
-              aria-busy={locating}
+              disabled={isLocating}
+              aria-busy={isLocating}
             >
-              <LocateFixed size={15} aria-hidden="true" />
-              {locating ? 'Locating…' : 'Near me'}
+              {isLocating ? (
+                <Loader2 size={15} className="eat-spin" aria-hidden="true" />
+              ) : (
+                <LocateFixed size={15} aria-hidden="true" />
+              )}
+              {isLocating ? 'Finding you…' : 'Near me'}
             </button>
 
             <div className="eat-suburb-wrap">
               <label className="sr-only" htmlFor={suburbId}>
                 Suburb
               </label>
-              <select
-                ref={suburbSelectRef}
+              <EatSuburbBox
+                ref={suburbInputRef}
                 id={suburbId}
-                className="eat-suburb-select"
                 value={suburbValue}
-                onFocus={() => void ensureStores()}
-                onPointerDown={() => void ensureStores()}
-                onChange={(event) => handleSuburbChange(event.target.value)}
-              >
-                <option value="">Suburb</option>
-                <option value={PERTH_CBD.name}>{PERTH_CBD.name}</option>
-                {suburbOptions.map(([name]) => (
-                  <option key={name} value={name}>
-                    {name}
-                  </option>
-                ))}
-              </select>
+                suburbs={suburbNames}
+                onSelect={handleSuburbChange}
+                onNeedStores={() => void ensureStores()}
+              />
             </div>
           </div>
 
@@ -521,7 +655,7 @@ export default function EatBoard({ groups, updated, loadFailed, week, weeklyChec
             </button>
           </div>
 
-          {place || geoOff ? (
+          {place || geoState === 'denied' || geoState === 'unavailable' ? (
             <div className="eat-loc-status">
               {place ? (
                 <span className="eat-place-line">
@@ -532,10 +666,21 @@ export default function EatBoard({ groups, updated, loadFailed, week, weeklyChec
                   </button>
                 </span>
               ) : null}
-              {geoOff ? (
-                <span className="eat-geo-note" role="status">
-                  Location off
-                </span>
+              {geoState === 'denied' ? (
+                <div className="eat-geo-msg is-denied" role="status">
+                  <span>Location is blocked for this site. Allow it in your browser&apos;s site settings, then try again.</span>
+                  <button type="button" className="eat-geo-retry" onClick={handleNearMe}>
+                    Try again
+                  </button>
+                </div>
+              ) : null}
+              {geoState === 'unavailable' ? (
+                <div className="eat-geo-msg is-unavailable" role="status">
+                  <span>Location not available in this browser, pick a suburb</span>
+                  <button type="button" className="eat-geo-retry" onClick={handleNearMe}>
+                    Try again
+                  </button>
+                </div>
               ) : null}
             </div>
           ) : null}
@@ -591,9 +736,7 @@ export default function EatBoard({ groups, updated, loadFailed, week, weeklyChec
                         aria-expanded={openWeeklyId === deal.id}
                         onClick={() => toggleWeekly(deal.id)}
                       >
-                        <span className="eat-chip-mark" aria-hidden="true">
-                          {markOf(deal.chain)}
-                        </span>
+                        <EatChainLogo src={logoOf(deal.chain)} mark={markOf(deal.chain)} size="chip" />
                         <span className="eat-week-chip-title">{deal.title}</span>
                       </button>
                     ))}
@@ -615,9 +758,7 @@ export default function EatBoard({ groups, updated, loadFailed, week, weeklyChec
                     aria-expanded={openWeeklyId === deal.id}
                     onClick={() => toggleWeekly(deal.id)}
                   >
-                    <span className="eat-chip-mark" aria-hidden="true">
-                      {markOf(deal.chain)}
-                    </span>
+                    <EatChainLogo src={logoOf(deal.chain)} mark={markOf(deal.chain)} size="chip" />
                     <span>{deal.title}</span>
                   </button>
                 ))}
@@ -629,9 +770,7 @@ export default function EatBoard({ groups, updated, loadFailed, week, weeklyChec
             <div className="eat-week-detail" role="region" aria-label={`${openWeekly.title} details`}>
               <div className="eat-week-detail-head">
                 <div className="eat-week-detail-title">
-                  <span className="eat-chip-mark" aria-hidden="true">
-                    {markOf(openWeekly.chain)}
-                  </span>
+                  <EatChainLogo src={logoOf(openWeekly.chain)} mark={markOf(openWeekly.chain)} size="chip" />
                   <strong>{openWeekly.title}</strong>
                   {openWeekly.app ? <span className="eat-pill is-app">App</span> : null}
                 </div>
