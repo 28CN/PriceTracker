@@ -6893,6 +6893,7 @@ button.product-search-onlist-mark:hover {
 .deals-page {
   display: grid;
   gap: var(--space-4);
+  min-width: 0;
 }
 
 .deals-head {
@@ -6981,6 +6982,7 @@ button.product-search-onlist-mark:hover {
 .deals-panel {
   display: grid;
   gap: var(--space-3);
+  min-width: 0;
 }
 
 .deals-toolbar {
@@ -7251,6 +7253,27 @@ a.deal-shop:focus-visible,
 
   .deals-chips button {
     flex: none;
+  }
+}
+
+@media (max-width: 430px) {
+  .deals-tabs {
+    width: 100%;
+    gap: 2px;
+  }
+
+  .deals-tabs button {
+    flex: 1 1 auto;
+    gap: var(--space-1);
+    padding: 4px var(--space-2);
+    font-size: var(--fs-xs);
+    line-height: var(--lh-xs);
+    min-width: 0;
+  }
+
+  .deals-tabs .deals-count {
+    min-width: 18px;
+    padding: 1px 5px;
   }
 }
 
