@@ -42,9 +42,9 @@ export function needsApp(title: string): boolean {
 }
 
 const NOT_FOOD =
-  /\b(rewards? points|points\b.*\b(for|@)|binge|travel|night package|dashpass|subscription|warcraft|bowling|gift ?cards?|merch only|perks\b(?!.*meal))/i;
+  /\b(rewards? points|points\b.*\b(for|@)|binge|travel|night package|dashpass|subscription|warcraft|bowling|gift ?cards?|merch only|perks\b(?!.*meal)|cash ?back|topcashback|shopback|cashrewards)/i;
 
-/** Food, not points-for-travel or merch offers. */
+/** Food, not points-for-travel, merch or cashback offers. */
 export function isFoodDeal(title: string, category: string | null): boolean {
   if (category && !/dining|takeaway|food/i.test(category)) return false;
   return !NOT_FOOD.test(title);
