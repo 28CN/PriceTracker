@@ -142,14 +142,15 @@ const EatSuburbBox = forwardRef<HTMLInputElement, EatSuburbBoxProps>(function Ea
         spellCheck={false}
         value={inputText}
         onFocus={(event) => {
+          // Opens on tap, typing or ArrowDown, not on focus alone (focus can be moved here by Near me).
           onNeedStores();
-          setOpen(true);
           setDirty(false);
           setActiveIndex(0);
           if (event.currentTarget.value) event.currentTarget.select();
         }}
         onPointerDown={() => {
           onNeedStores();
+          setOpen(true);
         }}
         onBlur={(event) => {
           if (pointerInsideRef.current) return;
