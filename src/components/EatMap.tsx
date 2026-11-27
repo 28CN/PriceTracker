@@ -67,6 +67,7 @@ export default function EatMap({ center, here, points }: EatMapProps) {
 
   useEffect(() => {
     let cancelled = false;
+    let resizeObserver: ResizeObserver | null = null;
     const container = containerRef.current;
     if (!container) return;
 
@@ -85,6 +86,13 @@ export default function EatMap({ center, here, points }: EatMapProps) {
         attributionControl: { compact: true }
       });
 
+      map.once('load', () => {
+        map.resize();
+        containerRef.current?.querySelector('.maplibregl-ctrl-attrib')?.classList.remove('maplibregl-compact-show');
+      });
+      resizeObserver = new ResizeObserver(() => map.resize());
+      resizeObserver.observe(containerRef.current);
+
       libRef.current = maplibregl;
       mapRef.current = map;
       setReady(true);
@@ -94,6 +102,7 @@ export default function EatMap({ center, here, points }: EatMapProps) {
 
     return () => {
       cancelled = true;
+      resizeObserver?.disconnect();
       for (const marker of markersRef.current) marker.remove();
       markersRef.current = [];
       mapRef.current?.remove();
@@ -173,6 +182,7 @@ export default function EatMap({ center, here, points }: EatMapProps) {
       markersRef.current.push(marker);
     }
 
+    map.resize();
     if (points.length > 0) {
       const bounds = new maplibregl.LngLatBounds();
       for (const point of points) bounds.extend([point.lon, point.lat]);
